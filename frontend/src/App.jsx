@@ -1,20 +1,17 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Auth/Login';
+import Signup from './pages/Auth/Signup';
 import './App.css';
 
 function App() {
   return (
     <Router>
-      <div className="App">
-        <header className="app-header">
-          <h1>Vehicle Service & Repair Tracking System</h1>
-        </header>
-        <main>
-          <Routes>
-            <Route path="/" element={<div className="p-8">Welcome to the Vehicle Service Portal</div>} />
-            {/* Add more routes here like /admin, /technician, /customer */}
-          </Routes>
-        </main>
-      </div>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        {/* Add more routes here like /admin, /technician, /customer */}
+      </Routes>
     </Router>
   );
 }
