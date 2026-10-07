@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 mongoose
-  .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/vehicle-service')
+  .connect(process.env.MONGO_URI || 'mongodb+srv://Gimhana:12345678Gd@cluster0.zvuioqx.mongodb.net/?appName=Cluster0')
   .then(() => {
     console.log('Connected to MongoDB');
     app.listen(PORT, () => {
@@ -34,3 +34,6 @@ mongoose
   .catch((err) => {
     console.error('Failed to connect to MongoDB', err);
   });
+
+
+  
