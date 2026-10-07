@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import AuthLayout from './AuthLayout';
 
 const Signup = () => {
@@ -11,6 +12,9 @@ const Signup = () => {
     confirmPassword: '',
     agreeTerms: false
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const features = [
     {
@@ -52,9 +56,29 @@ const Signup = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Signup attempt', formData);
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/register', {
+        fullName: formData.fullName,
+        email: formData.email,
+        mobile: formData.mobile,
+        password: formData.password
+      });
+      localStorage.setItem('userInfo', JSON.stringify(response.data));
+      navigate('/customer/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create account.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,6 +91,8 @@ const Signup = () => {
         <h2>CREATE YOUR ACCOUNT</h2>
         <p>Enter your details to start your 14-day free trial</p>
       </div>
+
+      {error && <div style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">

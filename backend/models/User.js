@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-  fullName: { type: String, required: true },
+  name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  mobile: { type: String, required: true, unique: true },
+  mobile: { type: String }, // Optional to avoid breaking existing users
   password: { type: String, required: true },
-  role: { type: String, enum: ['Customer', 'Admin', 'Technician', 'Finance'], default: 'Customer' },
+  role: { type: String, enum: ['user', 'admin', 'Customer', 'Admin', 'Technician', 'Finance'], default: 'Customer' },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
