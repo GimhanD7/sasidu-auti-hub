@@ -65,8 +65,8 @@ const CustomerLayout = () => {
   ];
 
   return (
-    <div className="layout-container customer-theme">
-      <aside className="sidebar">
+    <div className="layout-container customer-theme min-h-screen bg-app-black text-zinc-100">
+      <aside className="sidebar bg-app-surface text-zinc-100">
         <div className="sidebar-brand">
           <div className="brand-icon">
             <svg
@@ -143,7 +143,7 @@ const CustomerLayout = () => {
           </div>
         </header>
 
-        <div className="content-area">
+        <div className="content-area flex-1 bg-app-black text-zinc-100">
           <Outlet />
         </div>
       </main>

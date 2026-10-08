@@ -49,8 +49,8 @@ const TechnicianLayout = () => {
   });
 
   return (
-    <div className="layout-container admin-theme technician-theme">
-      <aside className="sidebar">
+    <div className="layout-container admin-theme technician-theme min-h-screen bg-app-black text-zinc-100">
+      <aside className="sidebar bg-app-surface text-zinc-100">
         <div className="sidebar-brand">
           <div className="brand-icon" style={{ backgroundColor: '#e11d2e' }}>
             <svg
@@ -129,7 +129,7 @@ const TechnicianLayout = () => {
           </div>
         </header>
 
-        <div className="content-area">
+        <div className="content-area flex-1 bg-app-black text-zinc-100">
           <Outlet />
         </div>
       </main>
