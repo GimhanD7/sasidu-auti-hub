@@ -11973,6 +11973,14 @@
     @apply bg-app-surface;
   }
 
+  .layout-container [class*='-row'],
+  .layout-container [class*='-item'],
+  .layout-container [class*='-option'],
+  .layout-container [class*='-list'] > *,
+  .layout-container [role='option'] {
+    @apply bg-app-black;
+  }
+
   .layout-container .section-card,
   .layout-container .glass-panel,
   .layout-container [class*='-card'] {
