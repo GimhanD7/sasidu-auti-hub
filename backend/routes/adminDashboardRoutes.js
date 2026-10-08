@@ -8,6 +8,7 @@ import { listAdminServiceTypes, createAdminServiceType, updateAdminServiceType, 
 import { listAdminTechnicians, createAdminTechnician, getAdminTechnician, updateAdminTechnician, updateAdminTechnicianAvailability } from '../controllers/adminTechnicianController.js';
 import { listAdminAllocations, updateAdminJobTechnician } from '../controllers/adminAllocationController.js';
 import { listAdminJobBoard } from '../controllers/adminJobBoardController.js';
+import { listAdminAccounts, createAdminAccount, resetAdminAccountPassword } from '../controllers/adminAccountController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -43,5 +44,8 @@ router.patch('/technicians/:technicianId/availability', updateAdminTechnicianAva
 router.get('/allocations', listAdminAllocations);
 router.get('/jobs', listAdminJobBoard);
 router.patch('/jobs/:jobId/technician', updateAdminJobTechnician);
+router.get('/accounts', listAdminAccounts);
+router.post('/accounts', createAdminAccount);
+router.patch('/accounts/:accountId/password', resetAdminAccountPassword);
 
 export default router;

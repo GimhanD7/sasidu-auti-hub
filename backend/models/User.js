@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema({
   resetTokenHash: { type: String, select: false },
   resetTokenExpiresAt: { type: Date, select: false },
   sessionVersion: { type: Number, default: 0 },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  passwordChangedAt: Date,
+  passwordChangedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   technicianSpecialization: { type: String, trim: true, maxlength: 120 },
   availabilityStatus: { type: String, enum: ['Available', 'Busy', 'Break', 'Off Duty', 'Leave'], default: 'Available' },
   workSchedule: {
