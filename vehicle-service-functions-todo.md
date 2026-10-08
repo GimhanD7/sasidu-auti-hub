@@ -382,71 +382,83 @@ Replaced the sample-data board with live service jobs, including the Waiting for
 
 ### 2.14 Appointment Notifications
 
-- [ ] Send booking confirmation
-- [ ] Send rescheduling notification
-- [ ] Send cancellation notification
-- [ ] Send appointment reminder
-- [ ] Send technician-assignment notification when required
-- [ ] Send check-in confirmation
+- [x] Send booking confirmation
+- [x] Send rescheduling notification
+- [x] Send cancellation notification
+- [x] Send appointment reminder
+- [x] Send technician-assignment notification when required
+- [x] Send check-in confirmation
+
+Appointment events create in-app notifications for customers, admins, and technicians as appropriate. Admins can explicitly approve or reject a customer reschedule request; approval checks the slot again and rejection tells the customer the original booking remains. Reminder scheduling uses the configured workshop timezone (`APPOINTMENT_TIME_ZONE`, default `Asia/Colombo`) and avoids marking a reminder sent if the appointment changed during delivery. SMS and email notifications are not configured. Production build, targeted lint, backend syntax, and diff checks passed; live notification delivery was not verified.
 
 
 ## 3. Job Allocation & Technician Report
 
 ### 3.1 Technician Login
 
-- [ ] Login and authenticate technician
-- [ ] Identify technician role
-- [ ] Secure technician session
-- [ ] Logout
-- [ ] Change password
+- [x] Login and authenticate technician
+- [x] Identify technician role
+- [x] Secure technician session
+- [x] Logout
+- [x] Change password
+
+Added a technician-only sign-in route with server-side role enforcement, HttpOnly session cookies, and protected logout. Technicians can change their password after verifying the current password; password changes revoke every active session and require signing in again. The backend auth integration tests, frontend production build, targeted lint, syntax checks, and diff checks passed. Live account behavior was not verified against a connected database.
 
 ### 3.2 Technician Dashboard
 
-- [ ] View assigned jobs
-- [ ] View today's jobs
-- [ ] View pending jobs
-- [ ] View current active job
-- [ ] View completed jobs
-- [ ] View high-priority jobs
-- [ ] View notifications
-- [ ] Show indicators for Assigned, In Progress, Waiting for Approval and Completed Today
+- [x] View assigned jobs
+- [x] View today's jobs
+- [x] View pending jobs
+- [x] View current active job
+- [x] View completed jobs
+- [x] View high-priority jobs
+- [x] View notifications
+- [x] Show indicators for Assigned, In Progress, Waiting for Approval and Completed Today
+
+Replaced the sample dashboard with live, technician-scoped job and notification data. The dashboard shows assigned, today’s, pending, active, completed, and high-priority jobs, with status indicators and unread notification count; today and completed-today use the configured workshop timezone. Backend integration tests (including role access and dashboard data), production build, targeted lint, syntax checks, and diff checks passed. Live database content was not verified.
 
 ### 3.3 My Jobs
 
-- [ ] View assigned jobs
-- [ ] Search jobs
-- [ ] Filter and sort jobs
-- [ ] Open job
-- [ ] View job priority
-- [ ] View expected completion time
-- [ ] View service type
+- [x] View assigned jobs
+- [x] Search jobs
+- [x] Filter and sort jobs
+- [x] Open job
+- [x] View job priority
+- [x] View expected completion time
+- [x] View service type
+
+Added a technician-only My Jobs page with search across service number, vehicle registration, and complaint; status and priority filters; sort order; and pagination. Opening a job shows its priority, expected completion, service type, customer, vehicle, appointment, and status history. Both list and detail endpoints scope every query to the signed-in technician. Backend integration tests, frontend production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.4 Digital Job Card
 
-- [ ] View Service Job ID
-- [ ] View customer complaint
-- [ ] View vehicle details
-- [ ] View appointment information
-- [ ] View assigned technician and current status
-- [ ] Record inspection and diagnosis
-- [ ] Add repair notes
-- [ ] Add parts
-- [ ] Update tasks
-- [ ] Record labour hours
-- [ ] Upload photos
-- [ ] Request customer approval
-- [ ] Update job status
+- [x] View Service Job ID
+- [x] View customer complaint
+- [x] View vehicle details
+- [x] View appointment information
+- [x] View assigned technician and current status
+- [x] Record inspection and diagnosis
+- [x] Add repair notes
+- [x] Add parts
+- [x] Update tasks
+- [x] Record labour hours
+- [x] Upload photos
+- [x] Request customer approval
+- [x] Update job status
+
+Expanded the technician job detail into an editable digital card with inspection findings and diagnosis, issues and recommendations, repair notes, task tracking, replaced parts, manual labour entries, private photo attachments, customer approval requests, and guarded job status transitions. Mutations and photo reads are limited to the technician assigned to the job; uploads accept verified JPEG, PNG, or WebP images up to 1.4 MB each, with a 12-photo cap. Backend integration tests cover job-card updates and uploads, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.5 Vehicle Inspection
 
-- [ ] Start inspection
-- [ ] Record inspection findings
-- [ ] Add diagnostic result
-- [ ] Identify issues
-- [ ] Add recommended repairs
-- [ ] Add inspection notes
-- [ ] Upload inspection images
-- [ ] Complete inspection
+- [x] Start inspection
+- [x] Record inspection findings
+- [x] Add diagnostic result
+- [x] Identify issues
+- [x] Add recommended repairs
+- [x] Add inspection notes
+- [x] Upload inspection images
+- [x] Complete inspection
+
+Added an explicit inspection start step and audit history. Technicians can save findings, diagnosis, issues, repair recommendations, and notes; attach inspection-only images; and complete the inspection after entering findings and a diagnosis. Repair work cannot start until inspection is complete, and inspection photos cannot be added afterward. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.6 Diagnostic Report
 

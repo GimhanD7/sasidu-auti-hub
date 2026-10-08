@@ -192,6 +192,26 @@ export async function updateAdminAppointment(req, res) {
     const oldStatus = appointment.status;
     const oldTechnician = appointment.assignedTechnician ? String(appointment.assignedTechnician) : '';
 
+    if (body.rescheduleDecision !== undefined) {
+      if (body.preferredDate !== undefined || body.preferredTime !== undefined) return res.status(400).json({ message: 'Resolve a reschedule request separately from changing the appointment time.' });
+      if (!['Approved', 'Rejected'].includes(body.rescheduleDecision)) return res.status(400).json({ message: 'Choose Approve or Reject for the reschedule request.' });
+      if (appointment.rescheduleRequest?.status !== 'Pending') return res.status(409).json({ message: 'There is no pending reschedule request to resolve.' });
+      if (!['Pending', 'Confirmed'].includes(appointment.status)) return res.status(409).json({ message: 'Only a pending or confirmed appointment can resolve this reschedule request.' });
+      if (body.rescheduleDecision === 'Approved') {
+        const requestedDay = appointment.rescheduleRequest.preferredDate;
+        const requestedTime = appointment.rescheduleRequest.preferredTime;
+        const requestedKey = requestedDay?.toISOString().slice(0, 10);
+        const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+        if (!requestedKey || !availableTimes().includes(requestedTime) || requestedDay < today || requestedDay.getTime() > today.getTime() + 30 * 86400000 || !businessDays().has(requestedDay.getUTCDay() || 7) || new Date(`${requestedKey}T${requestedTime}:00.000Z`) <= new Date()) return res.status(409).json({ message: 'The requested time is no longer a valid future workshop slot.' });
+        const conflict = await Appointment.exists({ _id: { $ne: appointment._id }, preferredDate: { $gte: requestedDay, $lt: new Date(requestedDay.getTime() + 86400000) }, preferredTime: requestedTime, status: { $in: ACTIVE_STATUSES } });
+        if (conflict) return res.status(409).json({ message: 'The requested time has just been booked. Reject the request or choose another time.' });
+        appointment.preferredDate = requestedDay;
+        appointment.preferredTime = requestedTime;
+      }
+      appointment.rescheduleRequest.status = body.rescheduleDecision;
+      appointment.rescheduleRequest.respondedAt = new Date();
+    }
+
     if (body.status !== undefined) {
       if (!['Pending', 'Confirmed', 'Checked In', 'In Service', 'Completed', 'Cancelled'].includes(body.status)) return res.status(400).json({ message: 'Choose a valid appointment status.' });
       appointment.status = body.status;
@@ -253,8 +273,10 @@ export async function updateAdminAppointment(req, res) {
       await Notification.create({ user: appointment.customer, type: 'AppointmentCancelled', title: 'Appointment cancelled', message: `Appointment ${appointment.appointmentNumber || ''} on ${appointment.preferredDate.toISOString().slice(0, 10)} at ${appointment.preferredTime} was cancelled by the workshop.`, link: '/customer/appointments', dedupeKey: `admin-appointment-cancelled:${appointment._id}:${appointment.updatedAt.getTime()}` }).catch(() => {});
     } else if (oldDate !== appointment.preferredDate.toISOString().slice(0, 10) || oldTime !== appointment.preferredTime) {
       await Notification.create({ user: appointment.customer, type: 'AppointmentRescheduled', title: 'Appointment rescheduled', message: `Appointment ${appointment.appointmentNumber || ''} is now scheduled for ${appointment.preferredDate.toISOString().slice(0, 10)} at ${appointment.preferredTime}.`, link: '/customer/appointments', dedupeKey: `admin-appointment-rescheduled:${appointment._id}:${appointment.updatedAt.getTime()}` }).catch(() => {});
+    } else if (body.rescheduleDecision === 'Rejected') {
+      await Notification.create({ user: appointment.customer, type: 'AppointmentRescheduleRejected', title: 'Reschedule request declined', message: `Your reschedule request for appointment ${appointment.appointmentNumber || ''} was declined. The original appointment remains scheduled for ${appointment.preferredDate.toISOString().slice(0, 10)} at ${appointment.preferredTime}.`, link: '/customer/appointments', dedupeKey: `admin-reschedule-rejected:${appointment._id}:${appointment.updatedAt.getTime()}` }).catch(() => {});
     }
-    if (newTechnician && newTechnician !== oldTechnician) await Notification.create({ user: newTechnician, type: 'AppointmentAssigned', title: 'Appointment assigned', message: `${appointment.appointmentNumber || 'A workshop appointment'} has been assigned to you.`, link: '/technician/dashboard' }).catch(() => {});
+    if (newTechnician && newTechnician !== oldTechnician) await Notification.create({ user: newTechnician, type: 'AppointmentAssigned', title: 'Appointment assigned', message: `${appointment.appointmentNumber || 'A workshop appointment'} has been assigned to you.`, link: '/technician/dashboard', dedupeKey: `appointment-assigned:${appointment._id}:${newTechnician}:${appointment.updatedAt.getTime()}` }).catch(() => {});
     res.set('Cache-Control', 'private, no-store').json({ id: String(appointment._id), status: appointment.status, preferredDate: appointment.preferredDate.toISOString().slice(0, 10), preferredTime: appointment.preferredTime, technicianId: newTechnician });
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ message: 'That time slot has just been booked. Select another slot.' });

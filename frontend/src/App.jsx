@@ -24,6 +24,9 @@ import AdminAllocations from './pages/Admin/AdminAllocations';
 import AdminKanban from './pages/Admin/AdminKanban';
 import TechnicianLayout from './components/Layout/TechnicianLayout';
 import TechnicianDashboard from './pages/Technician/TechnicianDashboard';
+import TechnicianSecurity from './pages/Technician/TechnicianSecurity';
+import TechnicianJobs from './pages/Technician/TechnicianJobs';
+import TechnicianJobDetails from './pages/Technician/TechnicianJobDetails';
 import FinanceLayout from './components/Layout/FinanceLayout';
 import FinanceDashboard from './pages/Finance/FinanceDashboard';
 import FinancePaymentReview from './pages/Finance/FinancePaymentReview';
@@ -41,6 +44,7 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin/login" element={<Login adminOnly />} />
+        <Route path="/technician/login" element={<Login technicianOnly />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<PasswordReset />} />
         <Route path="/reset-password" element={<PasswordReset reset />} />
@@ -86,8 +90,10 @@ function App() {
         <Route path="/technician" element={<TechnicianLayout />}>
           <Route index element={<Navigate to="/technician/dashboard" replace />} />
           <Route path="dashboard" element={<TechnicianDashboard />} />
+          <Route path="security" element={<TechnicianSecurity />} />
           <Route path="messages" element={<ServiceMessages />} />
-          <Route path="jobs" element={<div style={{padding: '2rem'}}>My Jobs (Coming Soon)</div>} />
+          <Route path="jobs" element={<TechnicianJobs />} />
+          <Route path="jobs/:jobId" element={<TechnicianJobDetails />} />
           <Route path="history" element={<div style={{padding: '2rem'}}>Job History (Coming Soon)</div>} />
         </Route>
         </Route>

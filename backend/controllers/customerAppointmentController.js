@@ -133,11 +133,11 @@ function isAppointmentUpcoming(appointment) {
   return new Date(`${date}T${appointment.preferredTime}:00`).getTime() > Date.now();
 }
 
-async function notifyAppointmentChange(appointment, { type, title, message }) {
+async function notifyAppointmentChange(appointment, { type, title, message, dedupeKey }) {
   try {
-    const notifications = [{ user: appointment.customer, type, title, message, link: '/customer/appointments' }];
+    const notifications = [{ user: appointment.customer, type, title, message, link: '/customer/appointments', ...(dedupeKey ? { dedupeKey: `${dedupeKey}:${appointment.customer}` } : {}) }];
     const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
-    for (const admin of admins) notifications.push({ user: admin._id, type, title, message, link: '/admin/appointments' });
+    for (const admin of admins) notifications.push({ user: admin._id, type, title, message, link: '/admin/appointments', ...(dedupeKey ? { dedupeKey: `${dedupeKey}:${admin._id}` } : {}) });
     await Notification.insertMany(notifications, { ordered: false });
     return true;
   } catch { return false; }
@@ -155,7 +155,7 @@ export async function cancelCustomerAppointment(req, res) {
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
     const notified = await notifyAppointmentChange(appointment, {
-      type: 'AppointmentCancelled', title: 'Appointment cancelled', message: `Appointment ${number} on ${dateKey(appointment.preferredDate)} at ${appointment.preferredTime} was cancelled.`,
+      type: 'AppointmentCancelled', title: 'Appointment cancelled', message: `Appointment ${number} on ${dateKey(appointment.preferredDate)} at ${appointment.preferredTime} was cancelled.`, dedupeKey: `appointment-cancelled:${appointment._id}`,
     });
     res.set('Cache-Control', 'private, no-store').json({ appointment: appointmentView(appointment.toObject()), notificationCreated: notified });
   } catch {
@@ -188,7 +188,7 @@ export async function requestCustomerAppointmentReschedule(req, res) {
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
     const notified = await notifyAppointmentChange(appointment, {
-      type: 'AppointmentRescheduleRequest', title: 'Reschedule request received', message: `A new time was requested for appointment ${number}: ${dateKey(day)} at ${preferredTime}. The existing booking remains in place until review.`,
+      type: 'AppointmentRescheduleRequest', title: 'Reschedule request received', message: `A new time was requested for appointment ${number}: ${dateKey(day)} at ${preferredTime}. The existing booking remains in place until review.`, dedupeKey: `appointment-reschedule-request:${appointment._id}:${appointment.rescheduleRequest.requestedAt.getTime()}`,
     });
     res.set('Cache-Control', 'private, no-store').json({ appointment: appointmentView(appointment.toObject()), notificationCreated: notified });
   } catch {
@@ -253,6 +253,7 @@ export async function createCustomerAppointment(req, res) {
         title: 'Appointment request received',
         message: `${appointmentNumber}: ${serviceType} for ${vehicle.make} ${vehicle.model} on ${dateKey(day)} at ${preferredTime}.`,
         link: '/customer/appointments',
+        dedupeKey: `appointment-created:${appointment._id}`,
       });
       notificationCreated = true;
     } catch {

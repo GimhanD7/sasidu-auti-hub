@@ -76,7 +76,7 @@ const authenticateUser = async (req, res, requiredRole) => {
     }
     const normalizedRole = user.role === 'admin' ? 'Admin' : user.role === 'user' ? 'Customer' : user.role;
     if (requiredRole && normalizedRole !== requiredRole) {
-      return res.status(403).json({ message: 'This account does not have administrator access.' });
+      return res.status(403).json({ message: `This account does not have ${requiredRole.toLowerCase()} access.` });
     }
     await createSession(user, remember, res);
     res.json(publicUser(user));
@@ -87,6 +87,7 @@ const authenticateUser = async (req, res, requiredRole) => {
 
 export const loginUser = (req, res) => authenticateUser(req, res);
 export const adminLoginUser = (req, res) => authenticateUser(req, res, 'Admin');
+export const technicianLoginUser = (req, res) => authenticateUser(req, res, 'Technician');
 
 export const getCurrentUser = (req, res) => res.json(publicUser(req.user));
 
@@ -99,6 +100,26 @@ export async function logoutUser(req, res) {
   } catch {
     res.status(503).json({ message: 'Unable to sign out. Please try again.' });
   }
+}
+
+export async function changeTechnicianPassword(req, res) {
+  const { currentPassword, newPassword, confirmPassword } = req.body || {};
+  if (typeof currentPassword !== 'string' || !currentPassword || typeof newPassword !== 'string' || newPassword.length < 8 || Buffer.byteLength(newPassword, 'utf8') > 72) {
+    return res.status(400).json({ message: 'Enter your current password and a new password with at least 8 characters and no more than 72 UTF-8 bytes.' });
+  }
+  if (newPassword !== confirmPassword) return res.status(400).json({ message: 'New passwords do not match.' });
+  try {
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user || user.role !== 'Technician' || user.isActive === false) return res.status(404).json({ message: 'Technician account not found.' });
+    if (!(await bcrypt.compare(currentPassword, user.password))) return res.status(400).json({ message: 'Current password is incorrect.' });
+    if (await bcrypt.compare(newPassword, user.password)) return res.status(400).json({ message: 'Choose a new password that differs from your current password.' });
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
+    await user.save();
+    await AuthSession.deleteMany({ user: user._id });
+    res.clearCookie(COOKIE_NAME, cookieOptions());
+    res.json({ message: 'Password changed successfully. Sign in again with your new password.' });
+  } catch { res.status(503).json({ message: 'Unable to change your password. Please try again.' }); }
 }
 
 export async function forgotPassword(req, res) {

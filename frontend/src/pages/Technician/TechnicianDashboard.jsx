@@ -1,127 +1,78 @@
-import React from 'react';
-import '../Customer/CustomerDashboard.css'; // Reusing dashboard styles
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api } from '../../lib/api';
+import { useAuth } from '../../auth/useAuth';
+import '../Customer/CustomerDashboard.css';
+import './TechnicianDashboard.css';
 
-const TechnicianDashboard = () => {
-  return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <div>
-          <h1 className="page-title">My Workspace</h1>
-          <p className="page-subtitle">Welcome back, Mike. Here are your assigned jobs for today.</p>
-        </div>
-      </div>
+const number = value => new Intl.NumberFormat().format(value ?? 0);
+const dateTime = value => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Not scheduled';
+const vehicleName = vehicle => vehicle
+  ? `${vehicle.year ? `${vehicle.year} ` : ''}${vehicle.make} ${vehicle.model}${vehicle.registrationNumber ? ` · ${vehicle.registrationNumber}` : ''}`
+  : 'Vehicle details unavailable';
 
-      <div className="summary-cards">
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>Assigned Jobs</h3>
-            <p className="card-value">4</p>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>In Progress</h3>
-            <p className="card-value">1</p>
-          </div>
-        </div>
+const indicators = [
+  { key: 'assigned', label: 'Assigned', color: '#3b82f6', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+  { key: 'inProgress', label: 'In Progress', color: '#f59e0b', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { key: 'waitingForApproval', label: 'Waiting for Approval', color: '#a855f7', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { key: 'completedToday', label: 'Completed Today', color: '#10b981', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+];
 
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>Awaiting Approval</h3>
-            <p className="card-value">1</p>
-          </div>
-        </div>
+function SummaryCard({ item, value }) {
+  return <article className="summary-card"><div className="card-icon" style={{ backgroundColor: `${item.color}1a`, color: item.color }} aria-hidden="true"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} /></svg></div><div className="card-info"><h3>{item.label}</h3><p className="card-value">{number(value)}</p></div></article>;
+}
 
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>Completed Today</h3>
-            <p className="card-value">2</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-grid">
-        <div className="grid-col-2">
-          <div className="section-card">
-            <div className="section-header">
-              <h2>Current Active Job</h2>
-              <span className="badge" style={{ backgroundColor: '#f59e0b', color: 'white' }}>IN PROGRESS</span>
-            </div>
-            <div className="active-repair-details" style={{ backgroundColor: 'var(--bg-input)', padding: '1.5rem', borderRadius: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.25rem' }}>JOB-1048</h3>
-                <span style={{ color: '#ef4444', fontWeight: 'bold' }}>URGENT</span>
-              </div>
-              <h4 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Toyota Camry (2020) - ABC-1234</h4>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Customer Complaint: Brakes squealing when stopping.</p>
-              
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn-primary" style={{ flex: 1, padding: '0.75rem' }}>Open Job Card</button>
-                <button className="btn-outline" style={{ flex: 1, padding: '0.75rem', borderColor: '#10b981', color: '#10b981' }}>Complete Task</button>
-              </div>
-            </div>
-          </div>
-          
-          <div className="section-card" style={{ marginTop: '2rem' }}>
-            <div className="section-header">
-              <h2>Pending Jobs</h2>
-            </div>
-            <div className="notification-list">
-              <div className="notification-item">
-                <div className="notif-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>📋</div>
-                <div className="notif-content" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                  <div>
-                    <p><strong>JOB-1051: Honda Civic</strong></p>
-                    <p>Oil Change & Full Service</p>
-                  </div>
-                  <button className="btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Start Job</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid-col-1">
-          <div className="section-card" style={{ marginBottom: '2rem' }}>
-            <div className="section-header">
-              <h2>Notifications</h2>
-            </div>
-            <div className="notification-list">
-              <div className="notification-item">
-                <div className="notif-icon">✅</div>
-                <div className="notif-content">
-                  <p><strong>Approval Received</strong></p>
-                  <p>Customer approved brake pad replacement for JOB-1042.</p>
-                  <span className="notif-time">10 mins ago</span>
-                </div>
-              </div>
-              <div className="notification-item">
-                <div className="notif-icon">⚠️</div>
-                <div className="notif-content">
-                  <p><strong>New High Priority Job</strong></p>
-                  <p>JOB-1048 assigned to you.</p>
-                  <span className="notif-time">1 hour ago</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+function JobList({ jobs, empty, showPriority = false }) {
+  if (!jobs?.length) return <div className="dashboard-empty"><p>{empty}</p></div>;
+  return <div className="technician-job-list">{jobs.map(job => <article className="technician-job-item" key={job.id}>
+    <div className="technician-job-main"><div className="technician-job-heading"><Link to={`/technician/jobs/${job.id}`}>{job.serviceNumber}</Link><span className={`badge ${job.status === 'Waiting for Approval' ? 'badge-warning' : 'technician-status-badge'}`}>{job.status}</span>{showPriority && <span className={`technician-priority ${job.priority.toLowerCase()}`}>{job.priority}</span>}</div>
+      <h3>{vehicleName(job.vehicle)}</h3><p>{job.customer} · {job.serviceType}</p>{job.complaint && <p className="technician-complaint">{job.complaint}</p>}
+      <small>{job.expectedCompletionTime ? `Due ${dateTime(job.expectedCompletionTime)}` : job.appointmentDate ? `Appointment ${dateTime(job.appointmentDate)}${job.appointmentTime ? ` · ${job.appointmentTime}` : ''}` : `Updated ${dateTime(job.updatedAt)}`}</small>
     </div>
-  );
-};
+  </article>)}</div>;
+}
 
-export default TechnicianDashboard;
+function NotificationList({ notifications }) {
+  if (!notifications?.length) return <div className="dashboard-empty"><p>You’re all caught up. New job and approval updates will appear here.</p></div>;
+  return <div className="notification-list">{notifications.map(item => <article className={`notification-item ${!item.isRead ? 'unread' : ''}`} key={item.id}>
+    <span className="notif-icon" aria-hidden="true">{item.isRead ? '✓' : '🔔'}</span><div className="notif-content"><p><strong>{item.title}</strong></p><p>{item.message}</p><span className="notif-time">{dateTime(item.createdAt)}</span>{item.link?.startsWith('/technician/') && <Link to={item.link}>View details</Link>}</div>
+  </article>)}</div>;
+}
+
+function DashboardContent({ data, fullName }) {
+  const active = data.activeJob;
+  return <main className="dashboard-container technician-dashboard">
+    <header className="dashboard-header"><div><h1 className="page-title">Welcome back, {data.technician?.fullName || fullName || 'Technician'}!</h1><p className="page-subtitle">Your workshop jobs and updates for today.</p></div><Link className="btn-primary dashboard-quick-link" to="/technician/jobs">View all jobs</Link></header>
+    <section className="summary-cards" aria-label="Job status indicators">{indicators.map(item => <SummaryCard key={item.key} item={item} value={data.summary?.[item.key]} />)}</section>
+    <div className="dashboard-grid">
+      <div className="grid-col-2">
+        <section className="section-card" aria-labelledby="active-job-heading"><div className="section-header"><h2 id="active-job-heading">Current Active Job</h2>{active && <span className="badge badge-warning">IN PROGRESS</span>}</div>
+          {active ? <JobList jobs={[active]} empty="No active job right now." showPriority /> : <div className="dashboard-empty"><h3>No job in progress</h3><p>When you start an assigned job, it will appear here.</p></div>}
+        </section>
+        <section className="section-card" aria-labelledby="today-jobs-heading"><div className="section-header"><h2 id="today-jobs-heading">Today’s Jobs</h2><span>{number(data.summary?.today)} scheduled</span></div><JobList jobs={data.todayJobs} empty="You have no assigned jobs scheduled for today." showPriority /></section>
+        <section className="section-card" aria-labelledby="pending-jobs-heading"><div className="section-header"><h2 id="pending-jobs-heading">Pending Jobs</h2><span>{number(data.summary?.assigned)} assigned</span></div><JobList jobs={data.pendingJobs} empty="No jobs are waiting to be started." showPriority /></section>
+        <section className="section-card" aria-labelledby="assigned-jobs-heading"><div className="section-header"><h2 id="assigned-jobs-heading">Assigned Jobs</h2><Link to="/technician/jobs">Open My Jobs</Link></div><JobList jobs={data.assignedJobs} empty="No active jobs are assigned to you." showPriority /></section>
+        <section className="section-card" aria-labelledby="completed-jobs-heading"><div className="section-header"><h2 id="completed-jobs-heading">Completed Jobs</h2><span>{number(data.summary?.completed)} total</span></div><JobList jobs={data.completedJobs} empty="Completed jobs will appear here." /></section>
+        <section className="section-card" aria-labelledby="priority-jobs-heading"><div className="section-header"><h2 id="priority-jobs-heading">High-Priority Jobs</h2><span>{number(data.summary?.highPriority)} active</span></div><JobList jobs={data.highPriorityJobs} empty="No high-priority active jobs." showPriority /></section>
+      </div>
+      <aside className="grid-col-1"><section className="section-card" aria-labelledby="technician-notifications-heading"><div className="section-header"><h2 id="technician-notifications-heading">Notifications</h2><span>{number(data.unreadNotifications)} unread</span></div><NotificationList notifications={data.notifications} /></section></aside>
+    </div>
+  </main>;
+}
+
+export default function TechnicianDashboard() {
+  const { user } = useAuth();
+  const [result, setResult] = useState(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/auth/technician-dashboard', { signal: controller.signal })
+      .then(({ data }) => { if (!controller.signal.aborted) setResult({ userId: user?._id, data }); })
+      .catch(error => { if (!controller.signal.aborted) setResult({ userId: user?._id, error: error.response?.data?.message || 'Unable to load your technician dashboard. Check your connection and try again.' }); });
+    return () => controller.abort();
+  }, [user?._id, retry]);
+  const current = result?.userId === user?._id ? result : null;
+  if (current?.error) return <div className="dashboard-container" role="alert"><h1 className="page-title">Your dashboard couldn’t load</h1><p>{current.error}</p><button className="btn-primary" type="button" onClick={() => setRetry(value => value + 1)}>Try again</button></div>;
+  if (!current?.data) return <div className="dashboard-container" role="status" aria-live="polite"><h1 className="page-title">Loading your dashboard…</h1><p className="page-subtitle">Getting your assigned jobs and latest updates.</p></div>;
+  return <DashboardContent data={current.data} fullName={user?.fullName} />;
+}

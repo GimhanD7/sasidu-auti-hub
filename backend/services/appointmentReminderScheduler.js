@@ -6,7 +6,25 @@ const CHECK_INTERVAL_MS = 60 * 1000;
 
 function appointmentStart(appointment) {
   const date = appointment.preferredDate.toISOString().slice(0, 10);
-  return new Date(`${date}T${appointment.preferredTime}:00`);
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = appointment.preferredTime.split(':').map(Number);
+  const targetWallTime = Date.UTC(year, month - 1, day, hour, minute);
+  let instant = targetWallTime;
+  const timezone = process.env.APPOINTMENT_TIME_ZONE || process.env.TZ || 'Asia/Colombo';
+  let formatter;
+  try {
+    formatter = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+  } catch {
+    formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+  }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const values = Object.fromEntries(formatter.formatToParts(new Date(instant)).map(part => [part.type, part.value]));
+    const projectedWallTime = Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day), Number(values.hour), Number(values.minute), Number(values.second));
+    const correction = targetWallTime - projectedWallTime;
+    instant += correction;
+    if (correction === 0) break;
+  }
+  return new Date(instant);
 }
 
 async function sendDueReminders() {
@@ -41,7 +59,7 @@ async function sendDueReminders() {
     } catch (error) {
       if (error.code !== 11000) throw error;
     }
-    await Appointment.updateOne({ _id: appointment._id, status: { $in: REMINDER_STATUSES }, reminderSentAt: { $exists: false } }, { $set: { reminderSentAt: now } });
+    await Appointment.updateOne({ _id: appointment._id, preferredDate: appointment.preferredDate, preferredTime: appointment.preferredTime, status: { $in: REMINDER_STATUSES }, reminderSentAt: { $exists: false } }, { $set: { reminderSentAt: now } });
   }
 }
 

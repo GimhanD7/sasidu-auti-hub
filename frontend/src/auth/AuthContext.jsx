@@ -33,8 +33,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function login(credentials) {
-    const { adminOnly = false, ...loginCredentials } = credentials;
-    const { data } = await api.post(adminOnly ? '/auth/admin/login' : '/auth/login', loginCredentials);
+    const { adminOnly = false, technicianOnly = false, ...loginCredentials } = credentials;
+    const endpoint = adminOnly ? '/auth/admin/login' : technicianOnly ? '/auth/technician/login' : '/auth/login';
+    const { data } = await api.post(endpoint, loginCredentials);
     setUser(data);
     setSignedOut(false);
     setSessionError('');

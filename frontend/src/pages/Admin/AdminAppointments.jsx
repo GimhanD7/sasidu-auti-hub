@@ -345,13 +345,22 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
     finally { setSaving(false); }
   }
 
+  async function resolveReschedule(decision) {
+    setSaving(true); setError('');
+    try {
+      await api.patch(`/admin/appointments/${appointmentId}`, { rescheduleDecision: decision });
+      await onSaved();
+    } catch (requestError) { setError(requestError.response?.data?.message || 'Unable to resolve the reschedule request.'); }
+    finally { setSaving(false); }
+  }
+
   if (!record) return <div className="appointment-modal-backdrop"><section className="appointment-modal" role="dialog" aria-modal="true"><button className="appointment-modal-close" onClick={onClose}>×</button><p role={error ? 'alert' : 'status'}>{error || 'Loading appointment…'}</p></section></div>;
   const currentTimeAvailable = record.preferredDate === record.originalPreferredDate && record.preferredTime && slots.some(slot => slot.time === record.preferredTime && slot.status === 'Booked');
   const selectableTimes = slots.filter(slot => slot.status === 'Available' || (slot.time === record.preferredTime && currentTimeAvailable));
   return <div className="appointment-modal-backdrop"><section className="appointment-modal appointment-manager" role="dialog" aria-modal="true" aria-labelledby="manage-appointment-title">
     <header><div><h2 id="manage-appointment-title">Manage {record.appointmentNumber}</h2><p>{record.customer?.name} · {record.vehicle?.registrationNumber} · {record.vehicle?.make} {record.vehicle?.model}</p></div><button type="button" className="appointment-modal-close" onClick={onClose} aria-label="Close">×</button></header>
     <div className="appointment-contact-details"><span>{record.customer?.email}</span><span>{record.customer?.mobile}</span><span>VIN: {record.vehicle?.vinNumber || 'Not recorded'}</span></div>
-    {record.rescheduleRequest && <p className="appointment-form-error">Customer requested {record.rescheduleRequest.preferredDate} at {record.rescheduleRequest.preferredTime}{record.rescheduleRequest.notes ? ` — ${record.rescheduleRequest.notes}` : ''}. Update the date and time below to approve.</p>}
+    {record.rescheduleRequest && <div className="appointment-reschedule-request"><p>Customer requested {record.rescheduleRequest.preferredDate} at {record.rescheduleRequest.preferredTime}{record.rescheduleRequest.notes ? ` — ${record.rescheduleRequest.notes}` : ''}.</p><div><button type="button" className="appointment-new-booking" onClick={() => resolveReschedule('Approved')} disabled={saving}>Approve requested time</button><button type="button" className="appointment-refresh" onClick={() => resolveReschedule('Rejected')} disabled={saving}>Reject and keep current time</button></div></div>}
     {record.serviceJob && <p className="appointment-success">Service job {record.serviceJob.serviceNumber} · {record.serviceJob.status}</p>}
     {error && <p className="appointment-form-error" role="alert">{error}</p>}
     <div className="appointment-form-grid">

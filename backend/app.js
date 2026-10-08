@@ -23,6 +23,10 @@ export function createApp() {
     }
     next();
   });
+  app.use('/api/auth/technician/jobs', (req, res, next) => {
+    if (req.method === 'POST' && /\/photos$/.test(req.path)) return express.json({ limit: '2mb' })(req, res, next);
+    next();
+  });
   app.use(express.json({ limit: '16kb' }));
   app.use('/api/auth', authRoutes);
   app.use('/api/vehicles', customerVehicleRoutes);
