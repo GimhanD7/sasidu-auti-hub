@@ -12231,6 +12231,27 @@
     text-decoration: underline;
   }
 
+  .layout-container .technician-appointment-item button {
+    min-height: 32px;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid #ef4444;
+    border-radius: 0.55rem;
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .layout-container .technician-appointment-item button:hover:not(:disabled) {
+    background: #b91c1c;
+  }
+
+  .layout-container .technician-appointment-item button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+
   .layout-container .technician-jobs-empty-copy {
     margin-bottom: 0;
     color: #a1a1aa;

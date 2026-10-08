@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 const dateTime = (value) =>
   value
@@ -13,6 +13,7 @@ const vehicleName = (vehicle) =>
     : 'Vehicle details unavailable';
 
 export default function TechnicianJobs() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
@@ -20,6 +21,8 @@ export default function TechnicianJobs() {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState(null);
   const [retry, setRetry] = useState(0);
+  const [startingAppointmentId, setStartingAppointmentId] = useState('');
+  const [startError, setStartError] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -64,6 +67,20 @@ export default function TechnicianJobs() {
   function resetPage(setter, value) {
     setter(value);
     setPage(1);
+  }
+
+  async function startAppointment(appointmentId) {
+    setStartingAppointmentId(appointmentId);
+    setStartError('');
+    try {
+      const { data } = await api.post(`/auth/technician/appointments/${appointmentId}/start`);
+      navigate(`/technician/jobs/${data.id}`);
+    } catch (error) {
+      setStartError(error.response?.data?.message || 'Unable to start this appointment workflow.');
+      setRetry((value) => value + 1);
+    } finally {
+      setStartingAppointmentId('');
+    }
   }
 
   return (
@@ -137,6 +154,11 @@ export default function TechnicianJobs() {
           className="section-card technician-assigned-appointments"
           aria-label="Assigned appointments"
         >
+          {startError && (
+            <div className="technician-jobs-error" role="alert">
+              {startError}
+            </div>
+          )}
           <header className="section-header">
             <h2>Assigned appointments</h2>
             <span>{current.data.appointments.length} scheduled</span>
@@ -160,6 +182,21 @@ export default function TechnicianJobs() {
                     <span className="badge badge-warning">{appointment.status}</span>
                     {appointment.jobId && (
                       <Link to={`/technician/jobs/${appointment.jobId}`}>Open service job →</Link>
+                    )}
+                    {!appointment.jobId &&
+                      ['Confirmed', 'Checked In', 'In Service'].includes(appointment.status) && (
+                        <button
+                          type="button"
+                          disabled={Boolean(startingAppointmentId)}
+                          onClick={() => startAppointment(appointment.id)}
+                        >
+                          {startingAppointmentId === appointment.id
+                            ? 'Starting…'
+                            : 'Start service workflow'}
+                        </button>
+                      )}
+                    {!appointment.jobId && appointment.status === 'Pending' && (
+                      <small>Available after the workshop confirms this appointment.</small>
                     )}
                   </div>
                 </article>

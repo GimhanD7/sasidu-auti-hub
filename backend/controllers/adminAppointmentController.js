@@ -300,9 +300,12 @@ export async function convertAdminAppointmentToJob(req, res) {
   try {
     const appointment = await Appointment.findById(req.params.appointmentId);
     if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+    const isAssignedTechnician = req.user.role === 'Technician';
+    if (isAssignedTechnician && String(appointment.assignedTechnician) !== String(req.user._id)) return res.status(403).json({ message: 'You can only start the workflow for appointments assigned to you.' });
     if (appointment.status === 'Cancelled' || appointment.status === 'Completed') return res.status(409).json({ message: 'Cancelled or completed appointments cannot be converted to service jobs.' });
     let job = await ServiceJob.findOne({ appointment: appointment._id });
     if (job) {
+      if (isAssignedTechnician && String(job.technician) !== String(req.user._id)) return res.status(403).json({ message: 'This appointment’s service job is assigned to another technician.' });
       if (appointment.status !== 'In Service') {
         appointment.status = 'In Service';
         appointment.history.push({ action: 'Status changed', details: 'Status: existing service job linked; moved to In Service', actor: req.user._id });
@@ -311,13 +314,14 @@ export async function convertAdminAppointmentToJob(req, res) {
       }
       return res.status(200).json({ id: String(job._id), serviceNumber: job.serviceNumber, status: job.status, alreadyCreated: true });
     }
-    if (!['Confirmed', 'Checked In'].includes(appointment.status)) return res.status(409).json({ message: 'Confirm the appointment or mark the customer as arrived before creating a service job.' });
+    const startableStatuses = isAssignedTechnician ? ['Confirmed', 'Checked In', 'In Service'] : ['Confirmed', 'Checked In'];
+    if (!startableStatuses.includes(appointment.status)) return res.status(409).json({ message: 'The workshop must confirm the appointment or mark the customer as arrived before you can start its service workflow.' });
     const priority = req.body?.priority || 'Normal';
     if (!['Low', 'Normal', 'High', 'Urgent'].includes(priority)) return res.status(400).json({ message: 'Choose a valid job priority.' });
     const rawExpectedCompletionTime = req.body?.expectedCompletionTime;
     const expectedCompletionTime = rawExpectedCompletionTime ? new Date(rawExpectedCompletionTime) : undefined;
     if (rawExpectedCompletionTime && (Number.isNaN(expectedCompletionTime.getTime()) || expectedCompletionTime <= new Date())) return res.status(400).json({ message: 'Expected completion time must be a valid future date and time.' });
-    const customerComplaint = typeof req.body?.customerComplaint === 'string' ? req.body.customerComplaint.trim() : appointment.problemDescription?.trim() || '';
+    const customerComplaint = typeof req.body?.customerComplaint === 'string' ? req.body.customerComplaint.trim() : appointment.problemDescription?.trim() || (isAssignedTechnician ? appointment.serviceType?.trim() : '');
     if (!customerComplaint || customerComplaint.length > 1000) return res.status(400).json({ message: 'A customer complaint of 1 to 1,000 characters is required.' });
     const technicianId = req.body?.technicianId;
     if (technicianId) {
@@ -327,7 +331,7 @@ export async function convertAdminAppointmentToJob(req, res) {
       if ((technician.availabilityStatus || 'Available') !== 'Available') return res.status(409).json({ message: 'This technician is unavailable for a new service job assignment.' });
       appointment.assignedTechnician = technician._id;
     }
-    if (appointment.assignedTechnician) {
+    if (appointment.assignedTechnician && !isAssignedTechnician) {
       const assignedTechnician = await User.findOne({ _id: appointment.assignedTechnician, role: 'Technician', isActive: { $ne: false } }).select('availabilityStatus');
       if (!assignedTechnician || (assignedTechnician.availabilityStatus || 'Available') !== 'Available') return res.status(409).json({ message: 'The appointment’s assigned technician is unavailable. Reassign or remove them before creating this service job.' });
     }
