@@ -281,8 +281,7 @@ function RoleRow({ account, ownAccount, onSaved, onNotice }) {
         )}
         {ownAccount && (
           <small className="user-role-help">
-            Use Account settings to change your own password; another administrator must change your
-            role.
+            Use Profile to change your own password; another administrator must change your role.
           </small>
         )}
         {error && (

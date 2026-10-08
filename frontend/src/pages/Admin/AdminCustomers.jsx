@@ -318,7 +318,7 @@ function CustomerForm({ mode, customer, onClose, onSaved }) {
           : await api.patch(`/admin/customers/${customer.id}`, form);
       const message =
         mode === 'add'
-          ? `Customer ${data.customer.name} added.${data.accountSetupEmailSent ? ' Account setup email sent.' : ' Default password: 12345678. Ask the customer to change it in Account settings.'}`
+          ? `Customer ${data.customer.name} added.${data.accountSetupEmailSent ? ' Account setup email sent.' : ' Default password: 12345678. Ask the customer to change it in Profile.'}`
           : `Customer details for ${data.customer.name} updated.`;
       await onSaved(data.customer, message);
     } catch (requestError) {
@@ -378,8 +378,8 @@ function CustomerForm({ mode, customer, onClose, onSaved }) {
           </label>
           {mode === 'add' && (
             <p className="customer-form-hint">
-              Default password: 12345678. The customer can change it in Account settings. An account
-              setup email is also sent when available.
+              Default password: 12345678. The customer can change it in Profile. An account setup
+              email is also sent when available.
             </p>
           )}
           <footer>

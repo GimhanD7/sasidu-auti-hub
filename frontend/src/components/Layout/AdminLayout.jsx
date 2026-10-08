@@ -67,7 +67,7 @@ const AdminLayout = () => {
   ];
   navItems.push({
     path: '/admin/account',
-    label: 'Account settings',
+    label: 'Profile',
     icon: 'M20 21a8 8 0 00-16 0m8-10a4 4 0 100-8 4 4 0 000 8z',
   });
 

@@ -38,7 +38,7 @@ import FinancePaymentReview from './pages/Finance/FinancePaymentReview';
 import { AuthProvider } from './auth/AuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
 import PasswordReset from './pages/Auth/PasswordReset';
-import AccountSettings from './pages/Shared/AccountSettings';
+import Profile from './pages/Shared/Profile';
 
 import Toast from './components/Toast';
 
@@ -75,7 +75,7 @@ function App() {
               <Route path="history" element={<CustomerServiceHistory />} />
               <Route path="invoices" element={<CustomerInvoices />} />
               <Route path="payments" element={<CustomerPayments />} />
-              <Route path="account" element={<AccountSettings />} />
+              <Route path="account" element={<Profile />} />
             </Route>
           </Route>
 
@@ -95,7 +95,7 @@ function App() {
               <Route path="services" element={<AdminServiceTypes />} />
               <Route path="accounts" element={<Navigate to="/admin/users" replace />} />
               <Route path="service-types" element={<AdminServiceTypes />} />
-              <Route path="account" element={<AccountSettings />} />
+              <Route path="account" element={<Profile />} />
             </Route>
           </Route>
 
@@ -105,7 +105,7 @@ function App() {
               <Route index element={<Navigate to="/technician/dashboard" replace />} />
               <Route path="dashboard" element={<TechnicianDashboard />} />
               <Route path="security" element={<TechnicianSecurity />} />
-              <Route path="account" element={<AccountSettings />} />
+              <Route path="account" element={<Profile />} />
               <Route path="messages" element={<ServiceMessages />} />
               <Route path="jobs" element={<TechnicianJobs />} />
               <Route path="history" element={<TechnicianJobHistory />} />
@@ -121,7 +121,7 @@ function App() {
               <Route path="invoices" element={<FinanceInvoices />} />
               <Route path="payments" element={<FinancePaymentReview />} />
               <Route path="reports" element={<FinanceRevenueReports />} />
-              <Route path="account" element={<AccountSettings />} />
+              <Route path="account" element={<Profile />} />
             </Route>
           </Route>
         </Routes>

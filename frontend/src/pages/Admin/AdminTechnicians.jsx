@@ -107,7 +107,7 @@ export default function AdminTechnicians() {
       );
       const message = editingId
         ? 'Technician profile updated.'
-        : `Technician added. Default password: 12345678. Change it in Account settings.${data.accountSetupEmailSent ? ' A password setup email was also sent.' : ''}`;
+        : `Technician added. Default password: 12345678. Change it in Profile.${data.accountSetupEmailSent ? ' A password setup email was also sent.' : ''}`;
       setForm(null);
       setNotice(message);
       await loadDirectory();
