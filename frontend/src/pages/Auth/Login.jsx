@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../auth/useAuth';
+import { dashboardForRole } from '../../auth/roles';
 import AuthLayout from './AuthLayout';
 
 const Login = () => {
@@ -8,7 +9,10 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const { login, loading: sessionLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const features = [
     {
@@ -44,15 +48,16 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || sessionLoading) return;
     setError('');
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
-        email,
-        password
+      const user = await login({
+        email: email.trim(),
+        password,
+        remember,
       });
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
-      navigate('/customer/dashboard');
+      navigate(dashboardForRole(user.role), { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
@@ -71,11 +76,12 @@ const Login = () => {
         <p>Sign in to continue to your workshop account</p>
       </div>
 
-      {error && <div style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{error}</div>}
+      {error && <div role="alert" style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{error}</div>}
 
+      {location.state?.message && <p className="auth-feedback" role="status">{location.state.message}</p>}
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label className="form-label">EMAIL OR PHONE NUMBER</label>
+          <label className="form-label" htmlFor="login-email">EMAIL OR PHONE NUMBER</label>
           <div className="form-input-wrapper">
             <span className="input-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -85,6 +91,8 @@ const Login = () => {
             </span>
             <input 
               type="text" 
+              id="login-email"
+              autoComplete="username"
               className="form-input" 
               placeholder="technician@autoserv.pro" 
               value={email}
@@ -96,7 +104,7 @@ const Login = () => {
 
         <div className="form-group">
           <div className="form-label">
-            <span>PASSWORD</span>
+            <label htmlFor="login-password">PASSWORD</label>
             <Link to="/forgot-password" style={{ fontSize: '0.75rem', textTransform: 'none' }}>Forgot Password?</Link>
           </div>
           <div className="form-input-wrapper">
@@ -108,6 +116,8 @@ const Login = () => {
             </span>
             <input 
               type="password" 
+              id="login-password"
+              autoComplete="current-password"
               className="form-input" 
               placeholder="••••••••" 
               value={password}
@@ -124,12 +134,12 @@ const Login = () => {
         </div>
 
         <div className="form-checkbox">
-          <input type="checkbox" id="remember" />
+          <input type="checkbox" id="remember" checked={remember} onChange={event => setRemember(event.target.checked)} />
           <label htmlFor="remember">Remember this device</label>
         </div>
 
-        <button type="submit" className="btn-primary">
-          Sign In
+        <button type="submit" className="btn-primary" disabled={loading || sessionLoading}>
+          {loading ? 'Signing in…' : sessionLoading ? 'Checking session…' : 'Sign In'}
         </button>
 
         <div className="form-divider">

@@ -2,32 +2,30 @@ import React from 'react';
 import LogoutButton from '../../auth/LogoutButton';
 import { useAuth } from '../../auth/useAuth';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import './CustomerLayout.css';
+import './AdminLayout.css'; // Reuse admin layout styling
 
-const CustomerLayout = () => {
+const FinanceLayout = () => {
   const location = useLocation();
   const { user } = useAuth();
   const initials = user?.fullName?.split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase() || 'U';
 
   const navItems = [
-    { path: '/customer/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { path: '/customer/vehicles', label: 'My Vehicles', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-    { path: '/customer/appointments', label: 'Appointments', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-    { path: '/customer/repair-tracking', label: 'Repair Tracking', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
-    { path: '/customer/history', label: 'Service History', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-    { path: '/customer/invoices', label: 'Invoices', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
+    { path: '/finance/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+    { path: '/finance/invoices', label: 'Invoices', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { path: '/finance/payments', label: 'Payments', icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
+    { path: '/finance/reports', label: 'Revenue Reports', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' }
   ];
 
   return (
-    <div className="layout-container">
+    <div className="layout-container admin-theme">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-icon">
+          <div className="brand-icon" style={{ backgroundColor: '#8b5cf6' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
             </svg>
           </div>
-          <span className="brand-text">AutoServ Pro</span>
+          <span className="brand-text">Finance Dept</span>
         </div>
         
         <nav className="sidebar-nav">
@@ -56,7 +54,7 @@ const CustomerLayout = () => {
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
-            <input type="text" placeholder="Search invoices, appointments..." />
+            <input type="text" placeholder="Search invoices, payments..." />
           </div>
           <div className="topbar-actions">
             <button className="icon-btn">
@@ -65,7 +63,7 @@ const CustomerLayout = () => {
               </svg>
             </button>
             <div className="user-profile">
-              <div className="avatar">{initials}</div>
+              <div className="avatar" style={{backgroundColor: '#8b5cf6'}}>{initials}</div>
               <span>{user?.fullName}</span>
             </div>
           </div>
@@ -79,4 +77,4 @@ const CustomerLayout = () => {
   );
 };
 
-export default CustomerLayout;
+export default FinanceLayout;

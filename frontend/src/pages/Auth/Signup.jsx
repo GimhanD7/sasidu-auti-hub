@@ -58,6 +58,20 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+    const mobile = formData.mobile.trim().replace(/[\s()-]/g, '');
+    if (formData.fullName.trim().length < 2) {
+      setError('Enter your full name (at least 2 characters).');
+      return;
+    }
+    if (!/^\+?\d{10,15}$/.test(mobile)) {
+      setError('Enter a mobile number with 10 to 15 digits, optionally starting with +.');
+      return;
+    }
+    if (formData.password.length < 8 || new TextEncoder().encode(formData.password).length > 72) {
+      setError('Password must contain at least 8 characters and no more than 72 UTF-8 bytes.');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -66,14 +80,14 @@ const Signup = () => {
     setLoading(true);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
-        fullName: formData.fullName,
-        email: formData.email,
-        mobile: formData.mobile,
-        password: formData.password
+      await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/register`, {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        mobile,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
       });
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
-      navigate('/customer/dashboard');
+      navigate('/login', { replace: true, state: { message: 'Account created successfully. Sign in to continue.' } });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create account.');
     } finally {
@@ -89,10 +103,10 @@ const Signup = () => {
     >
       <div className="form-header">
         <h2>CREATE YOUR ACCOUNT</h2>
-        <p>Enter your details to start your 14-day free trial</p>
+        <p>Create your customer account to book and track vehicle services</p>
       </div>
 
-      {error && <div style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{error}</div>}
+      {error && <div role="alert" style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
@@ -107,6 +121,9 @@ const Signup = () => {
             <input 
               type="text" 
               name="fullName"
+              minLength={2}
+              maxLength={100}
+              autoComplete="name"
               className="form-input" 
               placeholder="e.g. John Miller" 
               value={formData.fullName}
@@ -129,6 +146,8 @@ const Signup = () => {
               <input 
                 type="email" 
                 name="email"
+                maxLength={254}
+                autoComplete="email"
                 className="form-input" 
                 placeholder="john@workshop.com" 
                 value={formData.email}
@@ -148,6 +167,7 @@ const Signup = () => {
               <input 
                 type="tel" 
                 name="mobile"
+                autoComplete="tel"
                 className="form-input" 
                 placeholder="+1 (555) 000-0000" 
                 value={formData.mobile}
@@ -170,6 +190,8 @@ const Signup = () => {
             <input 
               type="password" 
               name="password"
+              minLength={8}
+              autoComplete="new-password"
               className="form-input" 
               placeholder="••••••••" 
               value={formData.password}
@@ -197,6 +219,8 @@ const Signup = () => {
             <input 
               type="password" 
               name="confirmPassword"
+              minLength={8}
+              autoComplete="new-password"
               className="form-input" 
               placeholder="••••••••" 
               value={formData.confirmPassword}
@@ -221,8 +245,8 @@ const Signup = () => {
           </label>
         </div>
 
-        <button type="submit" className="btn-primary" style={{ marginTop: '2rem' }}>
-          CREATE ACCOUNT
+        <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '2rem' }}>
+          {loading ? 'CREATING ACCOUNT…' : 'CREATE ACCOUNT'}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>

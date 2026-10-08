@@ -1,9 +1,13 @@
 import React from 'react';
+import LogoutButton from '../../auth/LogoutButton';
+import { useAuth } from '../../auth/useAuth';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import './AdminLayout.css';
 
 const AdminLayout = () => {
   const location = useLocation();
+  const { user } = useAuth();
+  const initials = user?.fullName?.split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase() || 'U';
 
   const navItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -42,12 +46,7 @@ const AdminLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <Link to="/login" className="nav-item">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-            </svg>
-            <span>Logout</span>
-          </Link>
+          <LogoutButton />
         </div>
       </aside>
 
@@ -66,8 +65,8 @@ const AdminLayout = () => {
               </svg>
             </button>
             <div className="user-profile">
-              <div className="avatar" style={{backgroundColor: '#3b82f6'}}>AM</div>
-              <span>Service Manager</span>
+              <div className="avatar" style={{backgroundColor: '#3b82f6'}}>{initials}</div>
+              <span>{user?.fullName}</span>
             </div>
           </div>
         </header>
