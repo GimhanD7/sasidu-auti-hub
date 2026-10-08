@@ -5,6 +5,7 @@ import CustomerLayout from './components/Layout/CustomerLayout';
 import CustomerDashboard from './pages/Customer/CustomerDashboard';
 import CustomerVehicles from './pages/Customer/CustomerVehicles';
 import CustomerVehicleProfile from './pages/Customer/CustomerVehicleProfile';
+import CustomerAppointments from './pages/Customer/CustomerAppointments';
 import AdminLayout from './components/Layout/AdminLayout';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminKanban from './pages/Admin/AdminKanban';
@@ -38,7 +39,7 @@ function App() {
             <Route index element={<CustomerVehicles />} />
             <Route path=":vehicleId" element={<CustomerVehicleProfile />} />
           </Route>
-          <Route path="appointments" element={<div style={{padding: '2rem'}}>Appointments (Coming Soon)</div>} />
+          <Route path="appointments" element={<CustomerAppointments />} />
           <Route path="repair-tracking" element={<div style={{padding: '2rem'}}>Live Repair Tracking (Coming Soon)</div>} />
           <Route path="history" element={<div style={{padding: '2rem'}}>Service History (Coming Soon)</div>} />
           <Route path="invoices" element={<div style={{padding: '2rem'}}>Invoices & Payments (Coming Soon)</div>} />

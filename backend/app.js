@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import customerVehicleRoutes from './routes/customerVehicleRoutes.js';
+import customerAppointmentRoutes from './routes/customerAppointmentRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -16,6 +17,7 @@ export function createApp() {
   app.use(express.json({ limit: '16kb' }));
   app.use('/api/auth', authRoutes);
   app.use('/api/vehicles', customerVehicleRoutes);
+  app.use('/api/appointments', customerAppointmentRoutes);
   app.get('/', (req, res) => res.send('Vehicle Service & Repair Tracking System API is running...'));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
