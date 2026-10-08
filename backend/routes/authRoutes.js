@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerUser, loginUser, adminLoginUser, technicianLoginUser, changeTechnicianPassword, logoutUser, getCurrentUser, forgotPassword, resetPassword } from '../controllers/authController.js';
+import { registerUser, loginUser, adminLoginUser, technicianLoginUser, changeTechnicianPassword, logoutUser, getCurrentUser, updateCurrentUser, forgotPassword, resetPassword } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authRateLimit } from '../middleware/authRateLimit.js';
 import { getCustomerDashboard } from '../controllers/customerDashboardController.js';
@@ -16,6 +16,7 @@ router.post('/login', authRateLimit(30), loginUser);
 router.post('/admin/login', authRateLimit(30), adminLoginUser);
 router.post('/technician/login', authRateLimit(30), technicianLoginUser);
 router.get('/me', requireAuth, getCurrentUser);
+router.patch('/me', requireAuth, updateCurrentUser);
 router.get('/customer-dashboard', requireAuth, requireRole('Customer'), getCustomerDashboard);
 router.get('/technician-dashboard', requireAuth, requireRole('Technician'), getTechnicianDashboard);
 router.get('/technician/jobs', requireAuth, requireRole('Technician'), listTechnicianJobs);

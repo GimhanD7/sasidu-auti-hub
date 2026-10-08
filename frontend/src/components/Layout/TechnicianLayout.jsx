@@ -16,6 +16,7 @@ const TechnicianLayout = () => {
     { path: '/technician/history', label: 'Job History', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
     { path: '/technician/security', label: 'Account Security', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' }
   ];
+  navItems.push({ path: '/technician/account', label: 'Account settings', icon: 'M20 21a8 8 0 00-16 0m8-10a4 4 0 100-8 4 4 0 000 8z' });
 
   return (
     <div className="layout-container admin-theme">

@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
+import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
 import ServiceJob from '../models/ServiceJob.js';
+import { invoiceEmail } from '../services/invoiceEmail.js';
 
 const roundMoney = value => Math.round((Number(value) || 0) * 100) / 100;
 const jobPopulate = [
@@ -53,6 +55,87 @@ export async function listBillableJobs(req, res) {
   }
 }
 
+export async function listFinanceInvoices(req, res) {
+  try {
+    const invoices = await Invoice.find().sort({ createdAt: -1 }).limit(500)
+      .populate({ path: 'customer', select: 'name email mobile' })
+      .populate({ path: 'serviceJob', select: 'serviceNumber vehicle appointment', populate: [
+        { path: 'vehicle', select: 'registrationNumber make model year' },
+        { path: 'appointment', select: 'serviceType' },
+      ] }).lean();
+    res.set('Cache-Control', 'private, no-store').json({ invoices: invoices.map(invoice => {
+      const job = invoice.serviceJob || {};
+      const vehicle = job.vehicle || null;
+      return {
+        id: String(invoice._id), invoiceNumber: invoice.invoiceNumber,
+        paymentStatus: invoice.paymentStatus || 'Pending', totalAmount: roundMoney(invoice.totalAmount),
+        amountPaid: roundMoney(invoice.amountPaid), amountDue: roundMoney(Math.max(0, invoice.totalAmount - (invoice.amountPaid || 0))),
+        parts: invoice.parts || [], labourItems: invoice.labourItems || [],
+        partsCost: roundMoney(invoice.partsCost), labourCost: roundMoney(invoice.labourCost), additionalRepairsCost: roundMoney(invoice.additionalRepairsCost), tax: roundMoney(invoice.tax), discount: roundMoney(invoice.discount),
+        issuedAt: invoice.createdAt, paymentDate: invoice.paymentDate || null, paymentMethod: invoice.paymentMethod || '',
+        customer: invoice.customer ? { name: invoice.customer.name || 'Customer', email: invoice.customer.email || '', mobile: invoice.customer.mobile || '' } : null,
+        serviceJob: { id: job._id ? String(job._id) : '', serviceNumber: job.serviceNumber || '', serviceType: job.appointment?.serviceType || 'Service repair', vehicle: vehicle ? { make: vehicle.make || '', model: vehicle.model || '', year: vehicle.year || null, registrationNumber: vehicle.registrationNumber || '' } : null },
+      };
+    }) });
+  } catch {
+    res.status(503).json({ message: 'Unable to load invoices. Please try again.' });
+  }
+}
+
+export async function updateDraftInvoice(req, res) {
+  const { invoiceId } = req.params;
+  const taxRate = Number(req.body?.taxRate ?? 0);
+  const discountRate = Number(req.body?.discountRate ?? 0);
+  if (!mongoose.isValidObjectId(invoiceId)) return res.status(400).json({ message: 'Invalid invoice.' });
+  if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100 || !Number.isFinite(discountRate) || discountRate < 0 || discountRate > 100) return res.status(400).json({ message: 'Tax and discount rates must be between 0 and 100 percent.' });
+  try {
+    const invoice = await Invoice.findOne({ _id: invoiceId, paymentStatus: 'Draft' });
+    if (!invoice) return res.status(404).json({ message: 'Draft invoice not found.' });
+    const subtotal = roundMoney((invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0));
+    invoice.discount = roundMoney(subtotal * discountRate / 100);
+    invoice.tax = roundMoney((subtotal - invoice.discount) * taxRate / 100);
+    invoice.totalAmount = roundMoney(subtotal - invoice.discount + invoice.tax);
+    if (req.body?.finalize === true) invoice.paymentStatus = 'Pending';
+    await invoice.save();
+    res.set('Cache-Control', 'private, no-store').json({ message: req.body?.finalize === true ? 'Invoice finalized and issued to the customer.' : 'Draft invoice updated.', invoice: {
+      id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus,
+      partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost,
+      tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount,
+    } });
+  } catch {
+    res.status(503).json({ message: 'Unable to update this invoice. Please try again.' });
+  }
+}
+
+export async function deleteDraftInvoice(req, res) {
+  const { invoiceId } = req.params;
+  if (!mongoose.isValidObjectId(invoiceId)) return res.status(400).json({ message: 'Invalid invoice.' });
+  try {
+    const invoice = await Invoice.findOne({ _id: invoiceId, paymentStatus: 'Draft' });
+    if (!invoice) return res.status(404).json({ message: 'Draft invoice not found.' });
+    await ServiceJob.updateOne({ billingInvoice: invoice._id }, { $unset: { billingInvoice: 1 } });
+    await invoice.deleteOne();
+    res.set('Cache-Control', 'private, no-store').json({ message: 'Draft invoice deleted.' });
+  } catch {
+    res.status(503).json({ message: 'Unable to delete this draft invoice. Please try again.' });
+  }
+}
+
+export async function sendFinanceInvoice(req, res) {
+  const { invoiceId } = req.params;
+  if (!mongoose.isValidObjectId(invoiceId)) return res.status(400).json({ message: 'Invalid invoice.' });
+  if (!invoiceEmail.isConfigured()) return res.status(503).json({ message: 'Invoice email is unavailable until SMTP is configured.' });
+  try {
+    const invoice = await Invoice.findById(invoiceId).populate({ path: 'customer', select: 'name email' });
+    if (!invoice || ['Draft', 'Cancelled'].includes(invoice.paymentStatus)) return res.status(404).json({ message: 'Issued invoice not found.' });
+    if (!invoice.customer?.email) return res.status(409).json({ message: 'This customer does not have an email address.' });
+    await invoiceEmail.send(invoice, invoice.customer);
+    res.set('Cache-Control', 'private, no-store').json({ message: `Invoice ${invoice.invoiceNumber} sent to ${invoice.customer.email}.` });
+  } catch {
+    res.status(503).json({ message: 'Unable to send this invoice. Check the mail configuration and try again.' });
+  }
+}
+
 export async function saveJobInvoice(req, res) {
   const taxRate = Number(req.body?.taxRate ?? 0);
   const discountRate = Number(req.body?.discountRate ?? 0);
@@ -69,7 +152,8 @@ export async function saveJobInvoice(req, res) {
     const discount = roundMoney(subtotal * discountRate / 100);
     const tax = roundMoney((subtotal - discount) * taxRate / 100);
     const totalAmount = roundMoney(subtotal - discount + tax);
-    if (!invoice) {
+    const createdNew = !invoice;
+    if (createdNew) {
       invoice = await Invoice.create({
         serviceJob: job._id, customer: job.customer?._id || job.customer,
         invoiceNumber: `INV-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`,
@@ -79,11 +163,11 @@ export async function saveJobInvoice(req, res) {
     } else {
       Object.assign(invoice, { ...lines, tax, discount, totalAmount });
     }
-    if (req.body.finalize) invoice.paymentStatus = 'Pending';
+    if (req.body.finalize === true) invoice.paymentStatus = 'Pending';
     if (typeof invoice.save === 'function') await invoice.save();
-    if (typeof job.save === 'function' && !job.billingInvoice?._id) await job.save();
+    if (createdNew && typeof job.save === 'function') await job.save();
     res.set('Cache-Control', 'private, no-store').json({
-      message: req.body.finalize ? 'Invoice finalized and issued to the customer.' : 'Draft invoice saved for review.',
+      message: req.body.finalize === true ? 'Invoice finalized and issued to the customer.' : 'Draft invoice saved for review.',
       invoice: { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus, partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost, tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount },
     });
   } catch (error) {

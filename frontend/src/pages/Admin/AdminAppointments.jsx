@@ -8,6 +8,7 @@ const addDays = (date, count) => new Date(date.getTime() + count * DAY_MS);
 const startOfWeek = date => addDays(date, -((date.getUTCDay() + 6) % 7));
 const dayLabel = date => new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(date);
 const fullDate = date => new Intl.DateTimeFormat(undefined, { dateStyle: 'full', timeZone: 'UTC' }).format(date);
+const dateTime = value => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '';
 const monthLabel = date => new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
 const statusClass = status => status.toLowerCase().replaceAll(' ', '-');
 const STATUSES = ['Pending', 'Confirmed', 'Checked In', 'In Service', 'Completed', 'Cancelled'];
@@ -362,6 +363,7 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
     <div className="appointment-contact-details"><span>{record.customer?.email}</span><span>{record.customer?.mobile}</span><span>VIN: {record.vehicle?.vinNumber || 'Not recorded'}</span></div>
     {record.rescheduleRequest && <div className="appointment-reschedule-request"><p>Customer requested {record.rescheduleRequest.preferredDate} at {record.rescheduleRequest.preferredTime}{record.rescheduleRequest.notes ? ` — ${record.rescheduleRequest.notes}` : ''}.</p><div><button type="button" className="appointment-new-booking" onClick={() => resolveReschedule('Approved')} disabled={saving}>Approve requested time</button><button type="button" className="appointment-refresh" onClick={() => resolveReschedule('Rejected')} disabled={saving}>Reject and keep current time</button></div></div>}
     {record.serviceJob && <p className="appointment-success">Service job {record.serviceJob.serviceNumber} · {record.serviceJob.status}</p>}
+    {record.history?.length > 0 && <details className="appointment-history"><summary>Appointment history ({record.history.length})</summary><ol>{[...record.history].reverse().map((event, index) => <li key={`${event.timestamp}-${index}`}><strong>{event.action}</strong><span>{event.details}</span><small>{dateTime(event.timestamp)} · {event.actor}</small></li>)}</ol></details>}
     {error && <p className="appointment-form-error" role="alert">{error}</p>}
     <div className="appointment-form-grid">
       <label>Status<select value={record.status} onChange={event => update('status', event.target.value)}>{STATUSES.map(status => <option key={status}>{status}</option>)}</select></label>

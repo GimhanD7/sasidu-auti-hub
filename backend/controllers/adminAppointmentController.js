@@ -126,6 +126,7 @@ export async function createAdminAppointment(req, res) {
       _id: appointmentObjectId, appointmentNumber, bookingSlotKey: `${preferredDate}|${preferredTime}`,
       customer: customer._id, vehicle: vehicle._id, serviceType, preferredDate: day, preferredTime,
       problemDescription: problemDescription.trim(), customerNotes: customerNotes.trim(), internalNotes: internalNotes.trim(), status: 'Pending',
+      history: [{ action: 'Appointment created', details: `Initial status: Pending · ${serviceType}`, actor: req.user._id }],
     });
 
     let notificationCreated = false;
@@ -164,7 +165,7 @@ export async function getAdminAppointment(req, res) {
   try {
     const appointment = await Appointment.findById(req.params.appointmentId).select('+internalNotes')
       .populate({ path: 'customer', select: 'name email mobile' }).populate({ path: 'vehicle', select: 'make model year registrationNumber vinNumber' })
-      .populate({ path: 'assignedTechnician', select: 'name' }).lean();
+      .populate({ path: 'assignedTechnician', select: 'name' }).populate({ path: 'history.actor', select: 'name' }).lean();
     if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
     const job = await ServiceJob.findOne({ appointment: appointment._id }).select('serviceNumber status').lean();
     res.set('Cache-Control', 'private, no-store').json({
@@ -176,6 +177,7 @@ export async function getAdminAppointment(req, res) {
       status: appointment.status, technicianId: appointment.assignedTechnician ? String(appointment.assignedTechnician._id) : '',
       technician: appointment.assignedTechnician?.name || '',
       rescheduleRequest: appointment.rescheduleRequest?.status === 'Pending' ? { preferredDate: appointment.rescheduleRequest.preferredDate?.toISOString().slice(0, 10), preferredTime: appointment.rescheduleRequest.preferredTime, notes: appointment.rescheduleRequest.notes || '' } : null,
+      history: (appointment.history || []).map(event => ({ action: event.action, details: event.details || '', timestamp: event.timestamp, actor: event.actor?.name || 'System' })),
       serviceJob: job ? { id: String(job._id), serviceNumber: job.serviceNumber, status: job.status } : null,
     });
   } catch { res.status(503).json({ message: 'Unable to load appointment details.' }); }
@@ -190,6 +192,7 @@ export async function updateAdminAppointment(req, res) {
     const oldDate = appointment.preferredDate.toISOString().slice(0, 10);
     const oldTime = appointment.preferredTime;
     const oldStatus = appointment.status;
+    const oldServiceType = appointment.serviceType;
     const oldTechnician = appointment.assignedTechnician ? String(appointment.assignedTechnician) : '';
 
     if (body.rescheduleDecision !== undefined) {
@@ -259,6 +262,13 @@ export async function updateAdminAppointment(req, res) {
     }
     appointment.bookingSlotKey = ['Pending', 'Confirmed', 'Checked In', 'In Service'].includes(appointment.status)
       ? `${appointment.preferredDate.toISOString().slice(0, 10)}|${appointment.preferredTime}` : undefined;
+    const changes = [];
+    if (oldStatus !== appointment.status) changes.push(`Status: ${oldStatus} → ${appointment.status}`);
+    if (oldDate !== appointment.preferredDate.toISOString().slice(0, 10) || oldTime !== appointment.preferredTime) changes.push(`Scheduled time: ${oldDate} ${oldTime} → ${appointment.preferredDate.toISOString().slice(0, 10)} ${appointment.preferredTime}`);
+    if (oldServiceType !== appointment.serviceType) changes.push(`Service type: ${oldServiceType} → ${appointment.serviceType}`);
+    if (oldTechnician !== (appointment.assignedTechnician ? String(appointment.assignedTechnician) : '')) changes.push('Technician assignment changed');
+    if (body.rescheduleDecision !== undefined) changes.push(`Customer reschedule request ${body.rescheduleDecision.toLowerCase()}`);
+    if (changes.length) appointment.history.push({ action: 'Appointment updated', details: changes.join(' · ').slice(0, 1000), actor: req.user._id });
     await appointment.save();
 
     const newTechnician = appointment.assignedTechnician ? String(appointment.assignedTechnician) : '';
@@ -295,6 +305,7 @@ export async function convertAdminAppointmentToJob(req, res) {
     if (job) {
       if (appointment.status !== 'In Service') {
         appointment.status = 'In Service';
+        appointment.history.push({ action: 'Status changed', details: 'Status: existing service job linked; moved to In Service', actor: req.user._id });
         appointment.bookingSlotKey = undefined;
         await appointment.save();
       }
@@ -320,8 +331,9 @@ export async function convertAdminAppointmentToJob(req, res) {
       const assignedTechnician = await User.findOne({ _id: appointment.assignedTechnician, role: 'Technician', isActive: { $ne: false } }).select('availabilityStatus');
       if (!assignedTechnician || (assignedTechnician.availabilityStatus || 'Available') !== 'Available') return res.status(409).json({ message: 'The appointment’s assigned technician is unavailable. Reassign or remove them before creating this service job.' });
     }
-    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: 'Assigned' }] : [], customerComplaint, priority, expectedCompletionTime, status: 'Inspecting', timeline: [{ status: 'Inspecting', notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
+    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: 'Assigned' }] : [], customerComplaint, priority, expectedCompletionTime, status: 'Inspecting', timeline: [{ status: 'Inspecting', actor: req.user._id, notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
     appointment.status = 'In Service';
+    appointment.history.push({ action: 'Service job created', details: `Moved to In Service · ${job.serviceNumber}`, actor: req.user._id });
     appointment.bookingSlotKey = undefined;
     await appointment.save();
     if (appointment.assignedTechnician) await Notification.create({ user: appointment.assignedTechnician, type: 'ServiceJobAssigned', title: 'New service job assigned', message: `${job.serviceNumber} has been assigned to you.`, link: '/technician/jobs' }).catch(() => {});

@@ -65,6 +65,7 @@ export async function decideCustomerRepairApproval(req, res) {
     repair.status = decision;
     repair.customerComment = comment.trim();
     repair.decisionAt = decisionAt;
+    repair.decidedBy = req.user._id;
     if (decision === 'Rejected' && repair.relatedTask) {
       const task = job.tasks.id(repair.relatedTask);
       if (task) {
@@ -78,7 +79,7 @@ export async function decideCustomerRepairApproval(req, res) {
       job.status = 'In Progress';
       job.$locals.suppressCustomerStatusNotifications = true;
     }
-    job.timeline.push({ status: `Additional repair ${decision.toLowerCase()}`, timestamp: decisionAt, notes: `${repair.description || 'Additional repair'}${comment.trim() ? ` — Customer: ${comment.trim()}` : ''}` });
+    job.timeline.push({ status: `Additional repair ${decision.toLowerCase()}`, timestamp: decisionAt, actor: req.user._id, notes: `${repair.description || 'Additional repair'}${comment.trim() ? ` — Customer: ${comment.trim()}` : ''}` });
     await job.save();
 
     let notified = true;

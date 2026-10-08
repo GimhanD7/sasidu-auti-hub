@@ -26,7 +26,13 @@ const appointmentSchema = new mongoose.Schema({
     enum: ['Pending', 'Confirmed', 'Checked In', 'In Service', 'Completed', 'Cancelled'],
     default: 'Pending'
   },
-  assignedTechnician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  assignedTechnician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  history: [{
+    action: { type: String, required: true, maxlength: 200 },
+    details: { type: String, maxlength: 1000 },
+    timestamp: { type: Date, default: Date.now },
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  }]
 }, { timestamps: true });
 
 appointmentSchema.pre('save', function releaseFinishedSlot() {

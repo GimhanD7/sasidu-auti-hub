@@ -42,7 +42,7 @@ export async function updateTechnicianJobCard(req, res) {
       if (job.inspection?.startedAt) return res.status(409).json({ message: 'Inspection has already been started.' });
       job.inspection ||= {};
       job.inspection.startedAt = now;
-      job.timeline.push({ status: 'Inspection Started', timestamp: now, notes: `Inspection started by ${req.user.name || 'technician'}.` });
+      job.timeline.push({ status: 'Inspection Started', timestamp: now, actor: req.user._id, notes: `Inspection started by ${req.user.name || 'technician'}.` });
       message = 'Inspection started.';
     } else if (action === 'inspection') {
       const current = job.inspection?.toObject?.() || job.inspection || {};
@@ -61,7 +61,7 @@ export async function updateTechnicianJobCard(req, res) {
         recommendedRepairs: req.body.recommendedRepairs === undefined ? current.recommendedRepairs || [] : textList(req.body.recommendedRepairs, 'Recommended repairs'),
         ...(req.body.complete === true ? { completedAt: now } : {}),
       };
-      if (req.body.complete === true) job.timeline.push({ status: 'Inspection Completed', timestamp: now, notes: 'Vehicle inspection completed.' });
+      if (req.body.complete === true) job.timeline.push({ status: 'Inspection Completed', timestamp: now, actor: req.user._id, notes: 'Vehicle inspection completed.' });
       message = req.body.complete === true ? 'Inspection saved and completed.' : 'Inspection details saved.';
     } else if (action === 'diagnosticReport') {
       const result = text(req.body.result, 5000, 'Diagnostic result', { required: true });
@@ -75,7 +75,7 @@ export async function updateTechnicianJobCard(req, res) {
       if (!Number.isFinite(estimatedRepairHours) || estimatedRepairHours <= 0 || estimatedRepairHours > 168) return res.status(400).json({ message: 'Estimated repair time must be greater than 0 and no more than 168 hours.' });
       const estimatedRepairMinutes = Math.round(estimatedRepairHours * 60);
       job.diagnosticReport = { result, issueCategory, faultDescription, recommendedAction, severity, estimatedRepairMinutes, technician: req.user._id, updatedAt: now };
-      job.timeline.push({ status: 'Diagnostic Report Updated', timestamp: now, notes: `${issueCategory} diagnosis recorded · ${severity} severity.` });
+      job.timeline.push({ status: 'Diagnostic Report Updated', timestamp: now, actor: req.user._id, notes: `${issueCategory} diagnosis recorded · ${severity} severity.` });
       message = 'Diagnostic report saved.';
     } else if (action === 'repairNote') {
       const note = text(req.body.note, 2000, 'Repair note', { required: true });
@@ -140,7 +140,7 @@ export async function updateTechnicianJobCard(req, res) {
     } else if (action === 'finalTestStart') {
       if (job.status !== 'Final Test') return res.status(409).json({ message: 'A final test can only start while the job is in Final Test status.' });
       job.finalTest = { startedAt: now, notes: '', unresolvedIssue: '', checklist: [] };
-      job.timeline.push({ status: 'Final Test Started', timestamp: now, notes: 'Final vehicle checks started.' });
+      job.timeline.push({ status: 'Final Test Started', timestamp: now, actor: req.user._id, notes: 'Final vehicle checks started.' });
       message = 'Final test started.';
     } else if (action === 'finalTestComplete') {
       if (job.status !== 'Final Test' || !job.finalTest?.startedAt || job.finalTest?.completedAt) return res.status(409).json({ message: 'Start or restart the final test before recording its results.' });
@@ -157,15 +157,15 @@ export async function updateTechnicianJobCard(req, res) {
       job.finalTest.result = passed ? 'Passed' : 'Failed';
       job.finalTest.completedAt = now;
       if (passed) {
-        job.timeline.push({ status: 'Final Test Passed', timestamp: now, notes: notes || 'All final test checks passed.' });
+        job.timeline.push({ status: 'Final Test Passed', timestamp: now, actor: req.user._id, notes: notes || 'All final test checks passed.' });
         message = 'Final test passed. This vehicle can be marked Ready.';
       } else {
         const failureSummary = [failedChecks.map(item => item.item).join(', '), unresolvedIssue].filter(Boolean).join(' — ');
         const customerUpdate = `Final testing found an issue: ${failureSummary}.${notes ? ` ${notes}` : ''}`;
         job.$locals.statusTransitionFrom = job.status;
         job.status = 'In Progress';
-        job.timeline.push({ status: 'Final Test Failed', timestamp: now, notes: customerUpdate });
-        job.timeline.push({ status: 'In Progress', timestamp: now, notes: customerUpdate });
+        job.timeline.push({ status: 'Final Test Failed', timestamp: now, actor: req.user._id, notes: customerUpdate });
+        job.timeline.push({ status: 'In Progress', timestamp: now, actor: req.user._id, notes: customerUpdate });
         message = 'Final test failed. The job returned to In Progress for further repair.';
       }
     } else if (action === 'completeJob') {
@@ -200,7 +200,7 @@ export async function updateTechnicianJobCard(req, res) {
       job.billingInvoice = invoice._id;
       job.$locals.statusTransitionFrom = job.status;
       job.status = 'Ready';
-      job.timeline.push({ status: 'Ready', timestamp: now, notes: reportNotes });
+      job.timeline.push({ status: 'Ready', timestamp: now, actor: req.user._id, notes: reportNotes });
       await job.save();
       try {
         const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
@@ -234,9 +234,9 @@ export async function updateTechnicianJobCard(req, res) {
         if (photos.length !== new Set(photoIds.map(String)).size) return res.status(400).json({ message: 'Supporting images must be uploaded to this job first.' });
       }
       if (relatedTaskId && (!mongoose.isValidObjectId(relatedTaskId) || !job.tasks?.id?.(relatedTaskId))) return res.status(400).json({ message: 'Choose a task that belongs to this job.' });
-      job.additionalRepairs.push({ description, technicianExplanation, parts: normalizedParts, estimatedCost, labourCost, photos: photoIds.map(String), relatedTask: relatedTaskId || undefined, status: 'Pending', requestedAt: now });
+      job.additionalRepairs.push({ description, technicianExplanation, parts: normalizedParts, estimatedCost, labourCost, photos: photoIds.map(String), relatedTask: relatedTaskId || undefined, status: 'Pending', requestedAt: now, requestedBy: req.user._id });
       job.status = 'Waiting for Approval';
-      job.timeline.push({ status: 'Waiting for Approval', timestamp: now, notes: `Customer approval requested: ${description}` });
+      job.timeline.push({ status: 'Waiting for Approval', timestamp: now, actor: req.user._id, notes: `Customer approval requested: ${description}` });
       message = 'Customer approval requested.';
     } else if (action === 'status') {
       const nextStatus = req.body.status;
@@ -247,7 +247,7 @@ export async function updateTechnicianJobCard(req, res) {
       const customerUpdate = text(req.body.notes, 1000, 'Customer update', { required: true });
       job.$locals.statusTransitionFrom = job.status;
       job.status = nextStatus;
-      job.timeline.push({ status: nextStatus, timestamp: now, notes: customerUpdate });
+      job.timeline.push({ status: nextStatus, timestamp: now, actor: req.user._id, notes: customerUpdate });
       message = `Job status updated to ${nextStatus}.`;
     } else return res.status(400).json({ message: 'Choose a supported job card update.' });
 

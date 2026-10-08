@@ -17,6 +17,7 @@ export default function AdminKanban() {
   const [technician, setTechnician] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [serviceType, setServiceType] = useState('');
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,15 +26,15 @@ export default function AdminKanban() {
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setLoading(true);
-      api.get('/admin/jobs', { params: { search, status, priority, technician, dateFrom, dateTo }, signal: controller.signal })
+      api.get('/admin/jobs', { params: { search, status, priority, technician, dateFrom, dateTo, serviceType }, signal: controller.signal })
         .then(({ data }) => { setJobs(data.jobs); setTechnicians(data.technicians); setStatuses(data.statuses || defaultStatuses); setError(''); })
         .catch(requestError => { if (!controller.signal.aborted) setError(requestError.response?.data?.message || 'Unable to load workshop jobs.'); })
         .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     }, search ? 250 : 0);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [search, status, priority, technician, dateFrom, dateTo, refreshVersion]);
+  }, [search, status, priority, technician, dateFrom, dateTo, serviceType, refreshVersion]);
 
-  const clearFilters = () => { setSearch(''); setStatus(''); setPriority(''); setTechnician(''); setDateFrom(''); setDateTo(''); };
+  const clearFilters = () => { setSearch(''); setStatus(''); setPriority(''); setTechnician(''); setDateFrom(''); setDateTo(''); setServiceType(''); };
   return <div className="kanban-container">
     <header className="kanban-header"><div><h1 className="page-title">Workshop Job Board</h1><p className="page-subtitle">Live service jobs across the workshop workflow.</p></div><button type="button" className="kanban-refresh" onClick={() => setRefreshVersion(value => value + 1)} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</button></header>
     <section className="kanban-filters" aria-label="Filter workshop jobs">
@@ -41,6 +42,7 @@ export default function AdminKanban() {
       <label>Status<select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map(item => <option key={item}>{item}</option>)}</select></label>
       <label>Technician<select value={technician} onChange={event => setTechnician(event.target.value)}><option value="">All technicians</option><option value="unassigned">Unassigned</option>{technicians.map(person => <option key={person.id} value={person.id}>{person.name} · {person.availabilityStatus}</option>)}</select></label>
       <label>Priority<select value={priority} onChange={event => setPriority(event.target.value)}><option value="">All priorities</option>{priorities.map(item => <option key={item}>{item}</option>)}</select></label>
+      <label>Service type<input type="search" value={serviceType} onChange={event => setServiceType(event.target.value)} placeholder="Filter service type…" /></label>
       <label>Created from<input type="date" value={dateFrom} max={dateTo || undefined} onChange={event => setDateFrom(event.target.value)} /></label>
       <label>Created to<input type="date" value={dateTo} min={dateFrom || undefined} onChange={event => setDateTo(event.target.value)} /></label>
       <button type="button" className="kanban-clear-filters" onClick={clearFilters}>Clear filters</button>

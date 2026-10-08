@@ -91,6 +91,37 @@ export const technicianLoginUser = (req, res) => authenticateUser(req, res, 'Tec
 
 export const getCurrentUser = (req, res) => res.json(publicUser(req.user));
 
+export async function updateCurrentUser(req, res) {
+  const { fullName, email, mobile } = req.body || {};
+  if (typeof fullName !== 'string' || typeof email !== 'string' || typeof mobile !== 'string') return res.status(400).json({ message: 'Name, email, and mobile number are required.' });
+  const name = fullName.trim();
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedMobile = mobile.trim().replace(/[\s()-]/g, '');
+  if (name.length < 2 || name.length > 100) return res.status(400).json({ message: 'Name must contain 2 to 100 characters.' });
+  if (normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return res.status(400).json({ message: 'Enter a valid email address.' });
+  if (normalizedMobile && !/^\+?\d{10,15}$/.test(normalizedMobile)) return res.status(400).json({ message: 'Enter a mobile number with 10 to 15 digits, or leave it blank.' });
+  try {
+    const user = await User.findById(req.user._id).select('-password -resetTokenHash -resetTokenExpiresAt');
+    if (!user || user.isActive === false) return res.status(404).json({ message: 'Account not found.' });
+    if (normalizedEmail !== user.email) {
+      const duplicateEmail = await User.findOne({ email: normalizedEmail });
+      if (duplicateEmail && String(duplicateEmail._id) !== String(user._id)) return res.status(409).json({ message: 'That email address is already in use.' });
+    }
+    if (normalizedMobile !== (user.mobile || '')) {
+      const duplicateMobile = normalizedMobile ? await User.findOne({ mobile: normalizedMobile }) : null;
+      if (duplicateMobile && String(duplicateMobile._id) !== String(user._id)) return res.status(409).json({ message: 'That mobile number is already in use.' });
+    }
+    user.name = name;
+    user.email = normalizedEmail;
+    user.mobile = normalizedMobile || undefined;
+    await user.save();
+    res.set('Cache-Control', 'no-store').json({ message: 'Profile updated successfully.', user: publicUser(user) });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: 'That email address or mobile number is already in use.' });
+    res.status(503).json({ message: 'Unable to update your profile. Please try again.' });
+  }
+}
+
 export async function logoutUser(req, res) {
   try {
     const token = readSessionToken(req);

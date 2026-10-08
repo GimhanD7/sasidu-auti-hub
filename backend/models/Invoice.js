@@ -32,11 +32,13 @@ const invoiceSchema = new mongoose.Schema({
     default: 'Pending'
   },
   paymentMethod: { type: String },
-  paymentDate: { type: Date }
+  paymentDate: { type: Date },
+  dueDate: { type: Date }
 }, { timestamps: true });
 
 invoiceSchema.pre('save', function captureCustomerInvoiceEvents() {
   this.$locals.customerInvoiceEvent = null;
+  if (this.paymentStatus === 'Pending' && !this.dueDate) this.dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   if (this.paymentStatus === 'Paid' && (this.isNew || this.isModified('paymentStatus'))) this.$locals.customerInvoiceEvent = 'PaymentConfirmation';
   else if ((this.isNew && this.paymentStatus !== 'Draft') || (!this.isNew && this.isModified('paymentStatus') && this.paymentStatus !== 'Draft' && this.paymentStatus !== 'Cancelled')) this.$locals.customerInvoiceEvent = 'InvoiceNotification';
 });

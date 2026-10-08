@@ -48,6 +48,8 @@ export function AuthProvider({ children }) {
     setSessionError('');
   }
 
+  function updateUser(nextUser) { setUser(nextUser); }
+
   function retrySession() { setLoading(true); setRetry(value => value + 1); }
-  return <AuthContext.Provider value={{ user, signedOut, loading, sessionError, login, logout, retrySession }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, signedOut, loading, sessionError, login, logout, updateUser, retrySession }}>{children}</AuthContext.Provider>;
 }

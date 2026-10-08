@@ -110,8 +110,10 @@ const serviceJobSchema = new mongoose.Schema({
     photos: [{ type: String, trim: true, maxlength: 2048 }],
     relatedTask: { type: mongoose.Schema.Types.ObjectId },
     requestedAt: { type: Date, default: Date.now },
+    requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     customerComment: { type: String, trim: true, maxlength: 1000 },
     decisionAt: Date,
+    decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   }],
   tasks: [{
     title: { type: String, required: true, trim: true, maxlength: 200 },
@@ -129,7 +131,8 @@ const serviceJobSchema = new mongoose.Schema({
   timeline: [{
     status: String,
     timestamp: { type: Date, default: Date.now },
-    notes: String
+    notes: String,
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   }]
 }, { timestamps: true });
 

@@ -152,6 +152,7 @@ export async function cancelCustomerAppointment(req, res) {
       return res.status(409).json({ message: 'Only future pending or confirmed appointments can be cancelled online. Contact the workshop for help with an appointment already in service.' });
     }
     appointment.status = 'Cancelled';
+    appointment.history.push({ action: 'Appointment cancelled', details: 'Cancelled by customer', actor: req.user._id });
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
     const notified = await notifyAppointmentChange(appointment, {
@@ -185,6 +186,7 @@ export async function requestCustomerAppointmentReschedule(req, res) {
     if (conflict) return res.status(409).json({ message: 'That time is no longer available. Select another slot.' });
 
     appointment.rescheduleRequest = { preferredDate: day, preferredTime, notes: notes.trim(), status: 'Pending', requestedAt: new Date() };
+    appointment.history.push({ action: 'Reschedule requested', details: `Requested ${dateKey(day)} at ${preferredTime}${notes.trim() ? ` · ${notes.trim()}` : ''}`.slice(0, 1000), actor: req.user._id });
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
     const notified = await notifyAppointmentChange(appointment, {
@@ -243,6 +245,7 @@ export async function createCustomerAppointment(req, res) {
       problemDescription: problemDescription.trim(),
       customerNotes: customerNotes.trim(),
       status: 'Pending',
+      history: [{ action: 'Appointment requested', details: `Initial status: Pending · ${serviceType}`, actor: req.user._id }],
     });
 
     let notificationCreated = false;

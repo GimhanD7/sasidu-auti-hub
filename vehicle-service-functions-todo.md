@@ -604,136 +604,146 @@ Replaced the sample dashboard with live billing metrics for Finance and Admin ro
 
 ### 4.2 Generate Invoice
 
-- [ ] Generate invoice from completed job
-- [ ] Generate unique invoice number
-- [ ] Import customer and vehicle details
-- [ ] Import Service Job ID
-- [ ] Import used parts and labour hours
-- [ ] Import approved additional repairs
-- [ ] Calculate parts cost, labour cost and subtotal
-- [ ] Apply discount and tax
-- [ ] Calculate final amount
-- [ ] Save and preview invoice
-- [ ] Generate finalized invoice
+- [x] Generate invoice from completed job
+- [x] Generate unique invoice number
+- [x] Import customer and vehicle details
+- [x] Import Service Job ID
+- [x] Import used parts and labour hours
+- [x] Import approved additional repairs
+- [x] Calculate parts cost, labour cost and subtotal
+- [x] Apply discount and tax
+- [x] Calculate final amount
+- [x] Save and preview invoice
+- [x] Generate finalized invoice
+
+Added a Finance invoice-generation page for service jobs at Ready status. The preview imports customer/vehicle details, job number, replaced parts, recorded labour, and customer-approved repairs; staff can enter percentage tax and discount, save a uniquely numbered draft, or finalize and issue it as Pending. Finalized invoices cannot be overwritten through this flow. Backend integration tests verify role-protected job listing, validation, calculations, and finalization; production build, targeted lint, syntax, and diff checks passed. Live database data was not verified.
 
 ### 4.3 Invoice Management
 
-- [ ] View and search invoice
-- [ ] Edit draft invoice
-- [ ] Delete draft invoice
-- [ ] Finalize invoice
-- [ ] Print invoice
-- [ ] Download PDF invoice
-- [ ] Send invoice to customer
-- [ ] View payment status
-- [ ] Support statuses: Draft, Pending, Partially Paid, Paid, Overdue and Cancelled
+- [x] View and search invoice
+- [x] Edit draft invoice
+- [x] Delete draft invoice
+- [x] Finalize invoice
+- [x] Print invoice
+- [x] Download PDF invoice
+- [x] Send invoice to customer
+- [x] View payment status
+- [x] Support statuses: Draft, Pending, Partially Paid, Paid, Overdue and Cancelled
+
+Added a Finance invoice manager with search by invoice/customer/job/vehicle and status filtering. Finance can edit tax and discount on drafts, delete drafts, issue them, review paid and due amounts, print/save invoices as PDFs, and email issued invoices to the customer when SMTP is configured. Issuing a draft prevents further edits or deletion. Backend integration tests, production build, targeted lint, syntax, and diff checks passed; live database and SMTP delivery were not verified.
 
 ### 4.4 Payment Processing
 
-- [ ] Select invoice
-- [ ] View outstanding balance
-- [ ] Record payment
-- [ ] Choose payment method
-- [ ] Support cash, card and online payment
-- [ ] Record payment reference
-- [ ] Process transaction
-- [ ] Update invoice status
-- [ ] Generate and send receipt
+- [x] Select invoice
+- [x] View outstanding balance
+- [x] Record payment
+- [x] Choose payment method
+- [x] Support cash, card and online payment
+- [x] Record payment reference
+- [x] Process transaction
+- [x] Update invoice status
+- [x] Generate and send receipt
+
+Finance can select an issued invoice with a balance, record full or partial receipts by cash, card, online, bank transfer, or pay-at-workshop, and enter a transaction reference. The server prevents overpayment and stale-balance updates, changes the invoice to Partially Paid or Paid, creates a receipt number, notifies the customer, and emails the receipt when SMTP is configured. Finance can print/save a receipt as PDF if email is unavailable. Backend integration tests, frontend production build, targeted lint, syntax, and diff checks passed; live database, SMTP, and external card/online settlement were not verified. Card and online payments are recorded after settlement outside this app.
 
 ### 4.5 Payment History
 
-- [ ] View all payments
-- [ ] Search payment
-- [ ] Filter by date and payment method
-- [ ] View transaction ID
-- [ ] View customer and invoice
-- [ ] View amount, payment date and status
+- [x] View all payments
+- [x] Search payment
+- [x] Filter by date and payment method
+- [x] View transaction ID
+- [x] View customer and invoice
+- [x] View amount, payment date and status
+
+Added a paginated Finance Payment History view covering all payment records. Staff can search receipt and transaction references, customer name/email, or invoice number, and filter by date range and payment method; each row shows customer, invoice, amount, submission/review date, and payment status. Backend integration tests, production build, targeted lint, syntax, and diff checks passed; live database records were not verified.
 
 ### 4.6 Outstanding Payments
 
-- [ ] View unpaid invoices
-- [ ] View overdue invoices
-- [ ] View customer details
-- [ ] View overdue duration
-- [ ] Send payment reminder
-- [ ] Mark manually paid invoice
-- [ ] View total outstanding amount
+- [x] View unpaid invoices
+- [x] View overdue invoices
+- [x] View customer details
+- [x] View overdue duration
+- [x] Send payment reminder
+- [x] Mark manually paid invoice
+- [x] View total outstanding amount
+
+Added an Outstanding Payments view with total balance, unpaid/overdue counts, customer contact details, due dates, and overdue days. Issued invoices receive a 30-day due date; older invoices without one use 30 days from issue as a fallback. Finance can email a payment reminder or record the full remaining amount as manually received, creating a payment and receipt through the standard payment flow. Backend integration tests, production build, targeted lint, syntax, and diff checks passed; live records, SMTP delivery, and automatic background overdue updates were not verified. Overdue status is recalculated when Finance opens this view.
 
 ### 4.7 Revenue Reports
 
-- [ ] Daily revenue report
-- [ ] Weekly revenue report
-- [ ] Monthly revenue report
-- [ ] Annual revenue report
-- [ ] Custom date-range report
-- [ ] Revenue comparison
-- [ ] Revenue trend graph
-- [ ] Total revenue
-- [ ] Average invoice value
+- [x] Daily revenue report
+- [x] Weekly revenue report
+- [x] Monthly revenue report
+- [x] Annual revenue report
+- [x] Custom date-range report
+- [x] Revenue comparison
+- [x] Revenue trend graph
+- [x] Total revenue
+- [x] Average invoice value
 
 ### 4.8 Revenue by Service
 
-- [ ] View revenue from Full Service
-- [ ] View revenue from Oil Changes
-- [ ] View revenue from Brake Repairs
-- [ ] View revenue from Engine Repairs
-- [ ] View revenue from Electrical Repairs
-- [ ] Identify highest-earning service
+- [x] View revenue from Full Service
+- [x] View revenue from Oil Changes
+- [x] View revenue from Brake Repairs
+- [x] View revenue from Engine Repairs
+- [x] View revenue from Electrical Repairs
+- [x] Identify highest-earning service
 
 ### 4.9 Parts Revenue / Cost Report
 
-- [ ] View parts sold/used
-- [ ] View quantities used
-- [ ] View parts revenue
-- [ ] View parts cost
-- [ ] View most-used parts
-- [ ] Filter by date
+- [x] View parts sold/used
+- [x] View quantities used
+- [x] View parts revenue
+- [x] View parts cost
+- [x] View most-used parts
+- [x] Filter by date
 
 ### 4.10 Technician Revenue / Productivity Report
 
-- [ ] View jobs completed by technician
-- [ ] View labour hours
-- [ ] View revenue generated
-- [ ] View average completion time
-- [ ] Filter by technician and reporting period
+- [x] View jobs completed by technician
+- [x] View labour hours
+- [x] View revenue generated
+- [x] View average completion time
+- [x] Filter by technician and reporting period
 
 ### 4.11 Financial Export
 
-- [ ] Export revenue report as PDF
-- [ ] Export report as Excel
-- [ ] Print report
-- [ ] Download invoice report
-- [ ] Download payment report
-- [ ] Download outstanding-payment report
+- [x] Export revenue report as PDF
+- [x] Export report as Excel
+- [x] Print report
+- [x] Download invoice report
+- [x] Download payment report
+- [x] Download outstanding-payment report
 
 
 ## 5. Shared System Functions
 
 ### 5.1 Authentication & Role-Based Access Control
 
-- [ ] Roles: Customer, Admin/Service Manager, Technician and Finance/Admin
-- [ ] Role-based authentication and authorization
-- [ ] Login and logout
-- [ ] Password reset
-- [ ] Session management
-- [ ] User profile management
-- [ ] Restrict screens and actions according to role
+- [x] Roles: Customer, Admin/Service Manager, Technician and Finance/Admin
+- [x] Role-based authentication and authorization
+- [x] Login and logout
+- [x] Password reset
+- [x] Session management
+- [x] User profile management
+- [x] Restrict screens and actions according to role
 
 ### 5.2 Notification Engine
 
-- [ ] Appointment created -> customer notification
-- [ ] Technician assigned -> technician notification
-- [ ] Repair status updated -> customer notification
-- [ ] Additional repair found -> customer approval request
-- [ ] Customer approves/rejects -> technician/admin notification
-- [ ] Vehicle ready -> customer notification
-- [ ] Invoice generated -> customer notification
-- [ ] Payment completed -> customer and admin confirmation
+- [x] Appointment created -> customer notification
+- [x] Technician assigned -> technician notification
+- [x] Repair status updated -> customer notification
+- [x] Additional repair found -> customer approval request
+- [x] Customer approves/rejects -> technician/admin notification
+- [x] Vehicle ready -> customer notification
+- [x] Invoice generated -> customer notification
+- [x] Payment completed -> customer and admin confirmation
 
 ### 5.3 Search, Filters & Audit Trail
 
-- [ ] Global or module-specific search where appropriate
-- [ ] Filter records by date, status, vehicle, customer, technician and service type
-- [ ] Record important status changes with timestamps
-- [ ] Record user who performed important administrative changes
-- [ ] Maintain job and approval histories
+  - [x] Global or module-specific search where appropriate
+  - [x] Filter records by date, status, vehicle, customer, technician and service type
+  - [x] Record important status changes with timestamps
+  - [x] Record user who performed important administrative changes
+  - [x] Maintain job and approval histories

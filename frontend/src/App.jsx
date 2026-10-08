@@ -30,11 +30,14 @@ import TechnicianJobHistory from './pages/Technician/TechnicianJobHistory';
 import TechnicianJobDetails from './pages/Technician/TechnicianJobDetails';
 import FinanceLayout from './components/Layout/FinanceLayout';
 import FinanceDashboard from './pages/Finance/FinanceDashboard';
+import FinanceInvoices from './pages/Finance/FinanceInvoices';
+import FinanceRevenueReports from './pages/Finance/FinanceRevenueReports';
 import FinancePaymentReview from './pages/Finance/FinancePaymentReview';
 import './App.css';
 import { AuthProvider } from './auth/AuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
 import PasswordReset from './pages/Auth/PasswordReset';
+import AccountSettings from './pages/Shared/AccountSettings';
 
 function App() {
   return (
@@ -67,6 +70,7 @@ function App() {
           <Route path="history" element={<CustomerServiceHistory />} />
           <Route path="invoices" element={<CustomerInvoices />} />
           <Route path="payments" element={<CustomerPayments />} />
+          <Route path="account" element={<AccountSettings />} />
         </Route>
         </Route>
 
@@ -83,6 +87,7 @@ function App() {
           <Route path="technicians" element={<AdminTechnicians />} />
           <Route path="allocations" element={<AdminAllocations />} />
           <Route path="services" element={<AdminServiceTypes />} />
+          <Route path="account" element={<AccountSettings />} />
         </Route>
         </Route>
         
@@ -92,6 +97,7 @@ function App() {
           <Route index element={<Navigate to="/technician/dashboard" replace />} />
           <Route path="dashboard" element={<TechnicianDashboard />} />
           <Route path="security" element={<TechnicianSecurity />} />
+          <Route path="account" element={<AccountSettings />} />
           <Route path="messages" element={<ServiceMessages />} />
           <Route path="jobs" element={<TechnicianJobs />} />
           <Route path="history" element={<TechnicianJobHistory />} />
@@ -104,9 +110,10 @@ function App() {
         <Route path="/finance" element={<FinanceLayout />}>
           <Route index element={<Navigate to="/finance/dashboard" replace />} />
           <Route path="dashboard" element={<FinanceDashboard />} />
-          <Route path="invoices" element={<div style={{padding: '2rem'}}>Invoice Management (Coming Soon)</div>} />
+          <Route path="invoices" element={<FinanceInvoices />} />
           <Route path="payments" element={<FinancePaymentReview />} />
-          <Route path="reports" element={<div style={{padding: '2rem'}}>Revenue Reports (Coming Soon)</div>} />
+          <Route path="reports" element={<FinanceRevenueReports />} />
+          <Route path="account" element={<AccountSettings />} />
         </Route>
         </Route>
       </Routes>

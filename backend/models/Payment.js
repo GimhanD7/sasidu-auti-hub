@@ -4,7 +4,7 @@ const paymentSchema = new mongoose.Schema({
   invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true, index: true },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   amount: { type: Number, required: true, min: 0.01 },
-  method: { type: String, enum: ['Bank Transfer', 'Pay at Workshop'], required: true },
+  method: { type: String, enum: ['Bank Transfer', 'Pay at Workshop', 'Cash', 'Card', 'Online'], required: true },
   transactionReference: { type: String, required: true, trim: true, maxlength: 100 },
   receiptNumber: { type: String, unique: true, sparse: true },
   status: { type: String, enum: ['Pending Verification', 'Completed', 'Failed'], default: 'Pending Verification', index: true },

@@ -13,6 +13,7 @@ import customerPaymentRoutes from './routes/customerPaymentRoutes.js';
 import financePaymentRoutes from './routes/financePaymentRoutes.js';
 import financeDashboardRoutes from './routes/financeDashboardRoutes.js';
 import financeInvoiceRoutes from './routes/financeInvoiceRoutes.js';
+import financeReportRoutes from './routes/financeReportRoutes.js';
 import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
 
 export function createApp() {
@@ -43,6 +44,7 @@ export function createApp() {
   app.use('/api/finance/payments', financePaymentRoutes);
   app.use('/api/finance/dashboard', financeDashboardRoutes);
   app.use('/api/finance/invoices', financeInvoiceRoutes);
+  app.use('/api/finance/reports', financeReportRoutes);
   app.use('/api/admin', adminDashboardRoutes);
   app.get('/', (req, res) => res.send('Vehicle Service & Repair Tracking System API is running...'));
   app.use((error, req, res, next) => {

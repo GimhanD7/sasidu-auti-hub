@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import ServiceJob from '../models/ServiceJob.js';
+import Appointment from '../models/Appointment.js';
 import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
 
@@ -14,10 +15,16 @@ function parseDate(value) {
 }
 
 export async function listAdminJobBoard(req, res) {
-  const { status, priority, technician, dateFrom, dateTo } = req.query;
+  const { status, priority, technician, dateFrom, dateTo, customer, serviceType } = req.query;
   if (status && !JOB_STATUSES.includes(status)) return res.status(400).json({ message: 'Choose a valid job status.' });
   if (priority && !PRIORITIES.includes(priority)) return res.status(400).json({ message: 'Choose a valid job priority.' });
   if (technician && technician !== 'unassigned' && !mongoose.isValidObjectId(technician)) return res.status(400).json({ message: 'Choose a valid technician.' });
+  if (customer && !mongoose.isValidObjectId(customer)) return res.status(400).json({ message: 'Choose a valid customer.' });
+  if (customer) filter.customer = customer;
+  if (typeof serviceType === 'string' && serviceType.trim()) {
+    const appointments = await Appointment.find({ serviceType: { $regex: escapeRegex(serviceType.trim().slice(0, 100)), $options: 'i' } }).select('_id').lean();
+    filter.appointment = { $in: appointments.map(item => item._id) };
+  }
   const start = dateFrom ? parseDate(dateFrom) : null;
   const end = dateTo ? parseDate(dateTo) : null;
   if ((dateFrom && !start) || (dateTo && !end) || (start && end && start > end)) return res.status(400).json({ message: 'Choose a valid date range.' });
@@ -32,7 +39,8 @@ export async function listAdminJobBoard(req, res) {
     if (search) {
       const expression = escapeRegex(search);
       const vehicles = await Vehicle.find({ registrationNumber: { $regex: expression, $options: 'i' } }).select('_id').limit(100).lean();
-      const searchFilter = { $or: [{ serviceNumber: { $regex: expression, $options: 'i' } }, ...(vehicles.length ? [{ vehicle: { $in: vehicles.map(vehicle => vehicle._id) } }] : [])] };
+      const [customers] = await Promise.all([User.find({ role: { $in: ['Customer', 'user'] }, $or: [{ name: { $regex: expression, $options: 'i' } }, { email: { $regex: expression, $options: 'i' } }] }).select('_id').limit(100).lean()]);
+      const searchFilter = { $or: [{ serviceNumber: { $regex: expression, $options: 'i' } }, ...(vehicles.length ? [{ vehicle: { $in: vehicles.map(vehicle => vehicle._id) } }] : []), ...(customers.length ? [{ customer: { $in: customers.map(person => person._id) } }] : [])] };
       if (filter.$or) filter.$and = [{ $or: filter.$or }, searchFilter];
       else Object.assign(filter, searchFilter);
     }
