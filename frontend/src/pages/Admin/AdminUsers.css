@@ -1,15 +1,129 @@
-.admin-users-page { display: grid; gap: 1.25rem; color: var(--text-primary); }
-.admin-users-page p { color: var(--text-secondary); }
-.user-search, .user-role-row label { display: grid; gap: .4rem; }
-.admin-users-page input, .admin-users-page select { padding: .7rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input); color: var(--text-primary); font: inherit; }
-.user-role-list { display: grid; margin-top: 1rem; }
-.user-role-row { display: grid; grid-template-columns: minmax(0, 1fr) 160px auto; gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--border-color); }
-.user-role-row > div { display: grid; gap: .3rem; overflow-wrap: anywhere; }
-.user-role-row small, .user-role-row span { color: var(--text-secondary); }
-.admin-users-page button { padding: .65rem .9rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); cursor: pointer; font: inherit; }
-.admin-users-page button:disabled { opacity: .5; cursor: not-allowed; }
-.user-role-help { grid-column: 1 / -1; }
-.user-role-pagination { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding-top: 1rem; }
-.admin-users-page .user-role-notice { padding: 1rem; border-radius: 8px; background: #dcfce7; color: #166534; }
-.account-create-card { display:grid; gap:.8rem; }.account-create-card h2 { margin:0; color:var(--text-primary); font-size:1.1rem; }.account-create-card > p { margin:0; }.admin-create-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }.admin-create-form label,.account-password-form label { display:grid; gap:.35rem; color:var(--text-secondary); font-size:.82rem; font-weight:650; }.admin-create-form button,.account-password-form button { justify-self:start; }.account-role-item { border-bottom:1px solid var(--border-color); }.user-role-row { border-bottom:0; }.account-password-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:end; gap:.8rem; padding:0 0 1rem; }.account-password-form input { width:100%; }.account-password-form button { min-height:40px; }
-@media(max-width: 650px) { .user-role-row { grid-template-columns: 1fr; }.admin-create-form,.account-password-form { grid-template-columns:1fr; } }
+.admin-users-page {
+  display: grid;
+  gap: 1.25rem;
+  color: var(--text-primary);
+}
+.admin-users-page p {
+  color: var(--text-secondary);
+}
+.user-search,
+.user-role-row label {
+  display: grid;
+  gap: 0.4rem;
+}
+.admin-users-page input,
+.admin-users-page select {
+  padding: 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+}
+.user-role-list {
+  display: grid;
+  margin-top: 1rem;
+}
+.user-role-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.user-role-row > div {
+  display: grid;
+  gap: 0.3rem;
+  overflow-wrap: anywhere;
+}
+.user-role-row small,
+.user-role-row span {
+  color: var(--text-secondary);
+}
+.admin-users-page button {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+}
+.admin-users-page button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.user-role-help {
+  grid-column: 1 / -1;
+}
+.user-role-pagination {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding-top: 1rem;
+}
+.admin-users-page .user-role-notice {
+  padding: 1rem;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #166534;
+}
+.account-create-card {
+  display: grid;
+  gap: 0.8rem;
+}
+.account-create-card h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+.account-create-card > p {
+  margin: 0;
+}
+.admin-create-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+.admin-create-form label,
+.account-password-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.admin-create-form button,
+.account-password-form button {
+  justify-self: start;
+}
+.account-role-item {
+  border-bottom: 1px solid var(--border-color);
+}
+.user-role-row {
+  border-bottom: 0;
+}
+.account-password-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.8rem;
+  padding: 0 0 1rem;
+}
+.account-password-form input {
+  width: 100%;
+}
+.account-password-form button {
+  min-height: 40px;
+}
+@media (max-width: 650px) {
+  .user-role-row {
+    grid-template-columns: 1fr;
+  }
+  .admin-create-form,
+  .account-password-form {
+    grid-template-columns: 1fr;
+  }
+}

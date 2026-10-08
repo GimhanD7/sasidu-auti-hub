@@ -1,21 +1,83 @@
-.technician-dashboard .section-card { margin-bottom: 1.25rem; }
-.technician-job-list { display: grid; gap: .75rem; }
-.technician-job-item { padding: 1rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-input); }
-.technician-job-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.technician-job-heading > a { color: var(--text-primary); font-weight: 750; text-decoration: none; }
-.technician-job-heading > a:hover { color: var(--primary-red); }
-.technician-job-item h3 { margin: .55rem 0 .25rem; font-size: 1rem; }
-.technician-job-item p { margin: .25rem 0; color: var(--text-secondary); }
-.technician-job-item .technician-complaint { margin-top: .65rem; }
-.technician-job-item small { display: block; margin-top: .7rem; color: var(--text-muted); }
-.technician-status-badge { color: var(--text-secondary); background: #34343a; }
-.technician-priority { border-radius: 999px; padding: .2rem .55rem; font-size: .72rem; font-weight: 750; text-transform: uppercase; }
-.technician-priority.high { color: #fca5a5; background: #ef44441a; }
-.technician-priority.urgent { color: #fff; background: #dc2626; }
-.technician-priority.normal { color: #cbd5e1; background: #64748b33; }
-.technician-priority.low { color: #86efac; background: #22c55e1a; }
-.technician-dashboard .notification-item.unread { border-left: 3px solid #10b981; padding-left: .7rem; }
+.technician-dashboard .section-card {
+  margin-bottom: 1.25rem;
+}
+.technician-job-list {
+  display: grid;
+  gap: 0.75rem;
+}
+.technician-job-item {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-input);
+}
+.technician-job-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.technician-job-heading > a {
+  color: var(--text-primary);
+  font-weight: 750;
+  text-decoration: none;
+}
+.technician-job-heading > a:hover {
+  color: var(--primary-red);
+}
+.technician-job-item h3 {
+  margin: 0.55rem 0 0.25rem;
+  font-size: 1rem;
+}
+.technician-job-item p {
+  margin: 0.25rem 0;
+  color: var(--text-secondary);
+}
+.technician-job-item .technician-complaint {
+  margin-top: 0.65rem;
+}
+.technician-job-item small {
+  display: block;
+  margin-top: 0.7rem;
+  color: var(--text-muted);
+}
+.technician-status-badge {
+  color: var(--text-secondary);
+  background: #34343a;
+}
+.technician-priority {
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+.technician-priority.high {
+  color: #fca5a5;
+  background: #ef44441a;
+}
+.technician-priority.urgent {
+  color: #fff;
+  background: #dc2626;
+}
+.technician-priority.normal {
+  color: #cbd5e1;
+  background: #64748b33;
+}
+.technician-priority.low {
+  color: #86efac;
+  background: #22c55e1a;
+}
+.technician-dashboard .notification-item.unread {
+  border-left: 3px solid #10b981;
+  padding-left: 0.7rem;
+}
 @media (max-width: 700px) {
-  .technician-dashboard .section-header { align-items: flex-start; gap: .6rem; }
-  .technician-job-item { padding: .8rem; }
+  .technician-dashboard .section-header {
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+  .technician-job-item {
+    padding: 0.8rem;
+  }
 }

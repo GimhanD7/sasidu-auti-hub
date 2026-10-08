@@ -13,28 +13,45 @@ export function AuthProvider({ children }) {
     const controller = new AbortController();
     // Remove credentials stored by the previous login implementation.
     localStorage.removeItem('userInfo');
-    api.get('/auth/me', { signal: controller.signal }).then(({ data }) => {
-      setUser(data);
-      setSessionError('');
-    }).catch(error => {
-      if (controller.signal.aborted) return;
-      setUser(null);
-      setSessionError(error.response?.status === 401 ? '' : 'Unable to verify your session. Check your connection and try again.');
-    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    api
+      .get('/auth/me', { signal: controller.signal })
+      .then(({ data }) => {
+        setUser(data);
+        setSessionError('');
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setUser(null);
+        setSessionError(
+          error.response?.status === 401
+            ? ''
+            : 'Unable to verify your session. Check your connection and try again.',
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
     return () => controller.abort();
   }, [retry]);
 
   useEffect(() => {
-    const id = api.interceptors.response.use(response => response, error => {
-      if (error.response?.status === 401) setUser(null);
-      return Promise.reject(error);
-    });
+    const id = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) setUser(null);
+        return Promise.reject(error);
+      },
+    );
     return () => api.interceptors.response.eject(id);
   }, []);
 
   async function login(credentials) {
     const { adminOnly = false, technicianOnly = false, ...loginCredentials } = credentials;
-    const endpoint = adminOnly ? '/auth/admin/login' : technicianOnly ? '/auth/technician/login' : '/auth/login';
+    const endpoint = adminOnly
+      ? '/auth/admin/login'
+      : technicianOnly
+        ? '/auth/technician/login'
+        : '/auth/login';
     const { data } = await api.post(endpoint, loginCredentials);
     setUser(data);
     setSignedOut(false);
@@ -48,8 +65,19 @@ export function AuthProvider({ children }) {
     setSessionError('');
   }
 
-  function updateUser(nextUser) { setUser(nextUser); }
+  function updateUser(nextUser) {
+    setUser(nextUser);
+  }
 
-  function retrySession() { setLoading(true); setRetry(value => value + 1); }
-  return <AuthContext.Provider value={{ user, signedOut, loading, sessionError, login, logout, updateUser, retrySession }}>{children}</AuthContext.Provider>;
+  function retrySession() {
+    setLoading(true);
+    setRetry((value) => value + 1);
+  }
+  return (
+    <AuthContext.Provider
+      value={{ user, signedOut, loading, sessionError, login, logout, updateUser, retrySession }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }

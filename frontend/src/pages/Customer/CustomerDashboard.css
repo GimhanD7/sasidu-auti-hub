@@ -24,26 +24,70 @@
   overflow-wrap: anywhere;
 }
 
-.dashboard-record-list { display: grid; gap: 1.25rem; }
-.dashboard-record { padding: 1.25rem 0; border-bottom: 1px solid var(--border-color); }
-.dashboard-record:last-child { border-bottom: 0; }
-.dashboard-record .section-header { margin-bottom: 1.25rem; }
+.dashboard-record-list {
+  display: grid;
+  gap: 1.25rem;
+}
+.dashboard-record {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.dashboard-record:last-child {
+  border-bottom: 0;
+}
+.dashboard-record .section-header {
+  margin-bottom: 1.25rem;
+}
 .dashboard-record .repair-vehicle a,
-.dashboard-vehicle-list a { color: inherit; text-decoration: none; }
+.dashboard-vehicle-list a {
+  color: inherit;
+  text-decoration: none;
+}
 .dashboard-record .repair-vehicle a:hover,
-.dashboard-vehicle-list a:hover { color: var(--primary-red); }
-.dashboard-empty { padding: 0.75rem 0; color: var(--text-secondary); line-height: 1.5; }
-.dashboard-empty h3 { margin-bottom: 0.5rem; color: var(--text-primary); }
+.dashboard-vehicle-list a:hover {
+  color: var(--primary-red);
+}
+.dashboard-empty {
+  padding: 0.75rem 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.dashboard-empty h3 {
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
 .dashboard-empty a,
 .section-header > a,
-.notif-content > a { color: var(--primary-red); font-weight: 600; text-decoration: none; }
+.notif-content > a {
+  color: var(--primary-red);
+  font-weight: 600;
+  text-decoration: none;
+}
 .dashboard-empty a:hover,
 .section-header > a:hover,
-.notif-content > a:hover { text-decoration: underline; }
-.dashboard-detail { display: grid; gap: 0.75rem; color: var(--text-secondary); line-height: 1.5; }
-.dashboard-detail strong { color: var(--text-primary); }
-.dashboard-vehicle-list { display: grid; gap: 0.75rem; padding-left: 1.25rem; color: var(--text-secondary); }
-.dashboard-message-count { margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem; }
+.notif-content > a:hover {
+  text-decoration: underline;
+}
+.dashboard-detail {
+  display: grid;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.dashboard-detail strong {
+  color: var(--text-primary);
+}
+.dashboard-vehicle-list {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1.25rem;
+  color: var(--text-secondary);
+}
+.dashboard-message-count {
+  margin-top: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
 
 .page-title {
   font-size: 2rem;
@@ -296,7 +340,15 @@
     align-items: flex-start;
     gap: 1rem;
   }
-  .dashboard-quick-link { width: 100%; justify-content: center; }
-  .dashboard-record > .section-header { align-items: flex-start; gap: 0.75rem; }
-  .dashboard-record .repair-progress span { font-size: 0.7rem; }
+  .dashboard-quick-link {
+    width: 100%;
+    justify-content: center;
+  }
+  .dashboard-record > .section-header {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .dashboard-record .repair-progress span {
+    font-size: 0.7rem;
+  }
 }

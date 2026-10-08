@@ -10,7 +10,10 @@ const Login = ({ adminOnly = false, technicianOnly = false }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setErrorState] = useState('');
-  const setError = message => { setErrorState(message); if (message) notify(message, 'error'); };
+  const setError = (message) => {
+    setErrorState(message);
+    if (message) notify(message, 'error');
+  };
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(false);
   const { login, loading: sessionLoading } = useAuth();
@@ -22,31 +25,58 @@ const Login = ({ adminOnly = false, technicianOnly = false }) => {
       title: 'REAL-TIME WORKFLOW MONITORING',
       description: 'Track vehicle service status live.',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
         </svg>
-      )
+      ),
     },
     {
       title: 'SECURE SERVICE RECORDS',
       description: 'Bank-grade encryption for all service data.',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
-      )
+      ),
     },
     {
       title: 'AUTOMATED CUSTOMER SCHEDULING',
       description: 'Seamless appointment bookings.',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <line x1="5" y1="12" x2="19" y2="12"></line>
           <polyline points="12 5 19 12 12 19"></polyline>
         </svg>
-      )
-    }
+      ),
+    },
   ];
 
   const handleSubmit = async (e) => {
@@ -72,38 +102,87 @@ const Login = ({ adminOnly = false, technicianOnly = false }) => {
   };
 
   return (
-    <AuthLayout 
-      title={adminOnly ? ['WORKSHOP', 'ADMIN PORTAL.'] : technicianOnly ? ['TECHNICIAN', 'WORKSPACE.'] : ['SMART VEHICLE', 'SERVICE.', 'COMPLETE TRAN', 'SPARENCY.']}
-      subtitle={adminOnly ? 'Secure sign in for workshop administrators and service managers.' : technicianOnly ? 'Sign in securely to view your assigned workshop jobs.' : 'Empowering workshops with high-performance digital tools to streamline operations and build customer trust.'}
+    <AuthLayout
+      title={
+        adminOnly
+          ? ['WORKSHOP', 'ADMIN PORTAL.']
+          : technicianOnly
+            ? ['TECHNICIAN', 'WORKSPACE.']
+            : ['SMART VEHICLE', 'SERVICE.', 'COMPLETE TRAN', 'SPARENCY.']
+      }
+      subtitle={
+        adminOnly
+          ? 'Secure sign in for workshop administrators and service managers.'
+          : technicianOnly
+            ? 'Sign in securely to view your assigned workshop jobs.'
+            : 'Empowering workshops with high-performance digital tools to streamline operations and build customer trust.'
+      }
       features={features}
     >
       <div className="form-header">
-        <h2>{adminOnly ? 'ADMIN SIGN IN' : technicianOnly ? 'TECHNICIAN SIGN IN' : 'WELCOME BACK'}</h2>
-        <p>{adminOnly ? 'Use your administrator or service-manager account' : technicianOnly ? 'Use your technician account credentials' : 'Sign in to continue to your workshop account'}</p>
+        <h2>
+          {adminOnly ? 'ADMIN SIGN IN' : technicianOnly ? 'TECHNICIAN SIGN IN' : 'WELCOME BACK'}
+        </h2>
+        <p>
+          {adminOnly
+            ? 'Use your administrator or service-manager account'
+            : technicianOnly
+              ? 'Use your technician account credentials'
+              : 'Sign in to continue to your workshop account'}
+        </p>
       </div>
 
-      {error && <div role="alert" style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{error}</div>}
+      {error && (
+        <div
+          role="alert"
+          style={{
+            color: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            padding: '0.75rem',
+            borderRadius: '6px',
+            marginBottom: '1.5rem',
+            fontSize: '0.875rem',
+          }}
+        >
+          {error}
+        </div>
+      )}
 
-      {location.state?.message && <p className="auth-feedback" role="status">{location.state.message}</p>}
+      {location.state?.message && (
+        <p className="auth-feedback" role="status">
+          {location.state.message}
+        </p>
+      )}
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label className="form-label" htmlFor="login-email">EMAIL OR PHONE NUMBER</label>
+          <label className="form-label" htmlFor="login-email">
+            EMAIL OR PHONE NUMBER
+          </label>
           <div className="form-input-wrapper">
             <span className="input-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
             </span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               id="login-email"
               autoComplete="username"
-              className="form-input" 
-              placeholder="technician@autoserv.pro" 
+              className="form-input"
+              placeholder="technician@autoserv.pro"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required 
+              required
             />
           </div>
         </div>
@@ -111,11 +190,22 @@ const Login = ({ adminOnly = false, technicianOnly = false }) => {
         <div className="form-group">
           <div className="form-label">
             <label htmlFor="login-password">PASSWORD</label>
-            <Link to="/forgot-password" style={{ fontSize: '0.75rem', textTransform: 'none' }}>Forgot Password?</Link>
+            <Link to="/forgot-password" style={{ fontSize: '0.75rem', textTransform: 'none' }}>
+              Forgot Password?
+            </Link>
           </div>
           <div className="form-input-wrapper">
             <span className="input-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               </svg>
@@ -123,18 +213,22 @@ const Login = ({ adminOnly = false, technicianOnly = false }) => {
             <PasswordInput
               id="login-password"
               autoComplete="current-password"
-              className="form-input" 
-              placeholder="••••••••" 
+              className="form-input"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required 
+              required
             />
-
           </div>
         </div>
 
         <div className="form-checkbox">
-          <input type="checkbox" id="remember" checked={remember} onChange={event => setRemember(event.target.checked)} />
+          <input
+            type="checkbox"
+            id="remember"
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+          />
           <label htmlFor="remember">Remember this device</label>
         </div>
 
@@ -147,7 +241,20 @@ const Login = ({ adminOnly = false, technicianOnly = false }) => {
         </div>
 
         <div className="form-footer">
-          {adminOnly ? <>Workshop user? <Link to="/login">Sign in here</Link></> : technicianOnly ? <>Customer account? <Link to="/login">Customer sign in</Link></> : <>Technician? <Link to="/technician/login">Technician sign in</Link> · New customer? <Link to="/signup">Create Account</Link></>}
+          {adminOnly ? (
+            <>
+              Workshop user? <Link to="/login">Sign in here</Link>
+            </>
+          ) : technicianOnly ? (
+            <>
+              Customer account? <Link to="/login">Customer sign in</Link>
+            </>
+          ) : (
+            <>
+              Technician? <Link to="/technician/login">Technician sign in</Link> · New customer?{' '}
+              <Link to="/signup">Create Account</Link>
+            </>
+          )}
         </div>
       </form>
     </AuthLayout>

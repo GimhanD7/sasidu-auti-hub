@@ -46,87 +46,87 @@ import Toast from './components/Toast';
 function App() {
   return (
     <AuthProvider>
-    <Router>
-      <Toast />
-      <Routes>
-        {/* Auth Routes */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/admin/login" element={<Login adminOnly />} />
-        <Route path="/technician/login" element={<Login technicianOnly />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<PasswordReset />} />
-        <Route path="/reset-password" element={<PasswordReset reset />} />
-        
-        {/* Customer Portal Routes */}
-        <Route element={<ProtectedRoute role="Customer" />}>
-        <Route path="/customer" element={<CustomerLayout />}>
-          <Route index element={<Navigate to="/customer/dashboard" replace />} />
-          <Route path="dashboard" element={<CustomerDashboard />} />
-          <Route path="vehicles">
-            <Route index element={<CustomerVehicles />} />
-            <Route path=":vehicleId" element={<CustomerVehicleProfile />} />
+      <Router>
+        <Toast />
+        <Routes>
+          {/* Auth Routes */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin/login" element={<Login adminOnly />} />
+          <Route path="/technician/login" element={<Login technicianOnly />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<PasswordReset />} />
+          <Route path="/reset-password" element={<PasswordReset reset />} />
+
+          {/* Customer Portal Routes */}
+          <Route element={<ProtectedRoute role="Customer" />}>
+            <Route path="/customer" element={<CustomerLayout />}>
+              <Route index element={<Navigate to="/customer/dashboard" replace />} />
+              <Route path="dashboard" element={<CustomerDashboard />} />
+              <Route path="vehicles">
+                <Route index element={<CustomerVehicles />} />
+                <Route path=":vehicleId" element={<CustomerVehicleProfile />} />
+              </Route>
+              <Route path="appointments" element={<CustomerAppointments />} />
+              <Route path="appointments/book" element={<BookAppointment />} />
+              <Route path="repair-tracking" element={<CustomerRepairTracking />} />
+              <Route path="repair-approvals" element={<CustomerRepairApprovals />} />
+              <Route path="messages" element={<ServiceMessages />} />
+              <Route path="notifications" element={<CustomerNotifications />} />
+              <Route path="history" element={<CustomerServiceHistory />} />
+              <Route path="invoices" element={<CustomerInvoices />} />
+              <Route path="payments" element={<CustomerPayments />} />
+              <Route path="account" element={<AccountSettings />} />
+            </Route>
           </Route>
-          <Route path="appointments" element={<CustomerAppointments />} />
-          <Route path="appointments/book" element={<BookAppointment />} />
-          <Route path="repair-tracking" element={<CustomerRepairTracking />} />
-          <Route path="repair-approvals" element={<CustomerRepairApprovals />} />
-          <Route path="messages" element={<ServiceMessages />} />
-          <Route path="notifications" element={<CustomerNotifications />} />
-          <Route path="history" element={<CustomerServiceHistory />} />
-          <Route path="invoices" element={<CustomerInvoices />} />
-          <Route path="payments" element={<CustomerPayments />} />
-          <Route path="account" element={<AccountSettings />} />
-        </Route>
-        </Route>
 
-        {/* Admin Portal Routes */}
-        <Route element={<ProtectedRoute role="Admin" />}>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="appointments" element={<AdminAppointments />} />
-          <Route path="kanban" element={<AdminKanban />} />
-          <Route path="messages" element={<ServiceMessages />} />
-          <Route path="customers" element={<AdminCustomers />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="vehicles" element={<AdminVehicles />} />
-          <Route path="technicians" element={<AdminTechnicians />} />
-          <Route path="allocations" element={<AdminAllocations />} />
-          <Route path="services" element={<AdminServiceTypes />} />
-          <Route path="accounts" element={<Navigate to="/admin/users" replace />} />
-          <Route path="service-types" element={<AdminServiceTypes />} />
-          <Route path="account" element={<AccountSettings />} />
-        </Route>
-        </Route>
-        
-        {/* Technician Portal Routes */}
-        <Route element={<ProtectedRoute role="Technician" />}>
-        <Route path="/technician" element={<TechnicianLayout />}>
-          <Route index element={<Navigate to="/technician/dashboard" replace />} />
-          <Route path="dashboard" element={<TechnicianDashboard />} />
-          <Route path="security" element={<TechnicianSecurity />} />
-          <Route path="account" element={<AccountSettings />} />
-          <Route path="messages" element={<ServiceMessages />} />
-          <Route path="jobs" element={<TechnicianJobs />} />
-          <Route path="history" element={<TechnicianJobHistory />} />
-          <Route path="jobs/:jobId" element={<TechnicianJobDetails />} />
-        </Route>
-        </Route>
+          {/* Admin Portal Routes */}
+          <Route element={<ProtectedRoute role="Admin" />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="appointments" element={<AdminAppointments />} />
+              <Route path="kanban" element={<AdminKanban />} />
+              <Route path="messages" element={<ServiceMessages />} />
+              <Route path="customers" element={<AdminCustomers />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="vehicles" element={<AdminVehicles />} />
+              <Route path="technicians" element={<AdminTechnicians />} />
+              <Route path="allocations" element={<AdminAllocations />} />
+              <Route path="services" element={<AdminServiceTypes />} />
+              <Route path="accounts" element={<Navigate to="/admin/users" replace />} />
+              <Route path="service-types" element={<AdminServiceTypes />} />
+              <Route path="account" element={<AccountSettings />} />
+            </Route>
+          </Route>
 
-        {/* Finance Portal Routes */}
-        <Route element={<ProtectedRoute role="Finance" />}>
-        <Route path="/finance" element={<FinanceLayout />}>
-          <Route index element={<Navigate to="/finance/dashboard" replace />} />
-          <Route path="dashboard" element={<FinanceDashboard />} />
-          <Route path="invoices" element={<FinanceInvoices />} />
-          <Route path="payments" element={<FinancePaymentReview />} />
-          <Route path="reports" element={<FinanceRevenueReports />} />
-          <Route path="account" element={<AccountSettings />} />
-        </Route>
-        </Route>
-      </Routes>
-    </Router>
+          {/* Technician Portal Routes */}
+          <Route element={<ProtectedRoute role="Technician" />}>
+            <Route path="/technician" element={<TechnicianLayout />}>
+              <Route index element={<Navigate to="/technician/dashboard" replace />} />
+              <Route path="dashboard" element={<TechnicianDashboard />} />
+              <Route path="security" element={<TechnicianSecurity />} />
+              <Route path="account" element={<AccountSettings />} />
+              <Route path="messages" element={<ServiceMessages />} />
+              <Route path="jobs" element={<TechnicianJobs />} />
+              <Route path="history" element={<TechnicianJobHistory />} />
+              <Route path="jobs/:jobId" element={<TechnicianJobDetails />} />
+            </Route>
+          </Route>
+
+          {/* Finance Portal Routes */}
+          <Route element={<ProtectedRoute role="Finance" />}>
+            <Route path="/finance" element={<FinanceLayout />}>
+              <Route index element={<Navigate to="/finance/dashboard" replace />} />
+              <Route path="dashboard" element={<FinanceDashboard />} />
+              <Route path="invoices" element={<FinanceInvoices />} />
+              <Route path="payments" element={<FinancePaymentReview />} />
+              <Route path="reports" element={<FinanceRevenueReports />} />
+              <Route path="account" element={<AccountSettings />} />
+            </Route>
+          </Route>
+        </Routes>
+      </Router>
     </AuthProvider>
   );
 }

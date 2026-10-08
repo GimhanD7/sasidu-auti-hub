@@ -1,17 +1,85 @@
-.account-settings-page { display: grid; gap: 1rem; color: var(--text-primary); }
-.account-settings-page > header p { margin: 0 0 .35rem; color: #7655c8; font-size: .72rem; font-weight: 800; letter-spacing: .1em; }
-.account-settings-page > header h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.2rem); }
-.account-settings-page > header span { display: block; margin-top: .35rem; color: var(--text-secondary); }
-.account-settings-card { max-width: 680px; padding: 1.2rem; }
-.account-settings-card h2 { margin: 0 0 1rem; font-size: 1rem; }
-.account-settings-card form { display: grid; gap: .9rem; }
-.account-settings-card label { display: grid; gap: .35rem; color: var(--text-secondary); font-size: .8rem; font-weight: 600; }
-.account-settings-card input { min-height: 42px; padding: .55rem .65rem; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 7px; }
-.account-settings-card input[readonly] { opacity: .7; }
-.account-settings-card small { color: var(--text-muted); font-weight: 400; }
-.account-settings-card footer { display: flex; justify-content: end; }
-.account-settings-card button { min-height: 40px; padding: .55rem .9rem; color: white; background: #7655c8; border: 0; border-radius: 7px; font-weight: 700; cursor: pointer; }
-.account-settings-card button:disabled { opacity: .55; cursor: wait; }
-.account-settings-message { padding: .75rem; border-radius: 8px; }
-.account-settings-message.error { color: #a32128; background: #fff0f0; }
-.account-settings-message.success { color: #176b42; background: #e5f5eb; }
+.account-settings-page {
+  display: grid;
+  gap: 1rem;
+  color: var(--text-primary);
+}
+.account-settings-page > header p {
+  margin: 0 0 0.35rem;
+  color: #7655c8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.account-settings-page > header h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 4vw, 2.2rem);
+}
+.account-settings-page > header span {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--text-secondary);
+}
+.account-settings-card {
+  max-width: 680px;
+  padding: 1.2rem;
+}
+.account-settings-card h2 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+}
+.account-settings-card form {
+  display: grid;
+  gap: 0.9rem;
+}
+.account-settings-card label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.account-settings-card input {
+  min-height: 42px;
+  padding: 0.55rem 0.65rem;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+}
+.account-settings-card input[readonly] {
+  opacity: 0.7;
+}
+.account-settings-card small {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.account-settings-card footer {
+  display: flex;
+  justify-content: end;
+}
+.account-settings-card button {
+  min-height: 40px;
+  padding: 0.55rem 0.9rem;
+  color: white;
+  background: #7655c8;
+  border: 0;
+  border-radius: 7px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.account-settings-card button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.account-settings-message {
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+.account-settings-message.error {
+  color: #a32128;
+  background: #fff0f0;
+}
+.account-settings-message.success {
+  color: #176b42;
+  background: #e5f5eb;
+}

@@ -29,7 +29,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .brand-icon {
@@ -54,7 +54,8 @@
   overflow-y: auto;
 }
 
-.sidebar-nav .nav-item, .sidebar-footer .nav-item {
+.sidebar-nav .nav-item,
+.sidebar-footer .nav-item {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -65,7 +66,8 @@
   font-weight: 500;
 }
 
-.sidebar-nav .nav-item:hover, .sidebar-footer .nav-item:hover {
+.sidebar-nav .nav-item:hover,
+.sidebar-footer .nav-item:hover {
   background-color: var(--sidebar-hover);
   color: #fff;
 }
@@ -78,7 +80,7 @@
 
 .sidebar-footer {
   padding: 1rem 0;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .main-content {
@@ -184,7 +186,9 @@
   .sidebar {
     width: 70px;
   }
-  .brand-text, .nav-item span, .user-profile span {
+  .brand-text,
+  .nav-item span,
+  .user-profile span {
     display: none;
   }
   .topbar-search {
