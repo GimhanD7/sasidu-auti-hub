@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
+import Icon from '../../components/Icon';
 import './CustomerRepairTracking.css';
 
 const STAGES = ['Inspecting', 'In Progress', 'Final Test', 'Ready'];
@@ -74,7 +75,7 @@ export default function CustomerRepairTracking() {
     <div className="tracking-page-heading"><div><p className="tracking-eyebrow">SERVICE WORKSHOP</p><h1>Live Repair Tracking</h1><p>Follow your vehicle’s progress and workshop updates.</p></div><button type="button" className="tracking-refresh" onClick={refresh} disabled={refreshing}>{refreshing ? 'Updating…' : 'Refresh status'}</button></div>
     {error && <div className="tracking-error" role="alert"><span>{error}</span><button type="button" onClick={refresh}>Try again</button></div>}
     {jobs === null && !error && <div className="tracking-loading" role="status">Loading your repair jobs…</div>}
-    {jobs?.length === 0 && <section className="tracking-empty"><span aria-hidden="true">🔧</span><h2>No repairs in progress</h2><p>When your vehicle enters the workshop, its status and updates will appear here.</p><Link to="/customer/appointments">View your appointments</Link></section>}
+    {jobs?.length === 0 && <section className="tracking-empty"><span aria-hidden="true"><Icon name="wrench" /></span><h2>No repairs in progress</h2><p>When your vehicle enters the workshop, its status and updates will appear here.</p><Link to="/customer/appointments">View your appointments</Link></section>}
     {jobs?.map(job => <JobCard job={job} key={job.id} />)}
     {jobs?.length > 0 && <p className="tracking-refresh-note">Status refreshes automatically every 30 seconds.</p>}
   </main>;

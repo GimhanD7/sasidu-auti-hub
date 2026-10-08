@@ -40,6 +40,8 @@ const AdminLayout = () => {
             <Link 
               key={item.path} 
               to={item.path} 
+              aria-label={item.label}
+              title={item.label}
               className={`nav-item ${location.pathname.includes(item.path) ? 'active' : ''}`}
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">

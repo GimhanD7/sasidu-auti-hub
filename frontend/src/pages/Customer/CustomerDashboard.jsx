@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
+import Icon from '../../components/Icon';
 import { useAuth } from '../../auth/useAuth';
 import './CustomerDashboard.css';
 
@@ -57,7 +58,7 @@ function DashboardContent({ data }) {
         <section className="section-card" aria-labelledby="active-repairs-heading">
           <div className="section-header"><h2 id="active-repairs-heading">Active Repair Tracking</h2><Link to="/customer/repair-tracking">View tracking</Link></div>
           {data.activeJobs.length ? <div className="dashboard-record-list">{data.activeJobs.map(job => <article className="dashboard-record" key={job.id}>
-            <div className="section-header"><div className="repair-vehicle"><div className="vehicle-image" aria-hidden="true">🚗</div><div><h4><Link to="/customer/repair-tracking">{vehicleLabel(job.vehicle)}</Link></h4><p>Service job {String(job.id).slice(-6).toUpperCase()}</p></div></div><span className="badge badge-warning">{job.status}</span></div>
+            <div className="section-header"><div className="repair-vehicle"><div className="vehicle-image" aria-hidden="true"><Icon name="car" /></div><div><h4><Link to="/customer/repair-tracking">{vehicleLabel(job.vehicle)}</Link></h4><p>Service job {String(job.id).slice(-6).toUpperCase()}</p></div></div><span className="badge badge-warning">{job.status}</span></div>
             <RepairProgress status={job.status} />
             <p className="repair-eta">{job.expectedCompletionTime ? <><strong>Estimated completion:</strong> {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(job.expectedCompletionTime))}</> : 'Completion estimate not available yet.'}</p>
           </article>)}</div> : <div className="dashboard-empty"><h3>No active repairs</h3><p>Your active service jobs will appear here once your vehicle is in the workshop.</p><Link to="/customer/appointments">Book a service appointment</Link></div>}

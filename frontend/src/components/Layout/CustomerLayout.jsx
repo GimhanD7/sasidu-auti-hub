@@ -23,7 +23,7 @@ const CustomerLayout = () => {
   ];
 
   return (
-    <div className="layout-container">
+    <div className="layout-container customer-theme">
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-icon">
@@ -39,6 +39,8 @@ const CustomerLayout = () => {
             <Link 
               key={item.path} 
               to={item.path} 
+              aria-label={item.label}
+              title={item.label}
               className={`nav-item ${location.pathname.includes(item.path) ? 'active' : ''}`}
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">

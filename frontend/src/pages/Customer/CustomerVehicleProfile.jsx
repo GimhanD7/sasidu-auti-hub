@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../lib/api';
+import Icon from '../../components/Icon';
 import './CustomerVehicleProfile.css';
 
 const dateLabel = value => {
@@ -40,7 +41,7 @@ export default function CustomerVehicleProfile() {
   return <main className="vehicle-profile-page">
     <Link className="profile-back-link" to="/customer/vehicles">← My vehicles</Link>
     <section className="vehicle-profile-hero">
-      {vehicle.imageUrl ? <img src={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} /> : <div className="profile-image-placeholder" aria-hidden="true">🚗</div>}
+      {vehicle.imageUrl ? <img src={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} /> : <div className="profile-image-placeholder" aria-hidden="true"><Icon name="car" /></div>}
       <div className="vehicle-profile-heading"><span className="profile-eyebrow">VEHICLE PROFILE</span><h1>{vehicle.year ? `${vehicle.year} ` : ''}{vehicle.make} {vehicle.model}</h1><span className="profile-registration">{vehicle.registrationNumber}</span><p>Full vehicle information, workshop updates, service records and invoices.</p></div>
       <Link className="profile-edit-link" to="/customer/vehicles">Manage vehicles</Link>
     </section>
