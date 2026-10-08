@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import Vehicle from '../models/Vehicle.js';
+import User from '../models/User.js';
 
 const SERVICE_TYPES = ['Full Service', 'Oil Change', 'Brake Service', 'Engine Diagnosis', 'Electrical Diagnosis', 'General Repair'];
 const DEFAULT_TIMES = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'];
@@ -32,9 +33,52 @@ function parseDay(value) {
 
 function dateKey(date) { return date.toISOString().slice(0, 10); }
 function slotKey(date, time) { return `${date}|${time}`; }
+function isFutureSlot(date, time) { return new Date(`${date}T${time}:00`).getTime() > Date.now(); }
 
 export function getAppointmentOptions(req, res) {
   res.set('Cache-Control', 'private, no-store').json({ serviceTypes: SERVICE_TYPES, times: availableTimes(), businessDays: [...businessWeekdays()], daysAhead: 30 });
+}
+
+function appointmentView(appointment) {
+  return {
+    id: appointment._id,
+    appointmentNumber: appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`,
+    vehicle: appointment.vehicle ? {
+      id: appointment.vehicle._id,
+      make: appointment.vehicle.make,
+      model: appointment.vehicle.model,
+      year: appointment.vehicle.year,
+      registrationNumber: appointment.vehicle.registrationNumber,
+    } : null,
+    serviceType: appointment.serviceType,
+    preferredDate: dateKey(appointment.preferredDate),
+    preferredTime: appointment.preferredTime,
+    problemDescription: appointment.problemDescription || '',
+    customerNotes: appointment.customerNotes || '',
+    status: appointment.status,
+    technician: appointment.assignedTechnician?.name || null,
+    createdAt: appointment.createdAt,
+    rescheduleRequest: appointment.rescheduleRequest?.status ? {
+      preferredDate: appointment.rescheduleRequest.preferredDate ? dateKey(appointment.rescheduleRequest.preferredDate) : null,
+      preferredTime: appointment.rescheduleRequest.preferredTime,
+      notes: appointment.rescheduleRequest.notes || '',
+      status: appointment.rescheduleRequest.status,
+      requestedAt: appointment.rescheduleRequest.requestedAt,
+    } : null,
+  };
+}
+
+export async function listCustomerAppointments(req, res) {
+  try {
+    const appointments = await Appointment.find({ customer: req.user._id })
+      .sort({ preferredDate: 1, preferredTime: 1 })
+      .populate({ path: 'vehicle', select: 'make model year registrationNumber' })
+      .populate({ path: 'assignedTechnician', select: 'name' })
+      .limit(200).lean();
+    res.set('Cache-Control', 'private, no-store').json(appointments.map(appointmentView));
+  } catch {
+    res.status(503).json({ message: 'Unable to load your appointments. Please try again.' });
+  }
 }
 
 export async function getAppointmentAvailability(req, res) {
@@ -50,9 +94,18 @@ export async function getAppointmentAvailability(req, res) {
     return res.status(400).json({ message: 'Choose a date from today through the next 30 days.' });
   }
   try {
+    const excludeAppointmentId = req.query.excludeAppointmentId;
+    let excludedId;
+    if (excludeAppointmentId !== undefined) {
+      if (!mongoose.isValidObjectId(excludeAppointmentId)) return res.status(400).json({ message: 'Invalid appointment ID.' });
+      const appointment = await Appointment.findOne({ _id: excludeAppointmentId, customer: req.user._id, status: { $in: ACTIVE_STATUSES } }).select('_id');
+      if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+      excludedId = appointment._id;
+    }
     const existing = await Appointment.find({
       preferredDate: { $gte: from, $lt: end },
       status: { $in: ACTIVE_STATUSES },
+      ...(excludedId ? { _id: { $ne: excludedId } } : {}),
     }).select('preferredDate preferredTime').lean();
     const counts = new Map();
     for (const appointment of existing) {
@@ -63,12 +116,80 @@ export async function getAppointmentAvailability(req, res) {
     const dates = Array.from({ length: days }, (_, index) => {
       const date = dateKey(new Date(from.getTime() + index * 24 * 60 * 60 * 1000));
       const businessDay = isBusinessDay(new Date(`${date}T00:00:00.000Z`));
-      const slots = times.map(time => ({ time, available: businessDay && !counts.has(slotKey(date, time)) }));
+      const slots = times.map(time => ({ time, available: businessDay && isFutureSlot(date, time) && !counts.has(slotKey(date, time)) }));
       return { date, closed: !businessDay, available: slots.some(slot => slot.available), slots };
     });
     res.set('Cache-Control', 'private, no-store').json({ dates });
   } catch {
     res.status(503).json({ message: 'Unable to load appointment availability. Please try again.' });
+  }
+}
+
+function isAppointmentUpcoming(appointment) {
+  const date = appointment.preferredDate.toISOString().slice(0, 10);
+  return new Date(`${date}T${appointment.preferredTime}:00`).getTime() > Date.now();
+}
+
+async function notifyAppointmentChange(appointment, { type, title, message }) {
+  try {
+    const notifications = [{ user: appointment.customer, type, title, message, link: '/customer/appointments' }];
+    const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
+    for (const admin of admins) notifications.push({ user: admin._id, type, title, message, link: '/admin/appointments' });
+    await Notification.insertMany(notifications, { ordered: false });
+    return true;
+  } catch { return false; }
+}
+
+export async function cancelCustomerAppointment(req, res) {
+  if (!mongoose.isValidObjectId(req.params.appointmentId)) return res.status(400).json({ message: 'Invalid appointment ID.' });
+  try {
+    const appointment = await Appointment.findOne({ _id: req.params.appointmentId, customer: req.user._id });
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+    if (!['Pending', 'Confirmed'].includes(appointment.status) || !isAppointmentUpcoming(appointment)) {
+      return res.status(409).json({ message: 'Only future pending or confirmed appointments can be cancelled online. Contact the workshop for help with an appointment already in service.' });
+    }
+    appointment.status = 'Cancelled';
+    await appointment.save();
+    const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
+    const notified = await notifyAppointmentChange(appointment, {
+      type: 'AppointmentCancelled', title: 'Appointment cancelled', message: `Appointment ${number} on ${dateKey(appointment.preferredDate)} at ${appointment.preferredTime} was cancelled.`,
+    });
+    res.set('Cache-Control', 'private, no-store').json({ appointment: appointmentView(appointment.toObject()), notificationCreated: notified });
+  } catch {
+    res.status(503).json({ message: 'Unable to cancel this appointment. Please try again.' });
+  }
+}
+
+export async function requestCustomerAppointmentReschedule(req, res) {
+  if (!mongoose.isValidObjectId(req.params.appointmentId)) return res.status(400).json({ message: 'Invalid appointment ID.' });
+  const { preferredDate, preferredTime, notes = '' } = req.body || {};
+  const day = parseDay(preferredDate);
+  if (!day || !availableTimes().includes(preferredTime) || !isBusinessDay(day) || !isFutureSlot(dateKey(day), preferredTime)) return res.status(400).json({ message: 'Choose a valid available date and time for your reschedule request.' });
+  if (typeof notes !== 'string' || notes.trim().length > 500) return res.status(400).json({ message: 'Reschedule notes must be 500 characters or fewer.' });
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  if (day < today || day.getTime() > today.getTime() + 30 * 24 * 60 * 60 * 1000) return res.status(400).json({ message: 'Choose a date from today through the next 30 days.' });
+
+  try {
+    const appointment = await Appointment.findOne({ _id: req.params.appointmentId, customer: req.user._id });
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+    if (!['Pending', 'Confirmed'].includes(appointment.status) || !isAppointmentUpcoming(appointment)) return res.status(409).json({ message: 'Only future pending or confirmed appointments can be rescheduled online.' });
+    if (appointment.rescheduleRequest?.status === 'Pending') return res.status(409).json({ message: 'A reschedule request is already awaiting workshop review.' });
+    const end = new Date(day.getTime() + 24 * 60 * 60 * 1000);
+    const conflict = await Appointment.exists({
+      _id: { $ne: appointment._id }, preferredDate: { $gte: day, $lt: end }, preferredTime,
+      status: { $in: ACTIVE_STATUSES },
+    });
+    if (conflict) return res.status(409).json({ message: 'That time is no longer available. Select another slot.' });
+
+    appointment.rescheduleRequest = { preferredDate: day, preferredTime, notes: notes.trim(), status: 'Pending', requestedAt: new Date() };
+    await appointment.save();
+    const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
+    const notified = await notifyAppointmentChange(appointment, {
+      type: 'AppointmentRescheduleRequest', title: 'Reschedule request received', message: `A new time was requested for appointment ${number}: ${dateKey(day)} at ${preferredTime}. The existing booking remains in place until review.`,
+    });
+    res.set('Cache-Control', 'private, no-store').json({ appointment: appointmentView(appointment.toObject()), notificationCreated: notified });
+  } catch {
+    res.status(503).json({ message: 'Unable to send the reschedule request. Please try again.' });
   }
 }
 
@@ -89,6 +210,7 @@ export async function createCustomerAppointment(req, res) {
     return res.status(400).json({ message: 'Choose an appointment date from today through the next 30 days.' });
   }
   if (!isBusinessDay(day)) return res.status(400).json({ message: 'The workshop is closed on that date. Select another available day.' });
+  if (!isFutureSlot(dateKey(day), preferredTime)) return res.status(400).json({ message: 'Choose a future appointment time.' });
 
   try {
     const vehicle = await Vehicle.findOne({ _id: vehicleId, customer: req.user._id }).select('make model registrationNumber');

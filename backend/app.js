@@ -3,6 +3,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import customerVehicleRoutes from './routes/customerVehicleRoutes.js';
 import customerAppointmentRoutes from './routes/customerAppointmentRoutes.js';
+import customerRepairTrackingRoutes from './routes/customerRepairTrackingRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -18,6 +19,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/vehicles', customerVehicleRoutes);
   app.use('/api/appointments', customerAppointmentRoutes);
+  app.use('/api/repair-tracking', customerRepairTrackingRoutes);
   app.get('/', (req, res) => res.send('Vehicle Service & Repair Tracking System API is running...'));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);

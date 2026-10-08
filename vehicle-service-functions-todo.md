@@ -100,28 +100,32 @@ The profile reads only the signed-in customer's vehicle, jobs, appointments and 
 
 ### 1.6 Book Service Appointment
 
-- [ ] Select registered vehicle
-- [ ] Select service type
-- [ ] Select preferred date and time
-- [ ] View available dates and time slots
-- [ ] Disable unavailable slots
-- [ ] Enter service problem/description
-- [ ] Add customer notes
-- [ ] Confirm appointment
-- [ ] Generate appointment ID
-- [ ] Show booking confirmation
-- [ ] Send appointment notification
+- [x] Select registered vehicle
+- [x] Select service type
+- [x] Select preferred date and time
+- [x] View available dates and time slots
+- [x] Disable unavailable slots
+- [x] Enter service problem/description
+- [x] Add customer notes
+- [x] Confirm appointment
+- [x] Generate appointment ID
+- [x] Show booking confirmation
+- [x] Send appointment notification
+
+Customer-scoped booking validates vehicle ownership and service fields, shows availability in 14-day ranges, and prevents duplicate active bookings for a slot with a unique database key. New bookings receive a generated appointment number and an in-app notification. Daily times and business weekdays are configurable; default capacity is one booking per slot. Production build, changed-file lint and backend syntax checks passed. Connected database/index creation and external email/SMS delivery were not verified.
 
 ### 1.7 Appointment Management
 
-- [ ] View upcoming appointments
-- [ ] View previous appointments
-- [ ] View appointment details and status
-- [ ] Cancel appointment
-- [ ] Request appointment rescheduling
-- [ ] Receive appointment confirmation and reminders
-- [ ] View assigned technician when available
-- [ ] Support statuses: Pending, Confirmed, Checked In, In Service, Completed and Cancelled
+- [x] View upcoming appointments
+- [x] View previous appointments
+- [x] View appointment details and status
+- [x] Cancel appointment
+- [x] Request appointment rescheduling
+- [x] Receive appointment confirmation and reminders
+- [x] View assigned technician when available
+- [x] Support statuses: Pending, Confirmed, Checked In, In Service, Completed and Cancelled
+
+Customer appointment management lists upcoming and past/cancelled bookings with details and assigned technician, permits cancellation of future Pending/Confirmed bookings, and stores reschedule requests for workshop review without releasing or moving the original slot. Confirmation notifications are created when bookings are submitted and when staff saves a Confirmed status. The backend reminder scheduler sends an idempotent in-app reminder before Pending/Confirmed appointments; set `TZ` to the workshop timezone. Production build, changed-file lint and backend syntax checks passed. Connected database execution and external email/SMS delivery were not verified.
 
 ### 1.8 Live Repair Tracking
 

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const serviceJobSchema = new mongoose.Schema({
+  serviceNumber: { type: String, unique: true, sparse: true, default: function serviceNumberFromId() { return `JOB-${String(this._id).slice(-8).toUpperCase()}`; } },
   appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
@@ -29,6 +30,12 @@ const serviceJobSchema = new mongoose.Schema({
     estimatedCost: Number,
     status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
     photos: [String]
+  }],
+  tasks: [{
+    title: { type: String, required: true, trim: true, maxlength: 200 },
+    status: { type: String, enum: ['Pending', 'In Progress', 'Complete'], default: 'Pending' },
+    notes: { type: String, trim: true, maxlength: 1000 },
+    completedAt: Date,
   }],
   timeline: [{
     status: String,

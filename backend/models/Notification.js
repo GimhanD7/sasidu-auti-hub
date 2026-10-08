@@ -6,6 +6,7 @@ const notificationSchema = new mongoose.Schema({
   title: { type: String, required: true },
   message: { type: String, required: true },
   link: { type: String }, // optional link to job or invoice
+  dedupeKey: { type: String, unique: true, sparse: true },
   isRead: { type: Boolean, default: false }
 }, { timestamps: true });
 
