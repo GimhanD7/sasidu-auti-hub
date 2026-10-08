@@ -246,8 +246,11 @@ function RoleRow({ account, ownAccount, onSaved, onNotice }) {
             {ownAccount ? ' (you)' : ''}
           </strong>
           <span>{account.email}</span>
-          <small>
-            {account.isActive ? 'Active' : 'Suspended'} · Current role: {account.role}
+          <small className="account-role-meta">
+            <span className={`account-status-badge ${account.isActive ? 'active' : 'suspended'}`}>
+              {account.isActive ? 'Active' : 'Suspended'}
+            </span>
+            <span className="account-role-badge">{account.role}</span>
           </small>
         </div>
         <label>

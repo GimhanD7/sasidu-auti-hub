@@ -12022,6 +12022,123 @@
     padding: 0.65rem 0.75rem;
   }
 
+  .layout-container .admin-users-page .user-role-list {
+    gap: 0.65rem;
+  }
+
+  .layout-container .admin-users-page .account-role-item {
+    overflow: hidden;
+    padding: 0 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.9rem;
+    background: var(--bg-surface) !important;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .layout-container .admin-users-page .account-role-item:hover {
+    border-color: #e11d2e66;
+    background: var(--bg-card) !important;
+    transform: translateY(-1px);
+  }
+
+  .layout-container .admin-users-page .user-role-row {
+    grid-template-columns: minmax(0, 1fr) 140px auto auto;
+    gap: 0.75rem;
+    padding: 0.85rem 0;
+  }
+
+  .layout-container .admin-users-page .user-role-row > div {
+    gap: 0.25rem;
+  }
+
+  .layout-container .admin-users-page .user-role-row > div > strong {
+    color: #fafafa;
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .layout-container .admin-users-page .user-role-row > div > span {
+    color: #a1a1aa;
+    font-size: 0.8rem;
+  }
+
+  .layout-container .admin-users-page .account-role-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+  }
+
+  .layout-container .admin-users-page .account-status-badge,
+  .layout-container .admin-users-page .account-role-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid #3f3f46;
+    border-radius: 999px;
+    color: #d4d4d8;
+    background: #202024;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .layout-container .admin-users-page .account-status-badge.active {
+    border-color: #16653480;
+    color: #86efac;
+    background: #052e16;
+  }
+
+  .layout-container .admin-users-page .account-status-badge.suspended {
+    border-color: #991b1b80;
+    color: #fca5a5;
+    background: #450a0a;
+  }
+
+  .layout-container .admin-users-page .user-role-row label {
+    color: #a1a1aa;
+    font-size: 0.72rem;
+    font-weight: 650;
+  }
+
+  .layout-container .admin-users-page .user-role-row select {
+    min-width: 0;
+    min-height: 34px;
+    padding: 0.4rem 0.55rem;
+    border-radius: 0.55rem;
+    font-size: 0.8rem;
+  }
+
+  .layout-container .admin-users-page .user-role-row button {
+    white-space: nowrap;
+  }
+
+  @media (max-width: 760px) {
+    .layout-container .admin-users-page .user-role-row {
+      grid-template-columns: minmax(0, 1fr) 1fr;
+    }
+
+    .layout-container .admin-users-page .user-role-row > div,
+    .layout-container .admin-users-page .user-role-help {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 460px) {
+    .layout-container .admin-users-page .user-role-row {
+      grid-template-columns: 1fr;
+    }
+
+    .layout-container .admin-users-page .user-role-row > div,
+    .layout-container .admin-users-page .user-role-help {
+      grid-column: auto;
+    }
+  }
+
   .layout-container .section-card,
   .layout-container .glass-panel,
   .layout-container [class*='-card'] {
