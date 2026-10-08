@@ -5,7 +5,7 @@ import { authRateLimit } from '../middleware/authRateLimit.js';
 import { getCustomerDashboard } from '../controllers/customerDashboardController.js';
 import { requireRole } from '../middleware/auth.js';
 import { getTechnicianDashboard } from '../controllers/technicianDashboardController.js';
-import { listTechnicianJobs, getTechnicianJob } from '../controllers/technicianJobController.js';
+import { listTechnicianJobs, getTechnicianJob, searchTechnicianParts } from '../controllers/technicianJobController.js';
 import { updateTechnicianJobCard, uploadTechnicianJobPhoto, getTechnicianJobPhoto } from '../controllers/technicianJobCardController.js';
 
 const router = express.Router();
@@ -19,6 +19,7 @@ router.get('/me', requireAuth, getCurrentUser);
 router.get('/customer-dashboard', requireAuth, requireRole('Customer'), getCustomerDashboard);
 router.get('/technician-dashboard', requireAuth, requireRole('Technician'), getTechnicianDashboard);
 router.get('/technician/jobs', requireAuth, requireRole('Technician'), listTechnicianJobs);
+router.get('/technician/parts', requireAuth, requireRole('Technician'), searchTechnicianParts);
 router.patch('/technician/jobs/:jobId/card', requireAuth, requireRole('Technician'), updateTechnicianJobCard);
 router.post('/technician/jobs/:jobId/photos', requireAuth, requireRole('Technician'), uploadTechnicianJobPhoto);
 router.get('/technician/jobs/:jobId/photos/:photoId', requireAuth, requireRole('Technician'), getTechnicianJobPhoto);

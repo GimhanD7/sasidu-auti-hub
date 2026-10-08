@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Notification from '../models/Notification.js';
 import ServiceJob from '../models/ServiceJob.js';
 import User from '../models/User.js';
+import JobPhoto from '../models/JobPhoto.js';
 
 export async function listCustomerRepairApprovals(req, res) {
   try {
@@ -17,7 +18,7 @@ export async function listCustomerRepairApprovals(req, res) {
       vehicle: job.vehicle ? `${job.vehicle.year ? `${job.vehicle.year} ` : ''}${job.vehicle.make} ${job.vehicle.model}${job.vehicle.registrationNumber ? ` · ${job.vehicle.registrationNumber}` : ''}` : 'Vehicle details unavailable',
       problem: repair.description || '',
       technicianExplanation: repair.technicianExplanation || repair.description || '',
-      photos: (repair.photos || []).filter(url => /^https?:\/\//i.test(url)),
+      photos: (repair.photos || []).map(value => String(value)).filter(value => /^https?:\/\//i.test(value) || mongoose.isValidObjectId(value)).map(value => /^https?:\/\//i.test(value) ? value : `/api/repair-approvals/${job._id}/repairs/${repair._id}/photos/${value}`),
       parts: (repair.parts || []).map(part => ({ name: part.name || 'Part', quantity: part.quantity ?? null, unitCost: part.unitCost ?? null, totalCost: part.totalCost ?? (part.unitCost != null && part.quantity != null ? part.unitCost * part.quantity : null) })),
       labourCost: repair.labourCost ?? null,
       estimatedCost: repair.estimatedCost ?? null,
@@ -30,6 +31,20 @@ export async function listCustomerRepairApprovals(req, res) {
   } catch {
     res.status(503).json({ message: 'Unable to load repair approval requests. Please try again.' });
   }
+}
+
+export async function getCustomerRepairApprovalPhoto(req, res) {
+  const { jobId, repairId, photoId } = req.params;
+  if (![jobId, repairId, photoId].every(mongoose.isValidObjectId)) return res.status(404).json({ message: 'Repair photo not found.' });
+  try {
+    const job = await ServiceJob.findOne({ _id: jobId, customer: req.user._id }).select('additionalRepairs').lean();
+    const repair = job?.additionalRepairs?.find(item => String(item._id) === repairId);
+    if (!repair?.photos?.some(id => String(id) === photoId)) return res.status(404).json({ message: 'Repair photo not found.' });
+    const photo = await JobPhoto.findOne({ _id: photoId, job: jobId, category: 'RepairEvidence' }).lean();
+    if (!photo) return res.status(404).json({ message: 'Repair photo not found.' });
+    res.set({ 'Content-Type': photo.contentType, 'Content-Length': photo.data.length, 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
+    return res.send(photo.data);
+  } catch { return res.status(503).json({ message: 'Unable to load this repair photo.' }); }
 }
 
 export async function decideCustomerRepairApproval(req, res) {
@@ -50,6 +65,15 @@ export async function decideCustomerRepairApproval(req, res) {
     repair.status = decision;
     repair.customerComment = comment.trim();
     repair.decisionAt = decisionAt;
+    if (decision === 'Rejected' && repair.relatedTask) {
+      const task = job.tasks.id(repair.relatedTask);
+      if (task) {
+        task.status = 'Cancelled';
+        task.completedAt = undefined;
+        const reason = `Cancelled because the customer rejected: ${repair.description || 'additional repair'}.`;
+        task.notes = `${task.notes ? `${task.notes}\n` : ''}${reason}`.slice(0, 1000);
+      }
+    }
     if (job.status === 'Waiting for Approval' && !job.additionalRepairs.some(item => item.status === 'Pending')) {
       job.status = 'In Progress';
       job.$locals.suppressCustomerStatusNotifications = true;

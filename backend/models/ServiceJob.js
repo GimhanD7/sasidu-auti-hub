@@ -45,10 +45,21 @@ const serviceJobSchema = new mongoose.Schema({
   }],
   labourEntries: [{
     description: { type: String, trim: true, maxlength: 200 },
+    labourType: { type: String, enum: ['Inspection', 'Diagnostics', 'Repair', 'Testing', 'Other'], default: 'Repair' },
     minutes: { type: Number, min: 1, max: 1440, required: true },
+    ratePerHour: { type: Number, min: 0, default: 0 },
     technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    startedAt: Date,
+    endedAt: Date,
     recordedAt: { type: Date, default: Date.now },
   }],
+  activeLabourTimer: {
+    description: { type: String, trim: true, maxlength: 200 },
+    labourType: { type: String, enum: ['Inspection', 'Diagnostics', 'Repair', 'Testing', 'Other'] },
+    ratePerHour: { type: Number, min: 0 },
+    technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    startedAt: Date,
+  },
   priority: { type: String, enum: ['Low', 'Normal', 'High', 'Urgent'], default: 'Normal' },
   expectedCompletionTime: { type: Date },
   mileageAtService: { type: Number, min: 0 },
@@ -76,13 +87,14 @@ const serviceJobSchema = new mongoose.Schema({
     estimatedCost: { type: Number, min: 0 },
     status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
     photos: [{ type: String, trim: true, maxlength: 2048 }],
+    relatedTask: { type: mongoose.Schema.Types.ObjectId },
     requestedAt: { type: Date, default: Date.now },
     customerComment: { type: String, trim: true, maxlength: 1000 },
     decisionAt: Date,
   }],
   tasks: [{
     title: { type: String, required: true, trim: true, maxlength: 200 },
-    status: { type: String, enum: ['Pending', 'In Progress', 'Complete'], default: 'Pending' },
+    status: { type: String, enum: ['Pending', 'In Progress', 'Complete', 'Cancelled'], default: 'Pending' },
     notes: { type: String, trim: true, maxlength: 1000 },
     completedAt: Date,
   }],
@@ -107,11 +119,12 @@ serviceJobSchema.pre('save', function captureCustomerMilestones() {
   };
   this.$locals.customerMilestones = [];
   if (!this.$locals.suppressCustomerStatusNotifications && this.isModified('status')) {
+    const statusUpdate = [...(this.timeline || [])].reverse().find(event => event.status === this.status)?.notes?.trim();
     if (this.status === 'In Progress') this.$locals.customerMilestones.push(
-      { type: 'InspectionCompleted', title: 'Inspection completed', message: 'The workshop has completed the inspection of your vehicle.' },
-      { type: 'RepairStarted', title: 'Repair started', message: 'Work on your vehicle has started.' },
+      { type: 'InspectionCompleted', title: 'Inspection completed', message: `The workshop has completed the inspection of your vehicle.${statusUpdate ? ` ${statusUpdate}` : ''}` },
+      { type: 'RepairStarted', title: 'Repair started', message: `Work on your vehicle has started.${statusUpdate ? ` ${statusUpdate}` : ''}` },
     );
-    else if (milestones[this.status]) this.$locals.customerMilestones.push(milestones[this.status]);
+    else if (milestones[this.status]) this.$locals.customerMilestones.push({ ...milestones[this.status], message: `${milestones[this.status].message}${statusUpdate ? ` ${statusUpdate}` : ''}` });
   }
   this.$locals.pendingApprovalNotifications = (this.isNew || this.isModified('additionalRepairs'))
     ? this.additionalRepairs.filter(repair => (repair.status || 'Pending') === 'Pending').map(repair => ({ id: repair._id, description: repair.description || 'Additional repair' }))

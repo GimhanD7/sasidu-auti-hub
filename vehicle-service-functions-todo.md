@@ -462,71 +462,85 @@ Added an explicit inspection start step and audit history. Technicians can save 
 
 ### 3.6 Diagnostic Report
 
-- [ ] Enter diagnostic result
-- [ ] Select issue category
-- [ ] Describe fault
-- [ ] Enter recommended action
-- [ ] Set severity/priority
-- [ ] Add estimated repair time
-- [ ] Save and update diagnosis
+- [x] Enter diagnostic result
+- [x] Select issue category
+- [x] Describe fault
+- [x] Enter recommended action
+- [x] Set severity/priority
+- [x] Add estimated repair time
+- [x] Save and update diagnosis
+
+Added a structured diagnostic report separate from the inspection record. Technicians can save and update the result, select an issue category, describe the fault and recommended action, set severity, and estimate repair hours; updates are timestamped in the job history. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.7 Repair Task Checklist
 
-- [ ] View tasks
-- [ ] Add and edit task
-- [ ] Mark task Pending, In Progress or Complete
-- [ ] Add task notes
-- [ ] Record completion time
+- [x] View tasks
+- [x] Add and edit task
+- [x] Mark task Pending, In Progress or Complete
+- [x] Add task notes
+- [x] Record completion time
+
+Completed the job-card task checklist with task title and note editing, status changes between Pending, In Progress, and Complete, and a completion timestamp when marked complete. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.8 Parts Usage
 
-- [ ] Search spare part
-- [ ] Select part
-- [ ] Enter quantity
-- [ ] Add part to job
-- [ ] Remove incorrect item
-- [ ] View unit price
-- [ ] Calculate parts cost
-- [ ] Record used parts
+- [x] Search spare part
+- [x] Select part
+- [x] Enter quantity
+- [x] Add part to job
+- [x] Remove incorrect item
+- [x] View unit price
+- [x] Calculate parts cost
+- [x] Record used parts
+
+Added part search using previously recorded part names, numbers, and unit prices; selecting a match fills the usage form, with manual entry available for new parts. Technicians can record quantity, add or remove part entries, see unit prices and line totals, and view the calculated job parts total. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.9 Labour Tracking
 
-- [ ] Start work timer
-- [ ] Stop timer
-- [ ] Add manual labour time
-- [ ] View total labour time
-- [ ] Add labour type
-- [ ] Calculate labour charge
-- [ ] Record technician labour
+- [x] Start work timer
+- [x] Stop timer
+- [x] Add manual labour time
+- [x] View total labour time
+- [x] Add labour type
+- [x] Calculate labour charge
+- [x] Record technician labour
+
+Added server-timestamped labour timers with technician ownership, duplicate-start protection, and elapsed-time recording on stop. Manual entries and timer entries include labour type, technician, duration, and hourly rate; the job card shows total hours and calculated charges. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.10 Additional Repair Request
 
-- [ ] Identify additional problem
-- [ ] Enter repair description and reason
-- [ ] Add parts and labour estimate
-- [ ] Calculate estimated additional cost
-- [ ] Upload supporting image
-- [ ] Send request for customer approval
-- [ ] Set job/repair request to Waiting for Customer Approval
+- [x] Identify additional problem
+- [x] Enter repair description and reason
+- [x] Add parts and labour estimate
+- [x] Calculate estimated additional cost
+- [x] Upload supporting image
+- [x] Send request for customer approval
+- [x] Set job/repair request to Waiting for Customer Approval
+
+Expanded technician approval requests to itemize up to 20 parts, enter a labour estimate, calculate the total server-side, and attach up to three supporting images for the customer. Customers can view the authenticated images in their approval screen; submitted requests are recorded as Pending and move the job to Waiting for Approval. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.11 View Customer Approval
 
-- [ ] View pending request
-- [ ] View approval result
-- [ ] View customer comment
-- [ ] Continue job when approved
-- [ ] Mark related task cancelled when rejected
-- [ ] Record decision in job history
+- [x] View pending request
+- [x] View approval result
+- [x] View customer comment
+- [x] Continue job when approved
+- [x] Mark related task cancelled when rejected
+- [x] Record decision in job history
+
+Linked optional repair tasks to approval requests and surfaced pending/approved/rejected states, customer comments, decision times, and linked task titles in the technician job card. Customer decisions are saved to job history; approvals resume the job once no requests remain pending, while rejection cancels its linked task. Added integration coverage for pending, rejected, and approved decisions. Backend tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.12 Repair Status Update
 
-- [ ] Change status to Inspecting
-- [ ] Change status to In Progress
-- [ ] Change status to Final Test
-- [ ] Change status to Ready
-- [ ] Enter customer-facing update
-- [ ] Record status timestamp
-- [ ] Notify customer automatically
+- [x] Change status to Inspecting
+- [x] Change status to In Progress
+- [x] Change status to Final Test
+- [x] Change status to Ready
+- [x] Enter customer-facing update
+- [x] Record status timestamp
+- [x] Notify customer automatically
+
+Added a required customer-facing note to each technician status transition. The note is saved with the timestamp in the job timeline, shown in customer repair tracking, and included in automatic customer status notifications. Existing workflow gates still enforce inspection, approvals, and completed or cancelled tasks. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.13 Upload Repair Evidence
 

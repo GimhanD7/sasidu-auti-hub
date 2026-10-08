@@ -21,8 +21,29 @@
 .technician-card-inline-form label:only-child { grid-column: 1 / -1; }
 .technician-card-inline-form label:has(textarea) { grid-column: 1 / -1; }
 .technician-card-inline-form.parts-form { grid-template-columns: repeat(4, minmax(0, 1fr)) auto; }
+.technician-part-form { display: grid; gap: .85rem; }
+.technician-part-search { position: relative; }
+.technician-part-search > label { display: grid; gap: .35rem; color: var(--text-secondary); font-size: .85rem; font-weight: 650; }
+.technician-part-search input { width: 100%; min-height: 42px; border: 1px solid var(--border-color); border-radius: 8px; padding: .6rem .7rem; color: var(--text-primary); background: var(--bg-input); font: inherit; }
+.technician-part-search-hint { display: block; margin-top: .4rem; color: var(--text-muted); }
+.technician-part-suggestions { position: absolute; z-index: 5; top: calc(100% + .3rem); right: 0; left: 0; overflow: auto; max-height: 260px; border: 1px solid var(--border-color); border-radius: 9px; background: var(--bg-card); box-shadow: 0 12px 28px #0008; }
+.technician-part-suggestions button { display: grid; width: 100%; justify-items: start; gap: .2rem; border: 0 !important; border-radius: 0 !important; border-bottom: 1px solid var(--border-color) !important; padding: .7rem .85rem !important; color: var(--text-primary) !important; background: transparent !important; text-align: left; }
+.technician-part-suggestions button:hover { background: var(--bg-input) !important; }
+.technician-part-suggestions span { color: var(--text-secondary); font-size: .78rem; }
+.technician-part-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; }
+.technician-part-fields label { display: grid; gap: .35rem; color: var(--text-secondary); font-size: .85rem; font-weight: 650; }
+.technician-part-fields input { width: 100%; min-height: 42px; border: 1px solid var(--border-color); border-radius: 8px; padding: .6rem .7rem; color: var(--text-primary); background: var(--bg-input); font: inherit; }
+.technician-part-remove { border-color: #ef4444 !important; color: #fecaca !important; background: #7f1d1d55 !important; font-size: .78rem; padding: .45rem .6rem !important; }
+.technician-parts-total th, .technician-parts-total td { font-weight: 800; color: var(--text-primary); }
 .technician-card-approval-form { grid-template-columns: 1fr 1fr; }
-.technician-card-approval-form label:nth-child(2) { grid-column: 1 / -1; }
+.technician-status-update-form { grid-template-columns: 1fr; }
+.technician-card-approval-form label:nth-child(2), .technician-additional-parts, .technician-additional-photos { grid-column: 1 / -1; }
+.technician-additional-parts { display: grid; gap: .7rem; }
+.technician-additional-parts > strong { color: var(--text-primary); }
+.technician-additional-part-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(80px, .7fr) minmax(100px, 1fr) auto; align-items: end; gap: .65rem; }
+.technician-additional-part-row > button { margin-bottom: 0; }
+.technician-additional-photos { display: grid; gap: .3rem; }
+.technician-additional-photos small { color: var(--text-muted); }
 .technician-card-note-list { display: grid; gap: .6rem; margin: 1rem 0 0; padding: 0; list-style: none; }
 .technician-card-note-list li { padding: .8rem; border-radius: 8px; background: var(--bg-input); }
 .technician-card-note-list p { margin: 0 0 .3rem; color: var(--text-primary); white-space: pre-wrap; }
@@ -30,6 +51,12 @@
 .technician-card-task-list { display: grid; gap: .6rem; margin-top: 1rem; }
 .technician-card-task-list article { display: grid; grid-template-columns: 1fr minmax(140px, 200px); align-items: center; gap: 1rem; padding: .8rem; border-radius: 8px; background: var(--bg-input); }
 .technician-card-task-list p, .technician-card-task-list small { display: block; margin: .3rem 0 0; color: var(--text-secondary); }
+.technician-task-summary > button { display: block; margin-top: .65rem; padding: .4rem .65rem !important; color: var(--text-primary) !important; border-color: var(--border-color) !important; background: #34343a !important; font-size: .78rem; }
+.technician-task-status { display: flex; justify-content: flex-end; }
+.technician-task-status select { max-width: 190px; }
+.technician-task-edit-form { grid-column: 1 / -1; display: grid !important; grid-template-columns: 1fr 1fr; align-items: end; }
+.technician-task-edit-form > div { display: flex; gap: .5rem; }
+.technician-task-edit-form .technician-task-cancel { color: var(--text-primary); border-color: var(--border-color); background: #34343a; }
 .technician-card-empty, .technician-card-hint { color: var(--text-secondary); }
 .technician-card-table-wrap { overflow-x: auto; margin-top: 1rem; }
 .technician-card-table-wrap table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -48,11 +75,16 @@
 .technician-job-card-page .technician-job-detail-heading { margin-bottom: 0; }
 @media (max-width: 760px) {
   .technician-card-inline-form.parts-form { grid-template-columns: 1fr 1fr; }
+  .technician-part-fields { grid-template-columns: 1fr 1fr; }
   .technician-card-approval-form { grid-template-columns: 1fr; }
-  .technician-card-approval-form label:nth-child(2) { grid-column: auto; }
+  .technician-card-approval-form label:nth-child(2), .technician-additional-parts, .technician-additional-photos { grid-column: auto; }
 }
 @media (max-width: 520px) {
   .technician-card-inline-form, .technician-card-inline-form.parts-form, .technician-card-task-list article { grid-template-columns: 1fr; }
+  .technician-part-fields { grid-template-columns: 1fr; }
+  .technician-additional-part-row { grid-template-columns: 1fr 1fr; }
+  .technician-task-edit-form { grid-template-columns: 1fr; }
+  .technician-task-status { justify-content: flex-start; }
   .technician-card-section > header { flex-direction: column; }
   .technician-inspection-images { align-items: flex-start; flex-direction: column; }
 }

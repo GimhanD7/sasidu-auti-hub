@@ -63,6 +63,35 @@ export async function listTechnicianJobs(req, res) {
   } catch { res.status(503).json({ message: 'Unable to load your assigned jobs. Please try again.' }); }
 }
 
+export async function searchTechnicianParts(req, res) {
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 80) : '';
+  if (search.length < 2) return res.json({ parts: [] });
+  try {
+    const expression = escapeRegex(search);
+    const parts = await ServiceJob.aggregate([
+      { $unwind: '$replacedParts' },
+      { $match: { $or: [
+        { 'replacedParts.name': { $regex: expression, $options: 'i' } },
+        { 'replacedParts.partNumber': { $regex: expression, $options: 'i' } },
+      ] } },
+      { $sort: { 'replacedParts.replacedAt': -1 } },
+      { $group: {
+        _id: { name: '$replacedParts.name', partNumber: '$replacedParts.partNumber' },
+        name: { $first: '$replacedParts.name' },
+        partNumber: { $first: '$replacedParts.partNumber' },
+        unitPrice: { $first: '$replacedParts.unitCost' },
+        lastUsedAt: { $first: '$replacedParts.replacedAt' },
+      } },
+      { $sort: { name: 1 } },
+      { $limit: 10 },
+    ]);
+    res.set('Cache-Control', 'private, no-store').json({ parts: parts.map(part => ({
+      id: `${part.partNumber || ''}:${part.name}`,
+      name: part.name || 'Part', partNumber: part.partNumber || '', unitPrice: part.unitPrice ?? 0, lastUsedAt: part.lastUsedAt || null,
+    })) });
+  } catch { res.status(503).json({ message: 'Unable to search previously used parts.' }); }
+}
+
 export async function getTechnicianJob(req, res) {
   if (!mongoose.isValidObjectId(req.params.jobId)) return res.status(404).json({ message: 'Service job not found.' });
   try {
@@ -78,13 +107,19 @@ export async function getTechnicianJob(req, res) {
       vehicle: job.vehicle ? { make: job.vehicle.make, model: job.vehicle.model, year: job.vehicle.year, registrationNumber: job.vehicle.registrationNumber, mileage: job.vehicle.mileage, fuelType: job.vehicle.fuelType, vinNumber: job.vehicle.vinNumber } : null,
       appointment: job.appointment ? { number: job.appointment.appointmentNumber || '', serviceType: job.appointment.serviceType, preferredDate: job.appointment.preferredDate, preferredTime: job.appointment.preferredTime, status: job.appointment.status, problemDescription: job.appointment.problemDescription || '' } : null,
       assignedTechnician: req.user.name || 'Technician',
+      currentTechnicianId: String(req.user._id),
       inspection: job.inspection || { findings: '', diagnosis: '', notes: '', issues: [], recommendedRepairs: [], startedAt: null, completedAt: null },
+      diagnosticReport: job.diagnosticReport?.result ? job.diagnosticReport : null,
       repairNotes: (job.repairNotes || []).map(note => ({ id: String(note._id), note: note.note, createdAt: note.createdAt, technician: String(note.technician || '') })),
       tasks: (job.tasks || []).map(task => ({ id: String(task._id), title: task.title, status: task.status, notes: task.notes || '', completedAt: task.completedAt || null })),
-      replacedParts: (job.replacedParts || []).map(part => ({ id: String(part._id), name: part.name, partNumber: part.partNumber || '', quantity: part.quantity, unitCost: part.unitCost, replacedAt: part.replacedAt })),
-      labourEntries: (job.labourEntries || []).map(entry => ({ id: String(entry._id), description: entry.description || 'Repair labour', minutes: entry.minutes, recordedAt: entry.recordedAt })),
+      replacedParts: (job.replacedParts || []).map(part => ({ id: String(part._id), name: part.name, partNumber: part.partNumber || '', quantity: part.quantity, unitCost: part.unitCost, totalCost: (Number(part.quantity) || 0) * (Number(part.unitCost) || 0), replacedAt: part.replacedAt })),
+      partsCost: (job.replacedParts || []).reduce((sum, part) => sum + (Number(part.quantity) || 0) * (Number(part.unitCost) || 0), 0),
+      labourEntries: (job.labourEntries || []).map(entry => ({ id: String(entry._id), description: entry.description || 'Repair labour', labourType: entry.labourType || 'Repair', minutes: entry.minutes, ratePerHour: entry.ratePerHour || 0, charge: Math.round((entry.minutes / 60) * (entry.ratePerHour || 0) * 100) / 100, technician: String(entry.technician || ''), startedAt: entry.startedAt || null, endedAt: entry.endedAt || null, recordedAt: entry.recordedAt })),
+      activeLabourTimer: job.activeLabourTimer?.startedAt ? { description: job.activeLabourTimer.description || 'Repair labour', labourType: job.activeLabourTimer.labourType || 'Repair', ratePerHour: job.activeLabourTimer.ratePerHour || 0, technician: String(job.activeLabourTimer.technician || ''), startedAt: job.activeLabourTimer.startedAt } : null,
+      labourMinutes: (job.labourEntries || []).reduce((sum, entry) => sum + (Number(entry.minutes) || 0), 0),
+      labourCost: Math.round((job.labourEntries || []).reduce((sum, entry) => sum + ((Number(entry.minutes) || 0) / 60) * (Number(entry.ratePerHour) || 0), 0) * 100) / 100,
       photos: photos.map(photo => ({ id: String(photo._id), filename: photo.filename, contentType: photo.contentType, category: photo.category || 'Job', createdAt: photo.createdAt })),
-      additionalRepairs: (job.additionalRepairs || []).map(repair => ({ id: String(repair._id), description: repair.description, status: repair.status || 'Pending', estimatedCost: repair.estimatedCost, requestedAt: repair.requestedAt })),
+      additionalRepairs: (job.additionalRepairs || []).map(repair => ({ id: String(repair._id), description: repair.description, technicianExplanation: repair.technicianExplanation || '', parts: (repair.parts || []).map(part => ({ name: part.name, quantity: part.quantity, unitCost: part.unitCost, totalCost: part.totalCost })), labourCost: repair.labourCost ?? null, estimatedCost: repair.estimatedCost, photos: repair.photos || [], status: repair.status || 'Pending', relatedTask: String(repair.relatedTask || ''), customerComment: repair.customerComment || '', decisionAt: repair.decisionAt || null, requestedAt: repair.requestedAt })),
       timeline: (job.timeline || []).map(event => ({ status: event.status, timestamp: event.timestamp, notes: event.notes || '' })),
     } });
   } catch { res.status(503).json({ message: 'Unable to load this service job. Please try again.' }); }

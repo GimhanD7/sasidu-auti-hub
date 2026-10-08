@@ -42,7 +42,23 @@ export default function TechnicianJobDetails() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [labourHours, setLabourHours] = useState('');
+  const [timerNow, setTimerNow] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState('');
+  const [partSearch, setPartSearch] = useState('');
+  const [partSuggestions, setPartSuggestions] = useState([]);
+  const [partForm, setPartForm] = useState({ name: '', partNumber: '', quantity: '1', unitCost: '' });
+  const [additionalParts, setAdditionalParts] = useState([{ name: '', quantity: '1', unitCost: '' }]);
+  const [additionalPhotoIds, setAdditionalPhotoIds] = useState([]);
+  const [additionalLabourCost, setAdditionalLabourCost] = useState('0');
+  const [customerStatusUpdate, setCustomerStatusUpdate] = useState('');
+  const activeTimerStartedAt = result?.job?.activeLabourTimer?.startedAt;
+
+  useEffect(() => {
+    if (!activeTimerStartedAt) return undefined;
+    const interval = window.setInterval(() => setTimerNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [activeTimerStartedAt]);
 
   const loadJob = useCallback(async signal => {
     const { data } = await api.get(`/auth/technician/jobs/${jobId}`, { signal });
@@ -64,6 +80,15 @@ export default function TechnicianJobDetails() {
     });
     return () => controller.abort();
   }, [jobId, retry, loadJob]);
+
+  useEffect(() => {
+    if (partSearch.trim().length < 2) return undefined;
+    const controller = new AbortController();
+    const timer = setTimeout(() => api.get('/auth/technician/parts', { params: { search: partSearch }, signal: controller.signal })
+      .then(({ data }) => { if (!controller.signal.aborted) setPartSuggestions(data.parts || []); })
+      .catch(() => { if (!controller.signal.aborted) setPartSuggestions([]); }), 200);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [partSearch]);
 
   async function updateCard(action, payload = {}) {
     if (busy) return false;
@@ -91,6 +116,7 @@ export default function TechnicianJobDetails() {
     try {
       const photo = await preparePhoto(file);
       const { data } = await api.post(`/auth/technician/jobs/${jobId}/photos`, { ...photo, category }, { timeout: 30000 });
+      if (category === 'RepairEvidence') setAdditionalPhotoIds(ids => [...ids, data.photo.id].slice(0, 3));
       setNotice(`${data.photo.filename} uploaded.`);
       setResult({ jobId, job: await loadJob() });
     } catch (requestError) { setError(requestError.response?.data?.message || requestError.message || 'Unable to upload this photo.'); }
@@ -104,6 +130,8 @@ export default function TechnicianJobDetails() {
   const vehicleLabel = job.vehicle ? `${job.vehicle.year ? `${job.vehicle.year} ` : ''}${job.vehicle.make} ${job.vehicle.model}${job.vehicle.registrationNumber ? ` · ${job.vehicle.registrationNumber}` : ''}` : 'Vehicle details unavailable';
   const nextStatus = { Inspecting: 'In Progress', 'In Progress': 'Final Test', 'Final Test': 'Ready' }[job.status];
   const pendingApproval = job.additionalRepairs?.some(repair => repair.status === 'Pending');
+  const visiblePartSuggestions = partSearch.trim().length >= 2 ? partSuggestions : [];
+  const activeLabourTimer = job.activeLabourTimer;
 
   return <main className="technician-jobs-page technician-job-card-page">
     <Link className="technician-back-link" to="/technician/jobs">← Back to My Jobs</Link>
@@ -144,6 +172,21 @@ export default function TechnicianJobDetails() {
       {job.photos?.some(photo => photo.category === 'Inspection') ? <div className="technician-photo-grid">{job.photos.filter(photo => photo.category === 'Inspection').map(photo => <figure key={photo.id}><img src={imageUrl(job.id, photo.id)} alt={photo.filename} loading="lazy" /><figcaption>{photo.filename}<small>{dateTime(photo.createdAt)}</small></figcaption></figure>)}</div> : <p className="technician-card-empty">No inspection images attached.</p>}
     </section>
 
+    <section className="section-card technician-card-section"><header><div><h2>Diagnostic report</h2><p>Record the fault, issue category, recommended action, severity, and estimated repair time.</p></div>{job.diagnosticReport?.updatedAt && <span className="technician-card-complete">Updated {dateTime(job.diagnosticReport.updatedAt)}</span>}</header>
+      <form onSubmit={event => submitForm(event, 'diagnosticReport', form => ({
+        result: form.get('result'), issueCategory: form.get('issueCategory'), faultDescription: form.get('faultDescription'),
+        recommendedAction: form.get('recommendedAction'), severity: form.get('severity'), estimatedRepairHours: form.get('estimatedRepairHours'),
+      }))}>
+        <label>Diagnostic result<textarea name="result" required maxLength={5000} rows={3} defaultValue={job.diagnosticReport?.result || job.inspection?.diagnosis || ''} /></label>
+        <label>Issue category<select name="issueCategory" defaultValue={job.diagnosticReport?.issueCategory || 'Other'}>{['Engine', 'Transmission', 'Brakes', 'Electrical', 'Suspension', 'Cooling', 'Exhaust', 'Tyres', 'Body', 'Other'].map(category => <option key={category}>{category}</option>)}</select></label>
+        <label>Fault description<textarea name="faultDescription" required maxLength={5000} rows={3} defaultValue={job.diagnosticReport?.faultDescription || job.inspection?.findings || ''} /></label>
+        <label>Recommended action<textarea name="recommendedAction" required maxLength={5000} rows={3} defaultValue={job.diagnosticReport?.recommendedAction || (job.inspection?.recommendedRepairs || []).join('\n')} /></label>
+        <label>Severity<select name="severity" defaultValue={job.diagnosticReport?.severity || 'Medium'}>{['Low', 'Medium', 'High', 'Critical'].map(severity => <option key={severity}>{severity}</option>)}</select></label>
+        <label>Estimated repair time (hours)<input name="estimatedRepairHours" type="number" min="0.02" max="168" step="0.01" required defaultValue={job.diagnosticReport?.estimatedRepairMinutes ? (job.diagnosticReport.estimatedRepairMinutes / 60).toFixed(2) : ''} /></label>
+        <button type="submit" disabled={busy}>{busy ? 'Saving…' : job.diagnosticReport?.updatedAt ? 'Update diagnostic report' : 'Save diagnostic report'}</button>
+      </form>
+    </section>
+
     <section className="section-card technician-card-section"><header><div><h2>Repair notes</h2><p>Notes are saved with your technician account and timestamp.</p></div></header>
       <form className="technician-card-inline-form" onSubmit={event => submitForm(event, 'repairNote', form => ({ note: form.get('note') }))}><label>Add a repair note<textarea name="note" required maxLength={2000} rows={3} /></label><button type="submit" disabled={busy}>Add note</button></form>
       {job.repairNotes?.length > 0 && <ul className="technician-card-note-list">{[...job.repairNotes].reverse().map(note => <li key={note.id}><p>{note.note}</p><small>{dateTime(note.createdAt)}</small></li>)}</ul>}
@@ -151,17 +194,30 @@ export default function TechnicianJobDetails() {
 
     <section className="section-card technician-card-section"><header><div><h2>Repair tasks</h2><p>Track the work required to complete this job.</p></div><span>{job.tasks?.filter(task => task.status === 'Complete').length || 0} / {job.tasks?.length || 0} complete</span></header>
       <form className="technician-card-inline-form" onSubmit={event => submitForm(event, 'taskAdd', form => ({ title: form.get('title'), notes: form.get('notes') }))}><label>New task<input name="title" required maxLength={200} /></label><label>Notes<input name="notes" maxLength={1000} /></label><button type="submit" disabled={busy}>Add task</button></form>
-      {job.tasks?.length ? <div className="technician-card-task-list">{job.tasks.map(task => <article key={task.id}><div><strong>{task.title}</strong>{task.notes && <p>{task.notes}</p>}{task.completedAt && <small>Completed {dateTime(task.completedAt)}</small>}</div><label className="sr-only" htmlFor={`task-${task.id}`}>Status for {task.title}</label><select id={`task-${task.id}`} value={task.status} disabled={busy} onChange={event => updateCard('taskUpdate', { taskId: task.id, status: event.target.value })}><option>Pending</option><option>In Progress</option><option>Complete</option></select></article>)}</div> : <p className="technician-card-empty">No repair tasks added yet.</p>}
+      {job.tasks?.length ? <div className="technician-card-task-list">{job.tasks.map(task => <article key={task.id}>
+        {editingTaskId === task.id ? <form className="technician-task-edit-form" onSubmit={async event => { event.preventDefault(); const form = new FormData(event.currentTarget); if (await updateCard('taskUpdate', { taskId: task.id, status: task.status, title: form.get('title'), notes: form.get('notes') })) setEditingTaskId(''); }}>
+          <label>Task title<input name="title" required maxLength={200} defaultValue={task.title} /></label><label>Task notes<textarea name="notes" maxLength={1000} rows={2} defaultValue={task.notes || ''} /></label><div><button type="submit" disabled={busy}>Save task</button><button type="button" className="technician-task-cancel" disabled={busy} onClick={() => setEditingTaskId('')}>Cancel</button></div>
+        </form> : <div className="technician-task-summary"><strong>{task.title}</strong>{task.notes && <p>{task.notes}</p>}{task.completedAt && <small>Completed {dateTime(task.completedAt)}</small>}<button type="button" disabled={busy} onClick={() => setEditingTaskId(task.id)}>Edit task</button></div>}
+        <div className="technician-task-status"><label className="sr-only" htmlFor={`task-${task.id}`}>Status for {task.title}</label><select id={`task-${task.id}`} value={task.status} disabled={busy || task.status === 'Cancelled'} onChange={event => updateCard('taskUpdate', { taskId: task.id, status: event.target.value })}><option>Pending</option><option>In Progress</option><option>Complete</option><option>Cancelled</option></select></div>
+      </article>)}</div> : <p className="technician-card-empty">No repair tasks added yet.</p>}
     </section>
 
     <section className="section-card technician-card-section"><header><div><h2>Parts used</h2><p>Record each replaced part and its quantity and unit price.</p></div></header>
-      <form className="technician-card-inline-form parts-form" onSubmit={event => submitForm(event, 'partAdd', form => ({ name: form.get('name'), partNumber: form.get('partNumber'), quantity: form.get('quantity'), unitCost: form.get('unitCost') }))}><label>Part name<input name="name" required maxLength={200} /></label><label>Part number<input name="partNumber" maxLength={100} /></label><label>Quantity<input name="quantity" type="number" min="0.01" step="any" required /></label><label>Unit price<input name="unitCost" type="number" min="0" step="0.01" required /></label><button type="submit" disabled={busy}>Add part</button></form>
-      {job.replacedParts?.length ? <div className="technician-card-table-wrap"><table><thead><tr><th>Part</th><th>Number</th><th>Qty</th><th>Unit price</th><th>Recorded</th></tr></thead><tbody>{job.replacedParts.map(part => <tr key={part.id}><td>{part.name}</td><td>{part.partNumber || '—'}</td><td>{part.quantity}</td><td>{Number(part.unitCost || 0).toFixed(2)}</td><td>{dateTime(part.replacedAt)}</td></tr>)}</tbody></table></div> : <p className="technician-card-empty">No parts recorded yet.</p>}
+      <form className="technician-part-form" onSubmit={async event => { event.preventDefault(); if (await updateCard('partAdd', partForm)) { setPartForm({ name: '', partNumber: '', quantity: '1', unitCost: '' }); setPartSearch(''); setPartSuggestions([]); } }}>
+        <div className="technician-part-search"><label>Search previously used parts<input type="search" value={partSearch} maxLength={80} placeholder="Part name or part number" onChange={event => { setPartSearch(event.target.value); setPartSuggestions([]); }} /></label>
+          {visiblePartSuggestions.length > 0 && <div className="technician-part-suggestions" role="listbox" aria-label="Matching previously used parts">{visiblePartSuggestions.map(part => <button type="button" role="option" aria-selected="false" key={part.id} onClick={() => { setPartForm(current => ({ ...current, name: part.name, partNumber: part.partNumber, unitCost: String(part.unitPrice) })); setPartSearch(part.name); setPartSuggestions([]); }}><strong>{part.name}</strong><span>{part.partNumber || 'No part number'} · Unit price {Number(part.unitPrice || 0).toFixed(2)}</span></button>)}</div>}
+          {partSearch.trim().length >= 2 && partSuggestions.length === 0 && <small className="technician-part-search-hint">No previous match. Enter the part details manually below.</small>}
+        </div>
+        <div className="technician-part-fields"><label>Part name<input required maxLength={200} value={partForm.name} onChange={event => setPartForm(current => ({ ...current, name: event.target.value }))} /></label><label>Part number<input maxLength={100} value={partForm.partNumber} onChange={event => setPartForm(current => ({ ...current, partNumber: event.target.value }))} /></label><label>Quantity<input type="number" min="0.01" step="any" required value={partForm.quantity} onChange={event => setPartForm(current => ({ ...current, quantity: event.target.value }))} /></label><label>Unit price<input type="number" min="0" step="0.01" required value={partForm.unitCost} onChange={event => setPartForm(current => ({ ...current, unitCost: event.target.value }))} /></label></div>
+        <button type="submit" disabled={busy}>Add used part</button>
+      </form>
+      {job.replacedParts?.length ? <div className="technician-card-table-wrap"><table><thead><tr><th>Part</th><th>Number</th><th>Qty</th><th>Unit price</th><th>Line total</th><th>Recorded</th><th /></tr></thead><tbody>{job.replacedParts.map(part => <tr key={part.id}><td>{part.name}</td><td>{part.partNumber || '—'}</td><td>{part.quantity}</td><td>{Number(part.unitCost || 0).toFixed(2)}</td><td>{Number(part.totalCost || 0).toFixed(2)}</td><td>{dateTime(part.replacedAt)}</td><td><button className="technician-part-remove" type="button" disabled={busy} onClick={() => updateCard('partRemove', { partId: part.id })}>Remove</button></td></tr>)}<tr className="technician-parts-total"><th colSpan="4">Parts total</th><td>{Number(job.partsCost || 0).toFixed(2)}</td><td colSpan="2" /></tr></tbody></table></div> : <p className="technician-card-empty">No parts recorded yet.</p>}
     </section>
 
-    <section className="section-card technician-card-section"><header><div><h2>Labour time</h2><p>Record the hours spent on this service job.</p></div><strong>{((job.labourEntries || []).reduce((sum, entry) => sum + entry.minutes, 0) / 60).toFixed(2)} hours total</strong></header>
-      <form className="technician-card-inline-form" onSubmit={async event => { event.preventDefault(); const description = event.currentTarget.description.value; if (await updateCard('labourAdd', { description, hours: labourHours })) setLabourHours(''); }}><label>Work description<input name="description" maxLength={200} placeholder="Repair labour" /></label><label>Hours<input type="number" min="0.01" max="24" step="0.01" required value={labourHours} onChange={event => setLabourHours(event.target.value)} /></label><button type="submit" disabled={busy}>Record time</button></form>
-      {job.labourEntries?.length > 0 && <ul className="technician-card-note-list">{[...job.labourEntries].reverse().map(entry => <li key={entry.id}><p><strong>{entry.description}</strong> · {(entry.minutes / 60).toFixed(2)} hours</p><small>{dateTime(entry.recordedAt)}</small></li>)}</ul>}
+    <section className="section-card technician-card-section"><header><div><h2>Labour tracking</h2><p>Track work with a timer or enter time manually. Charges use each entry’s hourly rate.</p></div><strong>{((job.labourMinutes || 0) / 60).toFixed(2)} hours · {Number(job.labourCost || 0).toFixed(2)} total</strong></header>
+      {activeLabourTimer ? <div className="technician-inspection-time"><strong>{activeLabourTimer.labourType}: {activeLabourTimer.description}</strong><span> · {Math.floor(Math.max(0, timerNow - new Date(activeLabourTimer.startedAt).getTime()) / 60000)} min elapsed · Rate {Number(activeLabourTimer.ratePerHour || 0).toFixed(2)}/hour</span><button type="button" disabled={busy || activeLabourTimer.technician !== job.currentTechnicianId} onClick={() => updateCard('labourTimerStop')}>Stop timer</button></div> : <form className="technician-card-inline-form" onSubmit={event => { event.preventDefault(); const form = new FormData(event.currentTarget); updateCard('labourTimerStart', { description: form.get('description'), labourType: form.get('labourType'), ratePerHour: form.get('ratePerHour') }); }}><label>Timer work<input name="description" maxLength={200} placeholder="Repair labour" /></label><label>Labour type<select name="labourType"><option>Repair</option><option>Inspection</option><option>Diagnostics</option><option>Testing</option><option>Other</option></select></label><label>Hourly rate<input name="ratePerHour" type="number" min="0" step="0.01" defaultValue="0" required /></label><button type="submit" disabled={busy}>Start timer</button></form>}
+      <form className="technician-card-inline-form" onSubmit={async event => { event.preventDefault(); const form = new FormData(event.currentTarget); if (await updateCard('labourAdd', { description: form.get('description'), labourType: form.get('labourType'), hours: labourHours, ratePerHour: form.get('ratePerHour') })) { setLabourHours(''); event.currentTarget.reset(); } }}><label>Work description<input name="description" maxLength={200} placeholder="Repair labour" /></label><label>Labour type<select name="labourType"><option>Repair</option><option>Inspection</option><option>Diagnostics</option><option>Testing</option><option>Other</option></select></label><label>Hours<input type="number" min="0.01" max="24" step="0.01" required value={labourHours} onChange={event => setLabourHours(event.target.value)} /></label><label>Hourly rate<input name="ratePerHour" type="number" min="0" step="0.01" defaultValue="0" required /></label><button type="submit" disabled={busy}>Record manual time</button></form>
+      {job.labourEntries?.length > 0 && <ul className="technician-card-note-list">{[...job.labourEntries].reverse().map(entry => <li key={entry.id}><p><strong>{entry.labourType} · {entry.description}</strong> · {(entry.minutes / 60).toFixed(2)} hours · {Number(entry.charge || 0).toFixed(2)}</p><small>{entry.technician === job.currentTechnicianId ? 'You' : 'Technician'} · {dateTime(entry.recordedAt)}{entry.startedAt && entry.endedAt ? ` · ${dateTime(entry.startedAt)}–${dateTime(entry.endedAt)}` : ''} · {Number(entry.ratePerHour || 0).toFixed(2)}/hour</small></li>)}</ul>}
     </section>
 
     <section className="section-card technician-card-section"><header><div><h2>Job photos</h2><p>Upload JPEG, PNG, or WebP photos. Images are resized and limited to 1.4 MB.</p></div><span>{job.photos?.length || 0} / 12 total</span></header>
@@ -170,16 +226,20 @@ export default function TechnicianJobDetails() {
     </section>
 
     <section className="section-card technician-card-section"><header><div><h2>Customer approval</h2><p>Request approval before performing additional repair work.</p></div></header>
-      {job.additionalRepairs?.length > 0 && <ul className="technician-card-note-list">{[...job.additionalRepairs].reverse().map(repair => <li key={repair.id}><p><strong>{repair.description}</strong> · {repair.status}{repair.estimatedCost != null ? ` · Estimated ${Number(repair.estimatedCost).toFixed(2)}` : ''}</p><small>{dateTime(repair.requestedAt)}</small></li>)}</ul>}
-      <form className="technician-card-approval-form" onSubmit={event => submitForm(event, 'approvalRequest', form => ({ description: form.get('description'), explanation: form.get('explanation'), estimatedCost: form.get('estimatedCost'), labourCost: form.get('labourCost') }))}>
-        <label>Additional repair<input name="description" required maxLength={2000} /></label><label>Reason for repair<textarea name="explanation" maxLength={3000} rows={3} /></label><label>Estimated parts and repair cost<input name="estimatedCost" type="number" min="0" step="0.01" required /></label><label>Labour estimate<input name="labourCost" type="number" min="0" step="0.01" defaultValue="0" /></label>
-        <button type="submit" disabled={busy || pendingApproval || !['Inspecting', 'In Progress'].includes(job.status)}>{pendingApproval ? 'Approval pending' : 'Request customer approval'}</button>
+      {job.additionalRepairs?.length > 0 && <ul className="technician-card-note-list">{[...job.additionalRepairs].reverse().map(repair => <li key={repair.id}><p><strong>{repair.description}</strong> · {repair.status}{repair.estimatedCost != null ? ` · Estimated ${Number(repair.estimatedCost).toFixed(2)}` : ''}</p>{repair.technicianExplanation && <p>{repair.technicianExplanation}</p>}{repair.customerComment && <p><strong>Customer comment:</strong> {repair.customerComment}</p>}<small>{repair.status === 'Pending' ? 'Awaiting customer decision' : `${repair.status} ${dateTime(repair.decisionAt)}`} · Requested {dateTime(repair.requestedAt)}{repair.relatedTask ? ` · Related task ${job.tasks?.find(task => task.id === repair.relatedTask)?.title || ''}` : ''}</small></li>)}</ul>}
+      <form className="technician-card-approval-form" onSubmit={async event => { event.preventDefault(); const form = new FormData(event.currentTarget); if (await updateCard('approvalRequest', { description: form.get('description'), explanation: form.get('explanation'), relatedTaskId: form.get('relatedTaskId'), parts: additionalParts.filter(part => part.name.trim()), labourCost: form.get('labourCost'), photoIds: additionalPhotoIds })) { event.currentTarget.reset(); setAdditionalParts([{ name: '', quantity: '1', unitCost: '' }]); setAdditionalPhotoIds([]); setAdditionalLabourCost('0'); } }}>
+        <label>Additional problem<input name="description" required maxLength={2000} /></label><label>Repair description and reason<textarea name="explanation" required maxLength="3000" rows={3} placeholder="Describe the issue found and why this repair is needed." /></label>
+        <div className="technician-additional-parts"><strong>Estimated parts</strong>{additionalParts.map((part, index) => <div className="technician-additional-part-row" key={index}><label>Part<input value={part.name} maxLength={200} onChange={event => setAdditionalParts(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, name: event.target.value } : row))} /></label><label>Qty<input type="number" min="0.01" step="any" value={part.quantity} onChange={event => setAdditionalParts(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, quantity: event.target.value } : row))} /></label><label>Unit cost<input type="number" min="0" step="0.01" value={part.unitCost} onChange={event => setAdditionalParts(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, unitCost: event.target.value } : row))} /></label><button type="button" className="technician-task-cancel" disabled={additionalParts.length === 1} onClick={() => setAdditionalParts(rows => rows.filter((_, rowIndex) => rowIndex !== index))}>Remove</button></div>)}<button type="button" disabled={additionalParts.length >= 20} onClick={() => setAdditionalParts(rows => [...rows, { name: '', quantity: '1', unitCost: '' }])}>Add part</button></div>
+        <label>Related repair task<select name="relatedTaskId" defaultValue=""><option value="">No related task</option>{(job.tasks || []).filter(task => task.status !== 'Cancelled').map(task => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label><label>Estimated labour cost<input name="labourCost" type="number" min="0" step="0.01" value={additionalLabourCost} onChange={event => setAdditionalLabourCost(event.target.value)} required /></label>
+        <strong>Estimated additional total: {(additionalParts.reduce((sum, part) => sum + (Number(part.quantity) || 0) * (Number(part.unitCost) || 0), 0) + (Number(additionalLabourCost) || 0)).toFixed(2)}</strong>
+        <div className="technician-additional-photos"><label className="technician-photo-picker">{photoBusy ? 'Uploading…' : `Add supporting image (${additionalPhotoIds.length}/3)`}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || additionalPhotoIds.length >= 3 || (job.photos?.length || 0) >= 12} onChange={event => uploadPhoto(event, 'RepairEvidence')} /></label><small>Upload up to 3 images. They will be shared with the customer for this approval request.</small></div>
+        <button type="submit" disabled={busy || photoBusy || pendingApproval || !['Inspecting', 'In Progress'].includes(job.status)}>{pendingApproval ? 'Approval pending' : 'Send for customer approval'}</button>
       </form>
     </section>
 
     <section className="section-card technician-card-section"><header><div><h2>Update job status</h2><p>Job status changes are added to the service history.</p></div></header>
-      {nextStatus ? <button type="button" disabled={busy || (nextStatus === 'Final Test' && job.tasks?.some(task => task.status !== 'Complete'))} onClick={() => updateCard('status', { status: nextStatus })}>{busy ? 'Saving…' : `Move to ${nextStatus}`}</button> : <p className="technician-card-empty">{job.status === 'Waiting for Approval' ? 'This job will return to repair when the customer responds.' : 'This job is at its final workflow stage.'}</p>}
-      {nextStatus === 'Final Test' && job.tasks?.some(task => task.status !== 'Complete') && <p className="technician-card-hint">Complete all repair tasks before final testing.</p>}
+      {nextStatus ? <form className="technician-status-update-form" onSubmit={async event => { event.preventDefault(); if (await updateCard('status', { status: nextStatus, notes: customerStatusUpdate })) setCustomerStatusUpdate(''); }}><label>Update for customer<textarea required maxLength={1000} rows={3} value={customerStatusUpdate} onChange={event => setCustomerStatusUpdate(event.target.value)} placeholder="Share a brief update that will appear in repair tracking and the customer notification." /></label><button type="submit" disabled={busy || !customerStatusUpdate.trim() || (nextStatus === 'Final Test' && job.tasks?.some(task => !['Complete', 'Cancelled'].includes(task.status)))}>{busy ? 'Saving…' : `Move to ${nextStatus} and notify customer`}</button></form> : <p className="technician-card-empty">{job.status === 'Waiting for Approval' ? 'This job will return to repair when the customer responds.' : 'This job is at its final workflow stage.'}</p>}
+      {nextStatus === 'Final Test' && job.tasks?.some(task => !['Complete', 'Cancelled'].includes(task.status)) && <p className="technician-card-hint">Complete or cancel all repair tasks before final testing.</p>}
     </section>
 
     {job.timeline?.length > 0 && <section className="section-card technician-card-section"><header><h2>Job history</h2></header><ol className="technician-job-timeline">{[...job.timeline].reverse().slice(0, 10).map((event, index) => <li key={`${event.status}-${index}`}><strong>{event.status}</strong><span>{dateTime(event.timestamp)}</span>{event.notes && <p>{event.notes}</p>}</li>)}</ol></section>}
