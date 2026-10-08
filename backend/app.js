@@ -8,6 +8,10 @@ import customerRepairApprovalRoutes from './routes/customerRepairApprovalRoutes.
 import serviceMessageRoutes from './routes/serviceMessageRoutes.js';
 import customerNotificationRoutes from './routes/customerNotificationRoutes.js';
 import customerServiceHistoryRoutes from './routes/customerServiceHistoryRoutes.js';
+import customerInvoiceRoutes from './routes/customerInvoiceRoutes.js';
+import customerPaymentRoutes from './routes/customerPaymentRoutes.js';
+import financePaymentRoutes from './routes/financePaymentRoutes.js';
+import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -28,6 +32,10 @@ export function createApp() {
   app.use('/api/service-messages', serviceMessageRoutes);
   app.use('/api/customer-notifications', customerNotificationRoutes);
   app.use('/api/service-history', customerServiceHistoryRoutes);
+  app.use('/api/customer-invoices', customerInvoiceRoutes);
+  app.use('/api/customer-payments', customerPaymentRoutes);
+  app.use('/api/finance/payments', financePaymentRoutes);
+  app.use('/api/admin', adminDashboardRoutes);
   app.get('/', (req, res) => res.send('Vehicle Service & Repair Tracking System API is running...'));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);

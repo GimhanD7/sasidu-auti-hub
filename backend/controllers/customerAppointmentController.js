@@ -3,8 +3,8 @@ import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import Vehicle from '../models/Vehicle.js';
 import User from '../models/User.js';
+import { getActiveServiceTypeNames } from './adminServiceTypeController.js';
 
-const SERVICE_TYPES = ['Full Service', 'Oil Change', 'Brake Service', 'Engine Diagnosis', 'Electrical Diagnosis', 'General Repair'];
 const DEFAULT_TIMES = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'];
 const ACTIVE_STATUSES = ['Pending', 'Confirmed', 'Checked In', 'In Service'];
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
@@ -35,8 +35,11 @@ function dateKey(date) { return date.toISOString().slice(0, 10); }
 function slotKey(date, time) { return `${date}|${time}`; }
 function isFutureSlot(date, time) { return new Date(`${date}T${time}:00`).getTime() > Date.now(); }
 
-export function getAppointmentOptions(req, res) {
-  res.set('Cache-Control', 'private, no-store').json({ serviceTypes: SERVICE_TYPES, times: availableTimes(), businessDays: [...businessWeekdays()], daysAhead: 30 });
+export async function getAppointmentOptions(req, res) {
+  try {
+    const serviceTypes = await getActiveServiceTypeNames();
+    res.set('Cache-Control', 'private, no-store').json({ serviceTypes, times: availableTimes(), businessDays: [...businessWeekdays()], daysAhead: 30 });
+  } catch { res.status(503).json({ message: 'Unable to load appointment options.' }); }
 }
 
 function appointmentView(appointment) {
@@ -197,7 +200,10 @@ export async function createCustomerAppointment(req, res) {
   const { vehicleId, serviceType, preferredDate, preferredTime, problemDescription, customerNotes = '' } = req.body || {};
   const day = parseDay(preferredDate);
   if (!mongoose.isValidObjectId(vehicleId)) return res.status(400).json({ message: 'Select one of your registered vehicles.' });
-  if (!SERVICE_TYPES.includes(serviceType)) return res.status(400).json({ message: 'Choose a valid service type.' });
+  let serviceTypeNames;
+  try { serviceTypeNames = await getActiveServiceTypeNames(); }
+  catch { return res.status(503).json({ message: 'Unable to validate the selected service type.' }); }
+  if (!serviceTypeNames.includes(serviceType)) return res.status(400).json({ message: 'Choose a valid service type.' });
   if (!day || !TIME_PATTERN.test(preferredTime || '') || !availableTimes().includes(preferredTime)) return res.status(400).json({ message: 'Choose an available date and time slot.' });
   if (typeof problemDescription !== 'string' || !problemDescription.trim() || problemDescription.trim().length > 1000) {
     return res.status(400).json({ message: 'Describe the service problem in 1 to 1,000 characters.' });

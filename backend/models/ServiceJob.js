@@ -3,15 +3,22 @@ import Notification from './Notification.js';
 
 const serviceJobSchema = new mongoose.Schema({
   serviceNumber: { type: String, unique: true, sparse: true, default: function serviceNumberFromId() { return `JOB-${String(this._id).slice(-8).toUpperCase()}`; } },
-  appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
+  appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment', unique: true, sparse: true },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
   technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  technicianAssignments: [{
+    technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedAt: { type: Date, default: Date.now },
+    action: { type: String, enum: ['Assigned', 'Reassigned', 'Removed'] },
+  }],
   status: {
     type: String,
     enum: ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test', 'Ready'],
     default: 'Inspecting'
   },
+  customerComplaint: { type: String, trim: true, maxlength: 1000 },
   priority: { type: String, enum: ['Low', 'Normal', 'High', 'Urgent'], default: 'Normal' },
   expectedCompletionTime: { type: Date },
   mileageAtService: { type: Number, min: 0 },

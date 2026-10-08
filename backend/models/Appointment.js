@@ -11,6 +11,7 @@ const appointmentSchema = new mongoose.Schema({
   preferredTime: { type: String, required: true },
   problemDescription: { type: String, trim: true, maxlength: 1000 },
   customerNotes: { type: String, trim: true, maxlength: 1000 },
+  internalNotes: { type: String, trim: true, maxlength: 1000, select: false },
   rescheduleRequest: {
     preferredDate: Date,
     preferredTime: String,

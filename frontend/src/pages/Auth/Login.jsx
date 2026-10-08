@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/useAuth';
 import { dashboardForRole } from '../../auth/roles';
 import AuthLayout from './AuthLayout';
 
-const Login = () => {
+const Login = ({ adminOnly = false }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -56,6 +56,7 @@ const Login = () => {
         email: email.trim(),
         password,
         remember,
+        adminOnly,
       });
       navigate(dashboardForRole(user.role), { replace: true });
     } catch (err) {
@@ -67,13 +68,13 @@ const Login = () => {
 
   return (
     <AuthLayout 
-      title={['SMART VEHICLE', 'SERVICE.', 'COMPLETE TRAN', 'SPARENCY.']}
-      subtitle="Empowering workshops with high-performance digital tools to streamline operations and build customer trust."
+      title={adminOnly ? ['WORKSHOP', 'ADMIN PORTAL.'] : ['SMART VEHICLE', 'SERVICE.', 'COMPLETE TRAN', 'SPARENCY.']}
+      subtitle={adminOnly ? 'Secure sign in for workshop administrators and service managers.' : 'Empowering workshops with high-performance digital tools to streamline operations and build customer trust.'}
       features={features}
     >
       <div className="form-header">
-        <h2>WELCOME BACK</h2>
-        <p>Sign in to continue to your workshop account</p>
+        <h2>{adminOnly ? 'ADMIN SIGN IN' : 'WELCOME BACK'}</h2>
+        <p>{adminOnly ? 'Use your administrator or service-manager account' : 'Sign in to continue to your workshop account'}</p>
       </div>
 
       {error && <div role="alert" style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{error}</div>}
@@ -147,7 +148,7 @@ const Login = () => {
         </div>
 
         <div className="form-footer">
-          New customer? <Link to="/signup">Create Account</Link>
+          {adminOnly ? <>Workshop user? <Link to="/login">Sign in here</Link></> : <>New customer? <Link to="/signup">Create Account</Link></>}
         </div>
       </form>
     </AuthLayout>

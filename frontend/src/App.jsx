@@ -11,13 +11,22 @@ import CustomerRepairApprovals from './pages/Customer/CustomerRepairApprovals';
 import ServiceMessages from './pages/Shared/ServiceMessages';
 import CustomerNotifications from './pages/Customer/CustomerNotifications';
 import CustomerServiceHistory from './pages/Customer/CustomerServiceHistory';
+import CustomerInvoices from './pages/Customer/CustomerInvoices';
+import CustomerPayments from './pages/Customer/CustomerPayments';
 import AdminLayout from './components/Layout/AdminLayout';
 import AdminDashboard from './pages/Admin/AdminDashboard';
+import AdminAppointments from './pages/Admin/AdminAppointments';
+import AdminCustomers from './pages/Admin/AdminCustomers';
+import AdminVehicles from './pages/Admin/AdminVehicles';
+import AdminServiceTypes from './pages/Admin/AdminServiceTypes';
+import AdminTechnicians from './pages/Admin/AdminTechnicians';
+import AdminAllocations from './pages/Admin/AdminAllocations';
 import AdminKanban from './pages/Admin/AdminKanban';
 import TechnicianLayout from './components/Layout/TechnicianLayout';
 import TechnicianDashboard from './pages/Technician/TechnicianDashboard';
 import FinanceLayout from './components/Layout/FinanceLayout';
 import FinanceDashboard from './pages/Finance/FinanceDashboard';
+import FinancePaymentReview from './pages/Finance/FinancePaymentReview';
 import './App.css';
 import { AuthProvider } from './auth/AuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
@@ -31,6 +40,7 @@ function App() {
         {/* Auth Routes */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin/login" element={<Login adminOnly />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<PasswordReset />} />
         <Route path="/reset-password" element={<PasswordReset reset />} />
@@ -50,7 +60,8 @@ function App() {
           <Route path="messages" element={<ServiceMessages />} />
           <Route path="notifications" element={<CustomerNotifications />} />
           <Route path="history" element={<CustomerServiceHistory />} />
-          <Route path="invoices" element={<div style={{padding: '2rem'}}>Invoices & Payments (Coming Soon)</div>} />
+          <Route path="invoices" element={<CustomerInvoices />} />
+          <Route path="payments" element={<CustomerPayments />} />
         </Route>
         </Route>
 
@@ -59,12 +70,14 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="appointments" element={<div style={{padding: '2rem'}}>Appointments & Calendar (Coming Soon)</div>} />
+          <Route path="appointments" element={<AdminAppointments />} />
           <Route path="kanban" element={<AdminKanban />} />
           <Route path="messages" element={<ServiceMessages />} />
-          <Route path="customers" element={<div style={{padding: '2rem'}}>Customer Management (Coming Soon)</div>} />
-          <Route path="technicians" element={<div style={{padding: '2rem'}}>Technician Management (Coming Soon)</div>} />
-          <Route path="services" element={<div style={{padding: '2rem'}}>Service Type Management (Coming Soon)</div>} />
+          <Route path="customers" element={<AdminCustomers />} />
+          <Route path="vehicles" element={<AdminVehicles />} />
+          <Route path="technicians" element={<AdminTechnicians />} />
+          <Route path="allocations" element={<AdminAllocations />} />
+          <Route path="services" element={<AdminServiceTypes />} />
         </Route>
         </Route>
         
@@ -85,7 +98,7 @@ function App() {
           <Route index element={<Navigate to="/finance/dashboard" replace />} />
           <Route path="dashboard" element={<FinanceDashboard />} />
           <Route path="invoices" element={<div style={{padding: '2rem'}}>Invoice Management (Coming Soon)</div>} />
-          <Route path="payments" element={<div style={{padding: '2rem'}}>Payment Processing (Coming Soon)</div>} />
+          <Route path="payments" element={<FinancePaymentReview />} />
           <Route path="reports" element={<div style={{padding: '2rem'}}>Revenue Reports (Coming Soon)</div>} />
         </Route>
         </Route>

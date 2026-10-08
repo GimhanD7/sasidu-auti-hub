@@ -200,157 +200,185 @@ Customer service history is restricted to the signed-in customer's vehicles and 
 
 ### 1.13 Customer Invoice
 
-- [ ] View invoice and invoice number
-- [ ] View service/job number
-- [ ] View parts and labour charges
-- [ ] View taxes and discounts
-- [ ] View total amount
-- [ ] View payment status
-- [ ] Download or print invoice
-- [ ] Proceed to payment
+- [x] View invoice and invoice number
+- [x] View service/job number
+- [x] View parts and labour charges
+- [x] View taxes and discounts
+- [x] View total amount
+- [x] View payment status
+- [x] Download or print invoice
+- [x] Proceed to payment
+
+Customers can access non-draft invoices scoped to their account, review job/vehicle information and charge breakdowns, and print or save an individual invoice as PDF. Outstanding invoices link to the payment flow route, which is completed in function 1.14. Invoice records now support optional itemized parts and labour lines while retaining aggregate totals for existing records. Production build, targeted lint, backend syntax and diff checks passed; connected invoice data was not verified.
 
 ### 1.14 Customer Payment
 
-- [ ] Select invoice
-- [ ] View amount due
-- [ ] Choose payment method
-- [ ] Make payment
-- [ ] Record transaction reference
-- [ ] Update invoice payment status
-- [ ] Show success/failure feedback
-- [ ] Generate and download receipt
+- [x] Select invoice
+- [x] View amount due
+- [x] Choose payment method
+- [x] Make payment
+- [x] Record transaction reference
+- [x] Update invoice payment status
+- [x] Show success/failure feedback
+- [x] Generate and download receipt
+
+Customers can submit the outstanding amount for a bank transfer or pay-at-workshop request, receive an acknowledgment, and download a receipt. Finance can confirm or reject submissions; confirmation updates the invoice and issues a final receipt/notification, while rejection leaves the invoice outstanding and gives the customer feedback. There is no configured card/payment gateway, so this version records off-platform payments and requires Finance verification rather than charging a card. Production build, targeted lint, backend syntax and diff checks passed; connected database and end-to-end payment review were not verified.
 
 
 ## 2. Appointment Scheduling & Technician Allocation
 
 ### 2.1 Admin Login
 
-- [ ] Admin authentication
-- [ ] Validate credentials
-- [ ] Identify admin/service-manager role
-- [ ] Secure session
-- [ ] Logout
-- [ ] Forgot/change password
-- [ ] Redirect to Admin Dashboard
+- [x] Admin authentication — dedicated `/admin/login` page and `/api/auth/admin/login` endpoint
+- [x] Validate credentials — same email/mobile and password checks as standard login
+- [x] Identify admin/service-manager role — backend accepts Admin (including legacy `admin`) only; other roles are rejected
+- [x] Secure session — successful login creates the existing secure, httpOnly session cookie
+- [x] Logout — existing shared logout invalidates the session
+- [x] Forgot/change password — shared forgot/reset password flow applies to admin accounts
+- [x] Redirect to Admin Dashboard — successful admin sign-in routes to `/admin/dashboard`
 
 ### 2.2 Admin Dashboard
 
-- [ ] View today's, pending and upcoming appointments
-- [ ] View active workshop jobs
-- [ ] View vehicles in workshop
-- [ ] View available and busy technicians
-- [ ] View jobs awaiting approval
-- [ ] View jobs in Final Test and Ready stages
-- [ ] View daily revenue summary
-- [ ] View recent workshop activity
-- [ ] KPI cards for appointments, Inspecting, In Progress, Final Test, Ready and technician availability
+- [x] View today's, pending and upcoming appointments
+- [x] View active workshop jobs
+- [x] View vehicles in workshop
+- [x] View available and busy technicians
+- [x] View jobs awaiting approval
+- [x] View jobs in Final Test and Ready stages
+- [x] View daily revenue summary
+- [x] View recent workshop activity
+- [x] KPI cards for appointments, Inspecting, In Progress, Final Test, Ready and technician availability
+
+The Admin dashboard now loads live, role-protected data from `/api/admin/dashboard`; technician availability and in-workshop vehicles are derived from active job assignments and job stages. Daily revenue sums Finance-confirmed payments for the current server-local day. Production build and backend syntax checks passed; targeted lint passed with one existing React effect-pattern warning. Connected database records were not verified.
 
 ### 2.3 Appointment Calendar
 
-- [ ] Daily, weekly and monthly calendar views
-- [ ] Search appointments
-- [ ] Filter by status, technician and date
-- [ ] View available slots
-- [ ] Identify overlapping bookings
-- [ ] View workshop capacity and booked time slots
+- [x] Daily, weekly and monthly calendar views
+- [x] Search appointments
+- [x] Filter by status, technician and date
+- [x] View available slots
+- [x] Identify overlapping bookings
+- [x] View workshop capacity and booked time slots
+
+The Admin appointment calendar now queries bookings for the visible date range and provides day, week, and month views, free-text search, and status/technician filters. It shows configured time slots, booked and open capacity, and flags multiple active appointments assigned to the same date/time slot as conflicts. Production build, targeted lint, backend syntax, and diff checks passed; live database data was not verified.
 
 ### 2.4 Create Appointment
 
-- [ ] Select existing customer or add new customer
-- [ ] Select or add vehicle
-- [ ] Select service
-- [ ] Select date and time
-- [ ] Check slot availability
-- [ ] Enter customer complaint
-- [ ] Add internal notes
-- [ ] Confirm booking
-- [ ] Generate appointment ID
-- [ ] Notify customer
+- [x] Select existing customer or add new customer
+- [x] Select or add vehicle
+- [x] Select service
+- [x] Select date and time
+- [x] Check slot availability
+- [x] Enter customer complaint
+- [x] Add internal notes
+- [x] Confirm booking
+- [x] Generate appointment ID
+- [x] Notify customer
+
+Admins can create a booking from the calendar with an existing or new customer and vehicle. The server validates service, business date, configured time, and slot availability again on submit; it stores customer complaint and staff-only internal notes, generates an appointment number, and creates an in-app notification. For a newly created customer, an account setup email is sent when SMTP is configured. New-customer and vehicle records are cleaned up if the appointment save fails. Production build, targeted lint, backend syntax, and diff checks passed; connected database and mail delivery were not verified.
 
 ### 2.5 Manage Appointment
 
-- [ ] View appointment details
-- [ ] Confirm, edit, reschedule or cancel appointment
-- [ ] Change appointment status
-- [ ] Mark customer as arrived
-- [ ] Convert appointment into service job
-- [ ] Assign technician
+- [x] View appointment details
+- [x] Confirm, edit, reschedule or cancel appointment
+- [x] Change appointment status
+- [x] Mark customer as arrived
+- [x] Convert appointment into service job
+- [x] Assign technician
+
+Admins can open a booking to review customer contact details, vehicle identifiers, complaint, and staff-only notes; edit appointment details, confirm/cancel/change status, reschedule, mark arrival, and assign a technician. Customer reschedule requests are marked approved when the requested slot is accepted, or rejected when a different slot is saved. A checked-in appointment can be converted once into a linked service job; the job receives the assigned technician and the appointment moves to In Service. Production build, targeted lint, backend syntax, and diff checks passed; live database workflow was not verified.
 
 ### 2.6 Customer Management
 
-- [ ] Add, view and edit customer
-- [ ] Search customer
-- [ ] View phone and email
-- [ ] View customer vehicles
-- [ ] View service history
-- [ ] View appointments and current jobs
-- [ ] View invoices and outstanding payments
+- [x] Add, view and edit customer
+- [x] Search customer
+- [x] View phone and email
+- [x] View customer vehicles
+- [x] View service history
+- [x] View appointments and current jobs
+- [x] View invoices and outstanding payments
+
+The Admin customer directory supports name/email/mobile search, customer creation, and contact detail edits. Each profile summarizes contact information, vehicles, appointments, active jobs, service history, invoices, and outstanding balances. New accounts receive a secure generated credential and a password setup email when SMTP is configured. Production build, targeted lint, backend syntax, and diff checks passed; connected database records and email delivery were not verified.
 
 ### 2.7 Vehicle Management
 
-- [ ] Add and edit vehicle
-- [ ] Search by registration number or customer
-- [ ] View vehicle details
-- [ ] View service history
-- [ ] View active and previous jobs
-- [ ] View invoices
+- [x] Add and edit vehicle
+- [x] Search by registration number or customer
+- [x] View vehicle details
+- [x] View service history
+- [x] View active and previous jobs
+- [x] View invoices
+
+The Admin vehicle directory supports search by registration, make/model, or owner details, plus vehicle create/edit with registration, VIN, fuel, mileage, year, and image URL fields. Vehicle profiles show the owner, active and previous jobs, job timelines, appointments, and linked invoices. Ownership reassignment is blocked once appointments or service-job history exist. Production build, targeted lint, backend syntax, and diff checks passed; live records were not verified.
 
 ### 2.8 Service Type Management
 
-- [ ] Add service type
-- [ ] Edit service type
-- [ ] Delete or deactivate service type
-- [ ] Define service name
-- [ ] Define default duration
-- [ ] Define estimated service cost
-- [ ] Define required technician skill
-- [ ] Maintain examples such as Full Service, Oil Change, Brake Service, Engine Diagnosis and Electrical Diagnosis
+- [x] Add service type
+- [x] Edit service type
+- [x] Delete or deactivate service type
+- [x] Define service name
+- [x] Define default duration
+- [x] Define estimated service cost
+- [x] Define required technician skill
+- [x] Maintain examples such as Full Service, Oil Change, Brake Service, Engine Diagnosis and Electrical Diagnosis
+
+The Admin Service Types page manages active services, duration, estimated cost, and required skill. The catalog starts with Full Service, Oil Change, Brake Service, Engine Diagnosis, Electrical Diagnosis, and General Repair. Deactivation preserves appointment history and removes the service from customer/admin booking choices; the server validates that selected services remain active. Production build, targeted lint, backend syntax, and diff checks passed; database-backed records were not verified.
 
 ### 2.9 Technician Management
 
-- [ ] Add and edit technician profile
-- [ ] View technician and specialization
-- [ ] Set technician availability
-- [ ] View work schedule
-- [ ] View assigned and completed jobs
-- [ ] View technician workload
+- [x] Add and edit technician profile
+- [x] View technician and specialization
+- [x] Set technician availability
+- [x] View work schedule
+- [x] View assigned and completed jobs
+- [x] View technician workload
+
+The Admin technician directory supports profile creation/editing, specialization, working days and hours, and workload summaries. Technician profiles show assigned appointments and jobs, including active and Ready jobs. New accounts use the password setup email when SMTP is configured. Production build, targeted lint, backend syntax, and diff checks passed; live database records and email delivery were not verified. Availability status controls (Available, Busy, Break, Off Duty, Leave) remain in section 2.10.
 
 ### 2.10 Technician Availability
 
-- [ ] Set Available status
-- [ ] Set Busy status
-- [ ] Set Break status
-- [ ] Set Off Duty status
-- [ ] Set Leave status
-- [ ] Prevent assignment when technician is unavailable
+- [x] Set Available status
+- [x] Set Busy status
+- [x] Set Break status
+- [x] Set Off Duty status
+- [x] Set Leave status
+- [x] Prevent assignment when technician is unavailable
+
+Technician availability can be updated from the Admin technician directory or profile. Appointment assignment and appointment-to-job conversion reject new assignments unless the selected technician is Available; an existing assignment remains editable when the assigned technician’s status later changes. The Admin dashboard reports stored technician statuses. Production build, targeted lint, backend syntax, and diff checks passed; live database records were not verified.
 
 ### 2.11 Technician Allocation
 
-- [ ] View unassigned jobs
-- [ ] View available technicians
-- [ ] View specialization and workload
-- [ ] View number of jobs assigned today
-- [ ] Assign, reassign or remove technician
-- [ ] Notify technician
-- [ ] Record assignment time
+- [x] View unassigned jobs
+- [x] View available technicians
+- [x] View specialization and workload
+- [x] View number of jobs assigned today
+- [x] Assign, reassign or remove technician
+- [x] Notify technician
+- [x] Record assignment time
+
+The Admin Job Allocation page lists open work and technician availability, specialization, active workload, and assignments made today. Admins can assign, reassign, or unassign a job; only Available technicians can receive new work. Each change records the technician, assigning admin, action, and timestamp, keeps the linked appointment assignment in sync, and notifies affected technicians. Production build, targeted lint, backend syntax, and diff checks passed; live database records and notification delivery were not verified.
 
 ### 2.12 Job Creation / Allocation
 
-- [ ] Convert confirmed appointment into service job
-- [ ] Generate Service Job ID
-- [ ] Attach customer, vehicle and service request
-- [ ] Assign technician
-- [ ] Set job priority
-- [ ] Set expected completion time
-- [ ] Add initial customer complaint
-- [ ] Set initial repair status to Inspecting
+- [x] Convert confirmed appointment into service job
+- [x] Generate Service Job ID
+- [x] Attach customer, vehicle and service request
+- [x] Assign technician
+- [x] Set job priority
+- [x] Set expected completion time
+- [x] Add initial customer complaint
+- [x] Set initial repair status to Inspecting
+
+Appointment conversion accepts Confirmed or Checked In appointments, preserves the linked customer, vehicle, and service request, and creates an Inspecting job with a generated service number. Admins choose priority and may set an expected completion time before conversion; the complaint is copied onto the job. Technician availability is checked, assignment history is recorded, and the technician receives a notification. Production build, targeted lint, backend syntax, and diff checks passed; live database records and notification delivery were not verified.
 
 ### 2.13 Workshop Job Board
 
-- [ ] View all jobs in Kanban/workflow view
-- [ ] Filter by status, technician, date and priority
-- [ ] Search service number or vehicle registration
-- [ ] Use columns: Inspecting, In Progress, Final Test and Ready
+- [x] View all jobs in Kanban/workflow view
+- [x] Filter by status, technician, date and priority
+- [x] Search service number or vehicle registration
+- [x] Use columns: Inspecting, In Progress, Final Test and Ready
+
+Replaced the sample-data board with live service jobs, including the Waiting for Approval stage. Admins can filter by status, technician (including unassigned), priority, and job creation date range, and search by service number or vehicle registration. Cards show customer, vehicle, service, technician, priority, complaint, and expected completion. Production build, targeted lint, backend syntax, and diff checks passed; live database records were not verified.
 
 ### 2.14 Appointment Notifications
 

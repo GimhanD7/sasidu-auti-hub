@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerUser, loginUser, logoutUser, getCurrentUser, forgotPassword, resetPassword } from '../controllers/authController.js';
+import { registerUser, loginUser, adminLoginUser, logoutUser, getCurrentUser, forgotPassword, resetPassword } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authRateLimit } from '../middleware/authRateLimit.js';
 import { getCustomerDashboard } from '../controllers/customerDashboardController.js';
@@ -10,6 +10,7 @@ const router = express.Router();
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 router.post('/register', authRateLimit(20), registerUser);
 router.post('/login', authRateLimit(30), loginUser);
+router.post('/admin/login', authRateLimit(30), adminLoginUser);
 router.get('/me', requireAuth, getCurrentUser);
 router.get('/customer-dashboard', requireAuth, requireRole('Customer'), getCustomerDashboard);
 router.post('/logout', logoutUser);

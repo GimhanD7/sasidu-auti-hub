@@ -10,6 +10,13 @@ const userSchema = new mongoose.Schema({
   resetTokenHash: { type: String, select: false },
   resetTokenExpiresAt: { type: Date, select: false },
   sessionVersion: { type: Number, default: 0 },
+  technicianSpecialization: { type: String, trim: true, maxlength: 120 },
+  availabilityStatus: { type: String, enum: ['Available', 'Busy', 'Break', 'Off Duty', 'Leave'], default: 'Available' },
+  workSchedule: {
+    days: { type: [Number], default: [1, 2, 3, 4, 5, 6] },
+    startTime: { type: String, default: '09:00' },
+    endTime: { type: String, default: '17:00' },
+  },
 }, { timestamps: true });
 
 export default mongoose.model('User', userSchema);

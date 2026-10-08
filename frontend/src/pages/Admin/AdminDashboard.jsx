@@ -1,132 +1,101 @@
-import React from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { api } from '../../lib/api';
 import '../Customer/CustomerDashboard.css';
+import './AdminDashboard.css';
 
-const AdminDashboard = () => {
+const money = amount => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'LKR', maximumFractionDigits: 2 }).format(amount || 0);
+const dateTime = (date, time) => {
+  const parsed = new Date(date);
+  const dateLabel = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(parsed);
+  return `${dateLabel}${time ? ` · ${time}` : ''}`;
+};
+const statusClass = status => status.toLowerCase().replaceAll(' ', '-');
+
+export default function AdminDashboard() {
+  const [dashboard, setDashboard] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.get('/admin/dashboard');
+      setDashboard(data);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Unable to load workshop information. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+
+  if (loading && !dashboard) return <p role="status">Loading workshop dashboard…</p>;
+  if (error && !dashboard) return <div className="admin-dashboard-error" role="alert"><p>{error}</p><button className="btn-primary" onClick={loadDashboard}>Try again</button></div>;
+
+  const { summary, appointments, activeJobs, technicians, jobsAwaitingApproval, recentActivity } = dashboard;
+  const cards = [
+    ['Today’s appointments', summary.todayAppointments, 'blue'],
+    ['Pending appointments', summary.pendingAppointments, 'amber'],
+    ['Upcoming appointments', summary.upcomingAppointments, 'violet'],
+    ['Active workshop jobs', summary.activeJobs, 'green'],
+    ['Vehicles in workshop', summary.vehiclesInWorkshop, 'red'],
+    ['Technician availability', `${summary.techniciansAvailable} available · ${summary.techniciansBusy} unavailable`, 'cyan'],
+    ['Daily revenue received', money(summary.dailyRevenue), 'green'],
+  ];
+
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container admin-dashboard">
       <div className="dashboard-header">
-        <div>
-          <h1 className="page-title">Workshop Overview</h1>
-          <p className="page-subtitle">Real-time status of appointments, jobs, and technician availability.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 1.5rem', backgroundColor: '#3b82f6' }}>
-            + New Booking
-          </button>
-          <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 1.5rem', backgroundColor: '#10b981' }}>
-            + Create Job
-          </button>
-        </div>
+        <div><h1 className="page-title">Workshop Overview</h1><p className="page-subtitle">Live appointments, service jobs, vehicles, and technician availability.</p></div>
+        <button className="admin-dashboard-refresh" onClick={loadDashboard} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
       </div>
+      {error && <p className="admin-dashboard-inline-error" role="alert">{error}</p>}
 
-      <div className="summary-cards">
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>Today's Appointments</h3>
-            <p className="card-value">12</p>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>Active Workshop Jobs</h3>
-            <p className="card-value">8</p>
-          </div>
-        </div>
+      <section className="admin-dashboard-cards" aria-label="Workshop key metrics">
+        {cards.map(([label, value, color]) => <article className="admin-metric-card" key={label}>
+          <span className={`admin-metric-dot ${color}`} aria-hidden="true" />
+          <div><p>{label}</p><strong>{value}</strong></div>
+        </article>)}
+      </section>
 
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>Available Technicians</h3>
-            <p className="card-value">3 / 5</p>
-          </div>
-        </div>
+      <section className="admin-stage-summary" aria-label="Workshop job stages">
+        <h2>Job stages</h2>
+        {['Inspecting', 'In Progress', 'Final Test', 'Ready'].map((stage, index) => {
+          const value = [summary.inspecting, summary.inProgress, summary.finalTest, summary.ready][index];
+          return <div className="admin-stage" key={stage}><span className={`admin-stage-marker stage-${index}`} /><span>{stage}</span><strong>{value}</strong></div>;
+        })}
+      </section>
 
-        <div className="summary-card">
-          <div className="card-icon" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div className="card-info">
-            <h3>Daily Revenue Est.</h3>
-            <p className="card-value">$1,250</p>
-          </div>
-        </div>
-      </div>
+      <div className="admin-dashboard-columns">
+        <section className="section-card">
+          <div className="section-header"><h2>Today & upcoming appointments</h2><span>{appointments.length} shown</span></div>
+          {appointments.length ? <div className="admin-table-wrap"><table className="admin-data-table"><thead><tr><th>Appointment</th><th>Customer / vehicle</th><th>Service</th><th>When</th><th>Status</th></tr></thead><tbody>
+            {appointments.map(item => <tr key={item.id}><td>{item.reference}</td><td><strong>{item.customer}</strong><small>{item.vehicle} · {item.registrationNumber}</small></td><td>{item.serviceType}</td><td>{dateTime(item.preferredDate, item.preferredTime)}</td><td><span className={`admin-status ${statusClass(item.status)}`}>{item.status}</span></td></tr>)}
+          </tbody></table></div> : <p className="dashboard-empty">No upcoming appointments are scheduled.</p>}
+        </section>
 
-      <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <div className="summary-card" style={{ padding: '1rem', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span className="badge" style={{ backgroundColor: '#6b7280', color: 'white', marginBottom: '0.5rem' }}>Inspecting</span>
-          <p className="card-value">2 Vehicles</p>
-        </div>
-        <div className="summary-card" style={{ padding: '1rem', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span className="badge" style={{ backgroundColor: '#f59e0b', color: 'white', marginBottom: '0.5rem' }}>In Progress</span>
-          <p className="card-value">4 Vehicles</p>
-        </div>
-        <div className="summary-card" style={{ padding: '1rem', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span className="badge" style={{ backgroundColor: '#8b5cf6', color: 'white', marginBottom: '0.5rem' }}>Final Test</span>
-          <p className="card-value">1 Vehicle</p>
-        </div>
-        <div className="summary-card" style={{ padding: '1rem', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span className="badge" style={{ backgroundColor: '#10b981', color: 'white', marginBottom: '0.5rem' }}>Ready</span>
-          <p className="card-value">1 Vehicle</p>
-        </div>
-      </div>
+        <section className="section-card">
+          <div className="section-header"><h2>Technician availability</h2><span>{technicians.length} technicians</span></div>
+          {technicians.length ? <ul className="admin-technician-list">{technicians.map(technician => <li key={technician.id}><span><strong>{technician.name}</strong><small>{technician.email}</small></span><span className={`admin-status ${statusClass(technician.status)}`}>{technician.status}</span></li>)}</ul> : <p className="dashboard-empty">No active technicians are registered.</p>}
+        </section>
 
-      <div className="dashboard-grid">
-        <div className="grid-col-2">
-          <div className="section-card">
-            <div className="section-header">
-              <h2>Jobs Awaiting Approval</h2>
-            </div>
-            <div className="active-repair-details">
-              <div className="repair-vehicle" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                <div className="vehicle-image">🔧</div>
-                <div style={{ flex: 1 }}>
-                  <h4>Honda Civic - Brake Replacement</h4>
-                  <p>Customer: John Miller • Est: $350.00</p>
-                </div>
-                <button className="btn-primary" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Review Request</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <section className="section-card">
+          <div className="section-header"><h2>Active workshop jobs</h2><span>{summary.activeJobs} total</span></div>
+          {activeJobs.length ? <div className="admin-job-list">{activeJobs.map(job => <article className="admin-job-row" key={job.id}><div><strong>{job.reference} · {job.vehicle}</strong><small>{job.registrationNumber} · {job.customer}</small></div><div><span className={`admin-status ${statusClass(job.status)}`}>{job.status}</span><small>Tech: {job.technician}</small></div></article>)}</div> : <p className="dashboard-empty">No active workshop jobs.</p>}
+        </section>
 
-        <div className="grid-col-1">
-          <div className="section-card" style={{ marginBottom: '2rem' }}>
-            <div className="section-header">
-              <h2>Recent Workshop Activity</h2>
-            </div>
-            <div className="notification-list">
-              <div className="notification-item">
-                <div className="notif-icon">✅</div>
-                <div className="notif-content">
-                  <p><strong>Job Completed: Toyota Corolla</strong></p>
-                  <p>Marked ready by Tech Mike.</p>
-                  <span className="notif-time">10 mins ago</span>
-                </div>
-              </div>
-              <div className="notification-item">
-                <div className="notif-icon">👨‍🔧</div>
-                <div className="notif-content">
-                  <p><strong>Technician Assigned</strong></p>
-                  <p>Sarah assigned to Ford Mustang.</p>
-                  <span className="notif-time">1 hour ago</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <section className="section-card">
+          <div className="section-header"><h2>Jobs awaiting approval</h2><span>{jobsAwaitingApproval.length} shown</span></div>
+          {jobsAwaitingApproval.length ? <div className="admin-job-list">{jobsAwaitingApproval.map(job => <article className="admin-job-row" key={job.id}><div><strong>{job.reference} · {job.vehicle}</strong><small>{job.customer}</small></div><span className="admin-status waiting-for-approval">{job.pendingRepairs ? `${job.pendingRepairs} repair request${job.pendingRepairs === 1 ? '' : 's'}` : 'Awaiting approval'}</span></article>)}</div> : <p className="dashboard-empty">No jobs are waiting for approval.</p>}
+        </section>
+
+        <section className="section-card admin-activity-card">
+          <div className="section-header"><h2>Recent workshop activity</h2></div>
+          {recentActivity.length ? <ul className="admin-activity-list">{recentActivity.map(item => <li key={`${item.kind}-${item.id}`}><span className="admin-activity-icon">{item.kind === 'job' ? '🔧' : '📅'}</span><span><strong>{item.reference} · {item.vehicle}</strong><small>{item.kind === 'job' ? 'Job' : 'Appointment'} updated to {item.status}</small></span><time dateTime={item.updatedAt}>{new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updatedAt))}</time></li>)}</ul> : <p className="dashboard-empty">No workshop activity has been recorded.</p>}
+        </section>
       </div>
     </div>
   );
-};
-
-export default AdminDashboard;
+}

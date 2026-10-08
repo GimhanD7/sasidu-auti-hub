@@ -47,7 +47,7 @@ export const registerUser = async (req, res) => {
   }
 };
 
-export const loginUser = async (req, res) => {
+const authenticateUser = async (req, res, requiredRole) => {
   try {
     const { email, password, remember = false } = req.body || {};
     if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password || typeof remember !== 'boolean') {
@@ -74,12 +74,19 @@ export const loginUser = async (req, res) => {
     if (!['user', 'admin', 'Customer', 'Admin', 'Technician', 'Finance'].includes(user.role)) {
       return res.status(403).json({ message: 'This account does not have access.' });
     }
+    const normalizedRole = user.role === 'admin' ? 'Admin' : user.role === 'user' ? 'Customer' : user.role;
+    if (requiredRole && normalizedRole !== requiredRole) {
+      return res.status(403).json({ message: 'This account does not have administrator access.' });
+    }
     await createSession(user, remember, res);
     res.json(publicUser(user));
   } catch {
     res.status(500).json({ message: 'Unable to sign in. Please try again.' });
   }
 };
+
+export const loginUser = (req, res) => authenticateUser(req, res);
+export const adminLoginUser = (req, res) => authenticateUser(req, res, 'Admin');
 
 export const getCurrentUser = (req, res) => res.json(publicUser(req.user));
 
