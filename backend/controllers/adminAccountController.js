@@ -8,24 +8,6 @@ const accountView = user => ({
   role: normalizeRole(user.role), isActive: user.isActive !== false, createdAt: user.createdAt,
 });
 
-export async function listAdminAccounts(req, res) {
-  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
-  const filter = {};
-  if (search) {
-    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    filter.$or = [
-      { name: { $regex: escaped, $options: 'i' } },
-      { email: { $regex: escaped, $options: 'i' } },
-      { mobile: { $regex: escaped, $options: 'i' } },
-      { role: { $regex: escaped, $options: 'i' } },
-    ];
-  }
-  try {
-    const accounts = await User.find(filter).select('name email mobile role isActive createdAt').sort({ name: 1 }).limit(200).lean();
-    res.set('Cache-Control', 'private, no-store').json({ accounts: accounts.map(accountView) });
-  } catch { res.status(503).json({ message: 'Unable to load accounts.' }); }
-}
-
 export async function createAdminAccount(req, res) {
   const body = req.body || {};
   const name = typeof body.name === 'string' ? body.name.trim() : '';

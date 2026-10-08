@@ -11,4 +11,5 @@
 .user-role-help { grid-column: 1 / -1; }
 .user-role-pagination { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding-top: 1rem; }
 .admin-users-page .user-role-notice { padding: 1rem; border-radius: 8px; background: #dcfce7; color: #166534; }
-@media(max-width: 650px) { .user-role-row { grid-template-columns: 1fr; } }
+.account-create-card { display:grid; gap:.8rem; }.account-create-card h2 { margin:0; color:var(--text-primary); font-size:1.1rem; }.account-create-card > p { margin:0; }.admin-create-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }.admin-create-form label,.account-password-form label { display:grid; gap:.35rem; color:var(--text-secondary); font-size:.82rem; font-weight:650; }.admin-create-form button,.account-password-form button { justify-self:start; }.account-role-item { border-bottom:1px solid var(--border-color); }.user-role-row { border-bottom:0; }.account-password-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:end; gap:.8rem; padding:0 0 1rem; }.account-password-form input { width:100%; }.account-password-form button { min-height:40px; }
+@media(max-width: 650px) { .user-role-row { grid-template-columns: 1fr; }.admin-create-form,.account-password-form { grid-template-columns:1fr; } }
