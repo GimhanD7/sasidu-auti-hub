@@ -1,3 +1,4 @@
+import { validVehicleImage } from '../utils/vehicleImage.js';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Invoice from '../models/Invoice.js';
@@ -23,8 +24,8 @@ function parseVehicle(body = {}) {
   if (make.length < 1 || make.length > 80 || model.length < 1 || model.length > 80) return { error: 'Make and model must contain 1 to 80 characters.' };
   if (year !== undefined && (!Number.isInteger(year) || year < 1886 || year > new Date().getUTCFullYear() + 1)) return { error: 'Enter a valid vehicle year.' };
   if (mileage !== undefined && (!Number.isFinite(mileage) || mileage < 0 || mileage > 10000000)) return { error: 'Mileage must be a non-negative number.' };
-  if (fuelType.length > 50 || vinNumber.length > 32 || imageUrl.length > 2048) return { error: 'Fuel type, VIN, or image URL is too long.' };
-  if (imageUrl && !/^https:\/\//i.test(imageUrl)) return { error: 'Vehicle image URL must use HTTPS.' };
+  if (fuelType.length > 50 || vinNumber.length > 32) return { error: 'Fuel type, VIN, or image URL is too long.' };
+  if (!validVehicleImage(imageUrl)) return { error: 'Use an HTTPS image URL or a JPG/PNG image up to 1 MB.' };
   return { data: { registrationNumber, make, model, year, mileage, fuelType, vinNumber, imageUrl } };
 }
 

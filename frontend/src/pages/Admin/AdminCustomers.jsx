@@ -18,6 +18,7 @@ export default function AdminCustomers() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
   const [formMode, setFormMode] = useState('');
 
   useEffect(() => {
@@ -61,10 +62,21 @@ export default function AdminCustomers() {
     } catch { /* The customer detail request remains available even if the list refresh fails. */ }
   }
 
+  async function toggleStatus() {
+    if (statusSaving) return;
+    setStatusSaving(true); setError('');
+    try {
+      const { data } = await api.patch(`/admin/customers/${selectedId}/status`, { isActive: !customerDetails.customer.isActive });
+      setCustomerDetails(current => ({ ...current, customer: { ...current.customer, isActive: data.isActive } }));
+      setCustomers(current => current.map(item => item.id === selectedId ? { ...item, isActive: data.isActive } : item));
+      setNotice(data.message);
+    } catch (error) { setError(error.response?.data?.message || 'Unable to update account status.'); }
+    finally { setStatusSaving(false); }
+  }
   if (selectedId) {
     return <div className="admin-customers-page">
       <div className="admin-customers-heading"><div><button className="customer-back-button" onClick={() => { setSelectedId(''); setCustomerDetails(null); setNotice(''); }}>← All customers</button><h1 className="page-title">Customer profile</h1></div>{customerDetails?.customer && <button className="customer-action-button" onClick={() => openForm('edit')}>Edit customer</button>}</div>
-      {notice && <p className="customer-notice" role="status">{notice}</p>}
+      {customerDetails?.customer && selectedId && <button className="customer-action-button" disabled={statusSaving} onClick={toggleStatus}>{statusSaving ? 'Updating…' : customerDetails.customer.isActive ? 'Suspend account' : 'Reactivate account'}</button>}{notice && <p className="customer-notice" role="status">{notice}</p>}
       {error && <p className="customer-error" role="alert">{error}</p>}
       {detailsLoading && !customerDetails ? <p role="status">Loading customer…</p> : customerDetails ? <CustomerProfile data={customerDetails} onEdit={() => openForm('edit')} /> : null}
       {formMode && customerDetails && <CustomerForm mode="edit" customer={customerDetails.customer} onClose={() => setFormMode('')} onSaved={handleSaved} />}
@@ -73,7 +85,7 @@ export default function AdminCustomers() {
 
   return <div className="admin-customers-page">
     <header className="admin-customers-heading"><div><h1 className="page-title">Customer Management</h1><p className="page-subtitle">Search customer records and review vehicles, service, appointments, and account balances.</p></div><button className="customer-action-button" onClick={() => openForm('add')}>+ Add customer</button></header>
-    {notice && <p className="customer-notice" role="status">{notice}</p>}
+    {customerDetails?.customer && selectedId && <button className="customer-action-button" disabled={statusSaving} onClick={toggleStatus}>{statusSaving ? 'Updating…' : customerDetails.customer.isActive ? 'Suspend account' : 'Reactivate account'}</button>}{notice && <p className="customer-notice" role="status">{notice}</p>}
     <section className="customer-directory section-card"><div className="customer-directory-toolbar"><label>Search customers<input type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Name, email, or mobile number" /></label><span>{total} customer{total === 1 ? '' : 's'}</span></div>
       {error && <p className="customer-error" role="alert">{error}</p>}{listLoading ? <p role="status">Loading customers…</p> : customers.length ? <div className="customer-directory-list">{customers.map(customer => <button type="button" className="customer-directory-row" key={customer.id} onClick={() => { setDetailsLoading(true); setSelectedId(customer.id); }}><span className="customer-avatar">{customer.name.split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="customer-directory-identity"><strong>{customer.name}</strong><small>{customer.email} · {customer.mobile || 'No mobile recorded'}</small></span><span className={`customer-active-state ${customer.isActive ? 'active' : 'inactive'}`}>{customer.isActive ? 'Active' : 'Inactive'}</span><span aria-hidden="true">›</span></button>)}</div> : <p className="customer-empty">No customers match that search.</p>}
       <footer className="customer-pagination"><button disabled={page <= 1 || listLoading} onClick={() => setPage(value => value - 1)}>Previous</button><span>Page {page} of {Math.max(1, pages)}</span><button disabled={page >= pages || listLoading} onClick={() => setPage(value => value + 1)}>Next</button></footer>
@@ -91,13 +103,13 @@ function CustomerForm({ mode, customer, onClose, onSaved }) {
     try {
       const { data } = mode === 'add' ? await api.post('/admin/customers', form) : await api.patch(`/admin/customers/${customer.id}`, form);
       const message = mode === 'add'
-        ? `Customer ${data.customer.name} added.${data.accountSetupEmailSent ? ' Account setup email sent.' : ' Configure SMTP to email an account setup link.'}`
+        ? `Customer ${data.customer.name} added.${data.accountSetupEmailSent ? ' Account setup email sent.' : ' Default password: 12345678. Ask the customer to change it in Account settings.'}`
         : `Customer details for ${data.customer.name} updated.`;
       await onSaved(data.customer, message);
     } catch (requestError) { setError(requestError.response?.data?.message || 'Unable to save customer details.'); }
     finally { setSaving(false); }
   }
-  return <div className="customer-modal-backdrop" role="presentation"><section className="customer-modal" role="dialog" aria-modal="true" aria-labelledby="customer-form-title"><header><h2 id="customer-form-title">{mode === 'add' ? 'Add customer' : 'Edit customer'}</h2><button type="button" onClick={onClose} aria-label="Close">×</button></header>{error && <p className="customer-error" role="alert">{error}</p>}<form onSubmit={submit}><label>Full name<input required minLength="2" maxLength="100" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label><label>Email<input required type="email" maxLength="254" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></label><label>Mobile number<input required type="tel" value={form.mobile} onChange={event => setForm({ ...form, mobile: event.target.value })} /></label>{mode === 'add' && <p className="customer-form-hint">A secure account will be created. An account setup email is sent when SMTP is configured.</p>}<footer><button type="button" className="customer-secondary-button" onClick={onClose} disabled={saving}>Cancel</button><button className="customer-action-button" disabled={saving}>{saving ? 'Saving…' : mode === 'add' ? 'Add customer' : 'Save changes'}</button></footer></form></section></div>;
+  return <div className="customer-modal-backdrop" role="presentation"><section className="customer-modal" role="dialog" aria-modal="true" aria-labelledby="customer-form-title"><header><h2 id="customer-form-title">{mode === 'add' ? 'Add customer' : 'Edit customer'}</h2><button type="button" onClick={onClose} aria-label="Close">×</button></header>{error && <p className="customer-error" role="alert">{error}</p>}<form onSubmit={submit}><label>Full name<input required minLength="2" maxLength="100" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label><label>Email<input required type="email" maxLength="254" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></label><label>Mobile number<input required type="tel" value={form.mobile} onChange={event => setForm({ ...form, mobile: event.target.value })} /></label>{mode === 'add' && <p className="customer-form-hint">Default password: 12345678. The customer can change it in Account settings. An account setup email is also sent when available.</p>}<footer><button type="button" className="customer-secondary-button" onClick={onClose} disabled={saving}>Cancel</button><button className="customer-action-button" disabled={saving}>{saving ? 'Saving…' : mode === 'add' ? 'Add customer' : 'Save changes'}</button></footer></form></section></div>;
 }
 
 function CustomerProfile({ data }) {

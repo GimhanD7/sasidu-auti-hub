@@ -1,3 +1,4 @@
+import PasswordInput from '../../components/PasswordInput';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -41,8 +42,8 @@ export default function PasswordReset({ reset = false }) {
     {message && <p className="auth-feedback" role="status">{message}</p>}
     {reset && !validToken ? <p role="alert">This reset link is invalid. <Link to="/forgot-password">Request a new link</Link>.</p> : <form onSubmit={handleSubmit}>
       {reset ? <>
-        <div className="form-group"><label className="form-label" htmlFor="new-password">New password</label><input id="new-password" className="form-input" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={event => setPassword(event.target.value)} /></div>
-        <div className="form-group"><label className="form-label" htmlFor="confirm-password">Confirm password</label><input id="confirm-password" className="form-input" type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} /></div>
+        <div className="form-group"><label className="form-label" htmlFor="new-password">New password</label><PasswordInput id="new-password" className="form-input" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={event => setPassword(event.target.value)} /></div>
+        <div className="form-group"><label className="form-label" htmlFor="confirm-password">Confirm password</label><PasswordInput id="confirm-password" className="form-input" type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} /></div>
       </> : <div className="form-group"><label className="form-label" htmlFor="reset-email">Email address</label><input id="reset-email" className="form-input" type="email" autoComplete="email" maxLength={254} required value={email} onChange={event => setEmail(event.target.value)} /></div>}
       <button className="btn-primary" type="submit" disabled={loading}>{loading ? 'Please wait…' : reset ? 'Reset password' : 'Send reset link'}</button>
     </form>}

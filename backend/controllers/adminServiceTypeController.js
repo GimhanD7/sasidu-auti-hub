@@ -1,4 +1,4 @@
-import Appointment from '../models/Appointment.js';
+import mongoose from 'mongoose';
 import ServiceType from '../models/ServiceType.js';
 
 export const DEFAULT_SERVICE_TYPES = [
@@ -27,7 +27,7 @@ const validInput = body => {
 export async function listAdminServiceTypes(req, res) {
   try {
     await ensureDefaultServiceTypes();
-    const serviceTypes = await ServiceType.find().sort({ isActive: -1, name: 1 }).lean();
+    const serviceTypes = await ServiceType.find({ isDeleted: { $ne: true } }).sort({ isActive: -1, name: 1 }).lean();
     res.set('Cache-Control', 'private, no-store').json({ serviceTypes: serviceTypes.map(item => ({ id: String(item._id), name: item.name, defaultDurationMinutes: item.defaultDurationMinutes, estimatedCost: item.estimatedCost, requiredSkill: item.requiredSkill, isActive: item.isActive })) });
   } catch { res.status(503).json({ message: 'Unable to load service types.' }); }
 }
@@ -66,5 +66,14 @@ export async function deactivateAdminServiceType(req, res) {
 
 export async function getActiveServiceTypeNames() {
   await ensureDefaultServiceTypes();
-  return (await ServiceType.find({ isActive: true }).select('name').sort({ name: 1 }).lean()).map(item => item.name);
+  return (await ServiceType.find({ isActive: true, isDeleted: { $ne: true } }).select('name').sort({ name: 1 }).lean()).map(item => item.name);
+}
+
+export async function deleteAdminServiceType(req, res) {
+  if (!mongoose.isValidObjectId(req.params.serviceTypeId)) return res.status(400).json({ message: 'Invalid service type.' });
+  try {
+    const item = await ServiceType.findOneAndUpdate({ _id: req.params.serviceTypeId, isDeleted: { $ne: true } }, { isActive: false, isDeleted: true });
+    if (!item) return res.status(404).json({ message: 'Service type not found.' });
+    res.json({ message: 'Service type deleted. Existing service history is preserved.' });
+  } catch { res.status(503).json({ message: 'Unable to delete service type.' }); }
 }

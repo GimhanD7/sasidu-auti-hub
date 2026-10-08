@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt';
-import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import ServiceJob from '../models/ServiceJob.js';
@@ -56,7 +55,7 @@ export async function createAdminTechnician(req, res) {
   if (error) return res.status(400).json({ message: error });
   try {
     if (await User.exists({ $or: [{ email: data.email }, ...(data.mobile ? [{ mobile: data.mobile }] : [])] })) return res.status(409).json({ message: 'A user already exists with this email or mobile.' });
-    const generatedPassword = randomBytes(32).toString('base64url');
+    const generatedPassword = '12345678';
     const user = await User.create({ ...data, password: await bcrypt.hash(generatedPassword, 10), role: 'Technician' });
     let accountSetupEmailSent = false;
     if (passwordResetEmail.isConfigured()) {

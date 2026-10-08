@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, trim: true, lowercase: true },
   mobile: { type: String, unique: true, sparse: true }, // Legacy profiles may omit mobile
   password: { type: String, required: true },
-  role: { type: String, enum: ['user', 'admin', 'Customer', 'Admin', 'Technician', 'Finance'], default: 'Customer' },
+  role: { type: String, enum: ['user', 'Customer', 'Admin', 'Technician', 'Finance'], default: 'Customer' },
   isActive: { type: Boolean, default: true },
   resetTokenHash: { type: String, select: false },
   resetTokenExpiresAt: { type: Date, select: false },

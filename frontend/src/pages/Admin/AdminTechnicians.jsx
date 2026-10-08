@@ -50,7 +50,7 @@ export default function AdminTechnicians() {
     event.preventDefault(); setSaving(true); setError('');
     try {
       const { data } = await api[editingId ? 'patch' : 'post'](editingId ? `/admin/technicians/${editingId}` : '/admin/technicians', form);
-      const message = editingId ? 'Technician profile updated.' : data.accountSetupEmailSent ? 'Technician added. A password setup email was sent.' : 'Technician added. Email setup is not configured; arrange account access separately.';
+      const message = editingId ? 'Technician profile updated.' : `Technician added. Default password: 12345678. Change it in Account settings.${data.accountSetupEmailSent ? ' A password setup email was also sent.' : ''}`;
       setForm(null); setNotice(message); await loadDirectory();
       if (editingId) await openProfile(editingId);
     } catch (requestError) { setError(requestError.response?.data?.message || 'Unable to save technician profile.'); }
@@ -98,6 +98,7 @@ function TechnicianForm({ form, setForm, toggleDay, editing, saving, error, onSu
   return <div className="technician-modal-backdrop"><section className="technician-modal" role="dialog" aria-modal="true" aria-labelledby="technician-form-title"><header><h2 id="technician-form-title">{editing ? 'Edit technician' : 'Add technician'}</h2><button type="button" onClick={onClose} aria-label="Close">×</button></header><form onSubmit={onSubmit}>
     {error && <p className="technician-error" role="alert">{error}</p>}
     <label>Full name<input required minLength="2" maxLength="100" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label><label>Email<input required type="email" maxLength="254" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></label><label>Mobile number<input type="tel" value={form.mobile} onChange={event => setForm({ ...form, mobile: event.target.value })} placeholder="Optional" /></label><label>Specialization<input required maxLength="120" value={form.technicianSpecialization} onChange={event => setForm({ ...form, technicianSpecialization: event.target.value })} placeholder="e.g. Auto Electrical" /></label>
+    {!editing && <p className="technician-notice">Default password: <strong>12345678</strong>. The technician can change it in Account settings.</p>}
     <fieldset className="technician-days"><legend>Working days</legend>{week.map((day, index) => <label key={day}><input type="checkbox" checked={form.workSchedule.days.includes(index + 1)} onChange={() => toggleDay(index + 1)} />{day}</label>)}</fieldset><div className="technician-time-fields"><label>Start time<input type="time" required value={form.workSchedule.startTime} onChange={event => setForm({ ...form, workSchedule: { ...form.workSchedule, startTime: event.target.value } })} /></label><label>End time<input type="time" required value={form.workSchedule.endTime} onChange={event => setForm({ ...form, workSchedule: { ...form.workSchedule, endTime: event.target.value } })} /></label></div>
     <footer><button type="button" className="technician-secondary" onClick={onClose} disabled={saving}>Cancel</button><button className="technician-primary" disabled={saving}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Create technician'}</button></footer>
   </form></section></div>;

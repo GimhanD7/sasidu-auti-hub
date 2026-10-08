@@ -1,3 +1,4 @@
+import VehicleImageInput from '../../components/VehicleImageInput';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -36,7 +37,7 @@ function VehicleForm({ vehicle, saving, error, onClose, onSave }) {
           <div className="vehicle-form-field"><label htmlFor="vehicle-fuel">Fuel type</label><input id="vehicle-fuel" name="fuelType" list="vehicle-fuel-types" maxLength={50} value={form.fuelType || ''} onChange={change} /><datalist id="vehicle-fuel-types">{FUEL_TYPES.map(type => <option key={type} value={type} />)}</datalist></div>
           <div className="vehicle-form-field"><label htmlFor="vehicle-mileage">Mileage (km)</label><input id="vehicle-mileage" name="mileage" type="number" inputMode="numeric" min="0" max="99999999" step="any" value={form.mileage ?? ''} onChange={change} /></div>
           <div className="vehicle-form-field vehicle-form-wide"><label htmlFor="vehicle-vin">VIN / chassis number</label><input id="vehicle-vin" name="vinNumber" autoComplete="off" maxLength={32} value={form.vinNumber || ''} onChange={change} /></div>
-          <div className="vehicle-form-field vehicle-form-wide"><label htmlFor="vehicle-image-url">Vehicle image URL (optional)</label><input id="vehicle-image-url" name="imageUrl" type="url" placeholder="https://example.com/vehicle.jpg" maxLength={2048} value={form.imageUrl || ''} onChange={change} /><small>Use an HTTPS image URL. Images are optional.</small></div>
+          <VehicleImageInput value={form.imageUrl} disabled={saving} onChange={imageUrl => setForm(current => ({ ...current, imageUrl }))} />
         </div>
         <div className="vehicle-form-actions"><button type="button" className="btn-outline" disabled={saving} onClick={onClose}>Cancel</button><button type="submit" className="btn-primary vehicle-save-button" disabled={saving}>{saving ? 'Saving…' : vehicle?._id || vehicle?.id ? 'Save changes' : 'Add vehicle'}</button></div>
       </form>

@@ -1,3 +1,4 @@
+import { validVehicleImage } from '../utils/vehicleImage.js';
 import mongoose from 'mongoose';
 import Vehicle from '../models/Vehicle.js';
 import Appointment from '../models/Appointment.js';
@@ -42,14 +43,7 @@ function validateVehicle(body = {}) {
       return { error: 'Mileage must be a number from 0 to 99,999,999.' };
     }
   }
-  if (data.imageUrl) {
-    try {
-      const image = new URL(data.imageUrl);
-      if (image.protocol !== 'https:' || image.username || image.password || data.imageUrl.length > 2048) throw new Error();
-    } catch {
-      return { error: 'Vehicle image URL must be a valid HTTPS address.' };
-    }
-  }
+  if (!validVehicleImage(data.imageUrl)) return { error: 'Use an HTTPS image URL or a JPG/PNG image up to 1 MB.' };
   return { data };
 }
 

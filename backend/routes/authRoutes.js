@@ -27,6 +27,7 @@ router.post('/technician/jobs/:jobId/photos', requireAuth, requireRole('Technici
 router.get('/technician/jobs/:jobId/photos/:photoId', requireAuth, requireRole('Technician'), getTechnicianJobPhoto);
 router.get('/technician/jobs/:jobId', requireAuth, requireRole('Technician'), getTechnicianJob);
 router.post('/logout', logoutUser);
+router.post('/change-password', requireAuth, authRateLimit(10), changeTechnicianPassword);
 router.post('/technician/change-password', requireAuth, requireRole('Technician'), authRateLimit(10), changeTechnicianPassword);
 router.post('/forgot-password', authRateLimit(5), forgotPassword);
 router.post('/reset-password', authRateLimit(10), resetPassword);

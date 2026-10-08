@@ -43,8 +43,15 @@ export default function AdminServiceTypes() {
     finally { setSaving(false); }
   }
 
+  async function remove(item) {
+    if (!window.confirm(`Delete ${item.name}? Existing service history will be preserved.`)) return;
+    setSaving(true); setError('');
+    try { const { data } = await api.delete(`/admin/service-types/${item.id}`); setNotice(data.message); await load(); }
+    catch (error) { setError(error.response?.data?.message || 'Unable to delete service type.'); }
+    finally { setSaving(false); }
+  }
   async function deactivate(item) {
-    try { await api.delete(`/admin/service-types/${item.id}`); setNotice(`${item.name} was deactivated and is no longer bookable.`); await load(); }
+    try { await api.patch(`/admin/service-types/${item.id}/deactivate`); setNotice(`${item.name} was deactivated and is no longer bookable.`); await load(); }
     catch (requestError) { setError(requestError.response?.data?.message || 'Unable to deactivate this service type.'); }
   }
 
@@ -59,7 +66,7 @@ export default function AdminServiceTypes() {
       <footer><button type="button" className="service-types-secondary" onClick={() => setForm(null)} disabled={saving}>Cancel</button><button className="service-types-primary" disabled={saving}>{saving ? 'Saving…' : 'Save service type'}</button></footer>
     </form></section>}
     <section className="section-card service-type-list"><header><h2>Services</h2><span>{items.filter(item => item.isActive).length} active</span></header>
-      {loading ? <p role="status">Loading service types…</p> : items.length ? <div className="service-type-grid">{items.map(item => <article className={!item.isActive ? 'inactive' : ''} key={item.id}><header><h3>{item.name}</h3><span className={item.isActive ? 'active' : ''}>{item.isActive ? 'Active' : 'Inactive'}</span></header><dl><div><dt>Duration</dt><dd>{item.defaultDurationMinutes} minutes</dd></div><div><dt>Estimated cost</dt><dd>{money(item.estimatedCost)}</dd></div><div><dt>Required skill</dt><dd>{item.requiredSkill}</dd></div></dl><footer><button type="button" className="service-types-secondary" onClick={() => startEdit(item)}>Edit</button>{item.isActive && <button type="button" className="service-types-danger" onClick={() => deactivate(item)}>Deactivate</button>}</footer></article>)}</div> : <p>No service types available.</p>}
+      {loading ? <p role="status">Loading service types…</p> : items.length ? <div className="service-type-grid">{items.map(item => <article className={!item.isActive ? 'inactive' : ''} key={item.id}><header><h3>{item.name}</h3><span className={item.isActive ? 'active' : ''}>{item.isActive ? 'Active' : 'Inactive'}</span></header><dl><div><dt>Duration</dt><dd>{item.defaultDurationMinutes} minutes</dd></div><div><dt>Estimated cost</dt><dd>{money(item.estimatedCost)}</dd></div><div><dt>Required skill</dt><dd>{item.requiredSkill}</dd></div></dl><footer><button type="button" className="service-types-secondary" onClick={() => startEdit(item)}>Edit</button>{item.isActive && <button type="button" className="service-types-danger" onClick={() => deactivate(item)}>Deactivate</button>}<button type="button" className="service-types-danger" disabled={saving} onClick={() => remove(item)}>Delete</button></footer></article>)}</div> : <p>No service types available.</p>}
     </section>
   </div>;
 }

@@ -135,3 +135,11 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted); 
 }
+
+.password-control { position: relative; display: flex; width: 100%; }
+.password-control input { width: 100%; padding-right: 3rem !important; }
+.password-toggle { position: absolute; right: .6rem; top: 50%; transform: translateY(-50%); display: grid; place-items: center; padding: .45rem; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.form-input-wrapper > .input-icon { z-index: 1; pointer-events: none; }
+.app-toast { position: fixed; right: 1rem; top: 1rem; z-index: 10000; max-width: min(420px, calc(100vw - 2rem)); padding: 1rem; display: flex; gap: 1rem; align-items: center; color: #fff; background: #166534; border-radius: 10px; box-shadow: 0 8px 30px #0004; }
+.app-toast.error { background: #991b1b; }
+.app-toast button { border: 0; background: transparent; color: inherit; font-size: 1.3rem; cursor: pointer; }

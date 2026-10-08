@@ -17,6 +17,7 @@ import CustomerPayments from './pages/Customer/CustomerPayments';
 import AdminLayout from './components/Layout/AdminLayout';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminAppointments from './pages/Admin/AdminAppointments';
+import AdminUsers from './pages/Admin/AdminUsers';
 import AdminCustomers from './pages/Admin/AdminCustomers';
 import AdminVehicles from './pages/Admin/AdminVehicles';
 import AdminServiceTypes from './pages/Admin/AdminServiceTypes';
@@ -40,10 +41,13 @@ import ProtectedRoute from './auth/ProtectedRoute';
 import PasswordReset from './pages/Auth/PasswordReset';
 import AccountSettings from './pages/Shared/AccountSettings';
 
+import Toast from './components/Toast';
+
 function App() {
   return (
     <AuthProvider>
     <Router>
+      <Toast />
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<Navigate to="/login" replace />} />
@@ -85,10 +89,12 @@ function App() {
           <Route path="kanban" element={<AdminKanban />} />
           <Route path="messages" element={<ServiceMessages />} />
           <Route path="customers" element={<AdminCustomers />} />
+          <Route path="users" element={<AdminUsers />} />
           <Route path="vehicles" element={<AdminVehicles />} />
           <Route path="technicians" element={<AdminTechnicians />} />
           <Route path="allocations" element={<AdminAllocations />} />
           <Route path="services" element={<AdminServiceTypes />} />
+          <Route path="service-types" element={<AdminServiceTypes />} />
           <Route path="account" element={<AccountSettings />} />
         </Route>
         </Route>

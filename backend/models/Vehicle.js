@@ -9,7 +9,7 @@ const vehicleSchema = new mongoose.Schema({
   fuelType: { type: String, trim: true, maxlength: 50 },
   mileage: { type: Number, min: 0 },
   vinNumber: { type: String, trim: true, uppercase: true, maxlength: 32 },
-  imageUrl: { type: String, trim: true, maxlength: 2048 }
+  imageUrl: { type: String, trim: true, maxlength: 1398136 }
 }, { timestamps: true });
 
 export default mongoose.model('Vehicle', vehicleSchema);

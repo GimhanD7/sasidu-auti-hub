@@ -30,6 +30,10 @@ export function createApp() {
     if (req.method === 'POST' && /\/photos$/.test(req.path)) return express.json({ limit: '2mb' })(req, res, next);
     next();
   });
+  app.use((req, res, next) => {
+    if (['POST', 'PATCH'].includes(req.method) && /^\/api\/(?:admin\/)?vehicles(?:\/[^/]+)?$/.test(req.path)) return express.json({ limit: '2mb' })(req, res, next);
+    next();
+  });
   app.use(express.json({ limit: '16kb' }));
   app.use('/api/auth', authRoutes);
   app.use('/api/vehicles', customerVehicleRoutes);

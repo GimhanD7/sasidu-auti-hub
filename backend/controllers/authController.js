@@ -141,7 +141,7 @@ export async function changeTechnicianPassword(req, res) {
   if (newPassword !== confirmPassword) return res.status(400).json({ message: 'New passwords do not match.' });
   try {
     const user = await User.findById(req.user._id).select('+password');
-    if (!user || user.role !== 'Technician' || user.isActive === false) return res.status(404).json({ message: 'Technician account not found.' });
+    if (!user || user.isActive === false) return res.status(404).json({ message: 'Account not found.' });
     if (!(await bcrypt.compare(currentPassword, user.password))) return res.status(400).json({ message: 'Current password is incorrect.' });
     if (await bcrypt.compare(newPassword, user.password)) return res.status(400).json({ message: 'Choose a new password that differs from your current password.' });
     user.password = await bcrypt.hash(newPassword, 10);

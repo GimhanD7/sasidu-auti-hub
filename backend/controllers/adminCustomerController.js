@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt';
-import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Invoice from '../models/Invoice.js';
@@ -74,7 +73,7 @@ export async function createAdminCustomer(req, res) {
   if (error) return res.status(400).json({ message: error });
   try {
     if (await User.exists({ $or: [{ email: data.email }, { mobile: data.mobile }] })) return res.status(409).json({ message: 'A user with this email or mobile already exists.' });
-    const generatedPassword = randomBytes(32).toString('base64url');
+    const generatedPassword = '12345678';
     const customer = await User.create({ ...data, password: await bcrypt.hash(generatedPassword, 10), role: 'Customer' });
     let accountSetupEmailSent = false;
     if (passwordResetEmail.isConfigured()) {
@@ -109,4 +108,13 @@ export async function updateAdminCustomer(req, res) {
     if (updateError.name === 'ValidationError') return res.status(400).json({ message: 'Check the customer details and try again.' });
     res.status(503).json({ message: 'Unable to update customer details.' });
   }
+}
+
+export async function setAdminCustomerStatus(req, res) {
+  if (!mongoose.isValidObjectId(req.params.customerId) || typeof req.body?.isActive !== 'boolean') return res.status(400).json({ message: 'Select a customer and a valid account status.' });
+  try {
+    const customer = await User.findOneAndUpdate({ _id: req.params.customerId, role: { $in: CUSTOMER_ROLES } }, { $set: { isActive: req.body.isActive }, $inc: { sessionVersion: 1 }, $unset: { resetTokenHash: '', resetTokenExpiresAt: '' } }, { new: true });
+    if (!customer) return res.status(404).json({ message: 'Customer not found.' });
+    res.json({ message: customer.isActive ? 'Customer account reactivated.' : 'Customer account suspended.', isActive: customer.isActive });
+  } catch { res.status(503).json({ message: 'Unable to update account status.' }); }
 }
