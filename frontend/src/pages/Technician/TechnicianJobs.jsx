@@ -132,6 +132,46 @@ export default function TechnicianJobs() {
           </select>
         </label>
       </section>
+      {current?.data && (
+        <section
+          className="section-card technician-assigned-appointments"
+          aria-label="Assigned appointments"
+        >
+          <header className="section-header">
+            <h2>Assigned appointments</h2>
+            <span>{current.data.appointments.length} scheduled</span>
+          </header>
+          {current.data.appointments.length ? (
+            <div className="technician-appointment-list">
+              {current.data.appointments.map((appointment) => (
+                <article className="technician-appointment-item" key={appointment.id}>
+                  <div>
+                    <strong>{appointment.appointmentNumber}</strong>
+                    <span>{vehicleName(appointment.vehicle)}</span>
+                    <small>
+                      {appointment.customer} · {appointment.serviceType}
+                    </small>
+                    {appointment.complaint && <small>{appointment.complaint}</small>}
+                  </div>
+                  <div className="technician-appointment-meta">
+                    <span>
+                      {dateTime(appointment.preferredDate)} · {appointment.preferredTime}
+                    </span>
+                    <span className="badge badge-warning">{appointment.status}</span>
+                    {appointment.jobId && (
+                      <Link to={`/technician/jobs/${appointment.jobId}`}>Open service job →</Link>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="technician-jobs-empty-copy">
+              No active appointments are assigned to you.
+            </p>
+          )}
+        </section>
+      )}
       {current?.error && (
         <div className="technician-jobs-error" role="alert">
           <span>{current.error}</span>

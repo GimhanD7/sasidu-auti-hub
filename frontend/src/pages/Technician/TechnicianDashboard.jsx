@@ -202,6 +202,43 @@ function DashboardContent({ data, fullName }) {
               showPriority
             />
           </section>
+          <section
+            className="section-card technician-dashboard-appointments"
+            aria-labelledby="assigned-appointments-heading"
+          >
+            <div className="section-header">
+              <h2 id="assigned-appointments-heading">Assigned appointments</h2>
+              <Link to="/technician/jobs">View all appointments</Link>
+            </div>
+            {data.assignedAppointments?.length ? (
+              <div className="technician-appointment-list">
+                {data.assignedAppointments.slice(0, 5).map((appointment) => (
+                  <article className="technician-appointment-item" key={appointment.id}>
+                    <div>
+                      <strong>{appointment.appointmentNumber}</strong>
+                      <span>{vehicleName(appointment.vehicle)}</span>
+                      <small>
+                        {appointment.customer} · {appointment.serviceType}
+                      </small>
+                    </div>
+                    <div className="technician-appointment-meta">
+                      <span>
+                        {dateTime(appointment.preferredDate)} · {appointment.preferredTime}
+                      </span>
+                      <span className="badge badge-warning">{appointment.status}</span>
+                      {appointment.jobId && (
+                        <Link to={`/technician/jobs/${appointment.jobId}`}>Open job →</Link>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="dashboard-empty">
+                <p>No active appointments are assigned to you.</p>
+              </div>
+            )}
+          </section>
           <section className="section-card" aria-labelledby="completed-jobs-heading">
             <div className="section-header">
               <h2 id="completed-jobs-heading">Completed Jobs</h2>

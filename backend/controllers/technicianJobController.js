@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import ServiceJob from '../models/ServiceJob.js';
+import Appointment from '../models/Appointment.js';
 import Vehicle from '../models/Vehicle.js';
 import JobPhoto from '../models/JobPhoto.js';
 
@@ -80,14 +81,50 @@ export async function listTechnicianJobs(req, res) {
         ...(vehicles.length ? [{ vehicle: { $in: vehicles.map(vehicle => vehicle._id) } }] : []),
       ];
     }
-    const [jobs, total] = await Promise.all([
+    const [jobs, total, appointments] = await Promise.all([
       ServiceJob.find(filter).sort(SORTS[sort]).skip((page - 1) * limit).limit(limit)
         .populate({ path: 'customer', select: 'name' })
         .populate({ path: 'vehicle', select: 'make model year registrationNumber' })
         .populate({ path: 'appointment', select: 'serviceType preferredDate preferredTime' }).lean(),
       ServiceJob.countDocuments(filter),
+      Appointment.find({
+        assignedTechnician: req.user._id,
+        status: { $in: ['Pending', 'Confirmed', 'Checked In', 'In Service'] },
+      })
+        .sort({ preferredDate: 1, preferredTime: 1 })
+        .populate({ path: 'customer', select: 'name' })
+        .populate({ path: 'vehicle', select: 'make model year registrationNumber' })
+        .lean(),
     ]);
-    res.set('Cache-Control', 'private, no-store').json({ jobs: jobs.map(jobSummary), total, page, limit, pages: Math.ceil(total / limit) });
+    const appointmentIds = appointments.map(appointment => appointment._id);
+    const linkedJobs = appointmentIds.length
+      ? await ServiceJob.find({ appointment: { $in: appointmentIds } }).select('_id appointment').lean()
+      : [];
+    const jobByAppointment = new Map(linkedJobs.map(job => [String(job.appointment), String(job._id)]));
+    res.set('Cache-Control', 'private, no-store').json({
+      jobs: jobs.map(jobSummary),
+      appointments: appointments.map(appointment => ({
+        id: String(appointment._id),
+        appointmentNumber: appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`,
+        status: appointment.status,
+        serviceType: appointment.serviceType,
+        preferredDate: appointment.preferredDate,
+        preferredTime: appointment.preferredTime,
+        customer: appointment.customer?.name || 'Customer unavailable',
+        vehicle: appointment.vehicle ? {
+          make: appointment.vehicle.make,
+          model: appointment.vehicle.model,
+          year: appointment.vehicle.year,
+          registrationNumber: appointment.vehicle.registrationNumber,
+        } : null,
+        complaint: appointment.problemDescription || '',
+        jobId: jobByAppointment.get(String(appointment._id)) || '',
+      })),
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
+    });
   } catch { res.status(503).json({ message: 'Unable to load your assigned jobs. Please try again.' }); }
 }
 

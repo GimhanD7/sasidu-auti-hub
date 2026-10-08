@@ -1,5 +1,6 @@
 import ServiceJob from '../models/ServiceJob.js';
 import Notification from '../models/Notification.js';
+import Appointment from '../models/Appointment.js';
 
 const WORKSHOP_TIME_ZONE = process.env.APPOINTMENT_TIME_ZONE || 'Asia/Colombo';
 const OPEN_STATUSES = ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test'];
@@ -49,7 +50,7 @@ export async function getTechnicianDashboard(req, res) {
   try {
     const technicianId = req.user._id;
     const { start, end } = zonedDayBounds();
-    const [jobs, assignedCount, inProgressCount, waitingApprovalCount, completedTodayCount, completedCount, highPriorityCount, notifications, unreadNotifications] = await Promise.all([
+    const [jobs, assignedCount, inProgressCount, waitingApprovalCount, completedTodayCount, completedCount, highPriorityCount, notifications, unreadNotifications, appointments] = await Promise.all([
       ServiceJob.find({ technician: technicianId })
         .select('serviceNumber status priority customerComplaint expectedCompletionTime updatedAt createdAt timeline')
         .populate({ path: 'customer', select: 'name' })
@@ -64,7 +65,15 @@ export async function getTechnicianDashboard(req, res) {
       ServiceJob.countDocuments({ technician: technicianId, status: { $in: OPEN_STATUSES }, priority: { $in: ['High', 'Urgent'] } }),
       Notification.find({ user: technicianId }).select('type title message link isRead createdAt').sort({ createdAt: -1 }).limit(5).lean(),
       Notification.countDocuments({ user: technicianId, isRead: false }),
+      Appointment.find({ assignedTechnician: technicianId, status: { $in: ['Pending', 'Confirmed', 'Checked In', 'In Service'] } })
+        .sort({ preferredDate: 1, preferredTime: 1 })
+        .populate({ path: 'customer', select: 'name' })
+        .populate({ path: 'vehicle', select: 'make model year registrationNumber' }).lean(),
     ]);
+    const linkedJobs = appointments.length
+      ? await ServiceJob.find({ appointment: { $in: appointments.map(appointment => appointment._id) } }).select('_id appointment').lean()
+      : [];
+    const jobByAppointment = new Map(linkedJobs.map(job => [String(job.appointment), String(job._id)]));
     const assignedJobs = jobs.filter(job => OPEN_STATUSES.includes(job.status));
     const todayJobs = assignedJobs.filter(job => job.appointment?.preferredDate >= start && job.appointment?.preferredDate < end);
     const highPriorityJobs = assignedJobs.filter(job => ['High', 'Urgent'].includes(job.priority));
@@ -84,6 +93,23 @@ export async function getTechnicianDashboard(req, res) {
         today: todayJobs.length,
       },
       assignedJobs: assignedJobs.slice(0, 8).map(serializeJob),
+      assignedAppointments: appointments.map(appointment => ({
+        id: String(appointment._id),
+        appointmentNumber: appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`,
+        status: appointment.status,
+        serviceType: appointment.serviceType,
+        preferredDate: appointment.preferredDate,
+        preferredTime: appointment.preferredTime,
+        customer: appointment.customer?.name || 'Customer unavailable',
+        vehicle: appointment.vehicle ? {
+          make: appointment.vehicle.make,
+          model: appointment.vehicle.model,
+          year: appointment.vehicle.year,
+          registrationNumber: appointment.vehicle.registrationNumber,
+        } : null,
+        complaint: appointment.problemDescription || '',
+        jobId: jobByAppointment.get(String(appointment._id)) || '',
+      })),
       todayJobs: todayJobs.slice(0, 6).map(serializeJob),
       pendingJobs: jobs.filter(job => job.status === 'Inspecting').slice(0, 5).map(serializeJob),
       activeJob: activeJob ? serializeJob(activeJob) : null,

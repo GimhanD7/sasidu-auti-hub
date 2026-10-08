@@ -12181,6 +12181,73 @@
     white-space: nowrap;
   }
 
+  .layout-container .technician-appointment-list {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .layout-container .technician-appointment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.8rem;
+    background: var(--bg-dark);
+  }
+
+  .layout-container .technician-appointment-item > div {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .layout-container .technician-appointment-item strong {
+    color: #fafafa;
+    font-size: 0.86rem;
+  }
+
+  .layout-container .technician-appointment-item span,
+  .layout-container .technician-appointment-item small {
+    color: #a1a1aa;
+    font-size: 0.76rem;
+  }
+
+  .layout-container .technician-appointment-item .technician-appointment-meta {
+    justify-items: end;
+    flex: 0 0 auto;
+  }
+
+  .layout-container .technician-appointment-item a {
+    color: #f87171;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .layout-container .technician-appointment-item a:hover {
+    color: #fca5a5;
+    text-decoration: underline;
+  }
+
+  .layout-container .technician-jobs-empty-copy {
+    margin-bottom: 0;
+    color: #a1a1aa;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 640px) {
+    .layout-container .technician-appointment-item {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .layout-container .technician-appointment-item .technician-appointment-meta {
+      justify-items: start;
+    }
+  }
+
   @media (max-width: 760px) {
     .layout-container .admin-users-page .user-role-row {
       grid-template-columns: minmax(0, 1fr) 1fr;
