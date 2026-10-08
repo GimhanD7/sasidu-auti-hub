@@ -2,6 +2,7 @@ import VehicleImageInput from '../../components/VehicleImageInput';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
+import Icon from '../../components/Icon';
 import './CustomerVehicles.css';
 
 const EMPTY_VEHICLE = { registrationNumber: '', make: '', model: '', year: '', fuelType: '', mileage: '', vinNumber: '', imageUrl: '' };
@@ -48,7 +49,7 @@ function VehicleForm({ vehicle, saving, error, onClose, onSave }) {
 function VehicleCard({ vehicle, deleting, confirmDelete, onEdit, onRequestDelete, onCancelDelete, onDelete }) {
   return <article className="vehicle-card">
     <div className="vehicle-image-wrapper">
-      {vehicle.imageUrl ? <img src={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} className="vehicle-image" loading="lazy" referrerPolicy="no-referrer" /> : <div className="vehicle-photo-placeholder" aria-label="No vehicle image provided">🚗</div>}
+      {vehicle.imageUrl ? <img src={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} className="vehicle-image" loading="lazy" referrerPolicy="no-referrer" /> : <div className="vehicle-photo-placeholder" aria-label="No vehicle image provided"><Icon name="car" /></div>}
       <span className="status-badge vehicle-status-neutral">Registered vehicle</span>
     </div>
     <div className="vehicle-info">

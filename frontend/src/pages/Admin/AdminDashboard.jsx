@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import Icon from '../../components/Icon';
 import '../Customer/CustomerDashboard.css';
 import './AdminDashboard.css';
 
@@ -93,7 +94,7 @@ export default function AdminDashboard() {
 
         <section className="section-card admin-activity-card">
           <div className="section-header"><h2>Recent workshop activity</h2></div>
-          {recentActivity.length ? <ul className="admin-activity-list">{recentActivity.map(item => <li key={`${item.kind}-${item.id}`}><span className="admin-activity-icon">{item.kind === 'job' ? '🔧' : '📅'}</span><span><strong>{item.reference} · {item.vehicle}</strong><small>{item.kind === 'job' ? 'Job' : 'Appointment'} updated to {item.status}</small></span><time dateTime={item.updatedAt}>{new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updatedAt))}</time></li>)}</ul> : <p className="dashboard-empty">No workshop activity has been recorded.</p>}
+          {recentActivity.length ? <ul className="admin-activity-list">{recentActivity.map(item => <li key={`${item.kind}-${item.id}`}><span className="admin-activity-icon"><Icon name={item.kind === 'job' ? 'wrench' : 'calendar'} /></span><span><strong>{item.reference} · {item.vehicle}</strong><small>{item.kind === 'job' ? 'Job' : 'Appointment'} updated to {item.status}</small></span><time dateTime={item.updatedAt}>{new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.updatedAt))}</time></li>)}</ul> : <p className="dashboard-empty">No workshop activity has been recorded.</p>}
         </section>
       </div>
     </div>
