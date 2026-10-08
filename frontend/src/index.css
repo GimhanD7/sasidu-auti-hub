@@ -12022,6 +12022,70 @@
     padding: 0.65rem 0.75rem;
   }
 
+  .layout-container .customer-table,
+  .layout-container .vehicle-table,
+  .layout-container .technician-table-scroll table {
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 0.85rem;
+    background: var(--bg-dark);
+  }
+
+  .layout-container .customer-table th,
+  .layout-container .vehicle-table th,
+  .layout-container .technician-table-scroll th {
+    color: #a1a1aa;
+    background: #202024;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .layout-container .customer-table td,
+  .layout-container .vehicle-table td,
+  .layout-container .technician-table-scroll td {
+    background: var(--bg-dark);
+  }
+
+  .layout-container .customer-table tbody tr:hover td,
+  .layout-container .vehicle-table tbody tr:hover td,
+  .layout-container .technician-table-scroll tbody tr:hover td {
+    background: var(--bg-surface);
+  }
+
+  .layout-container .technician-list {
+    gap: 0.6rem;
+  }
+
+  .layout-container .technician-row {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.85rem;
+    background: var(--bg-dark);
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .layout-container .technician-row:hover {
+    border-color: #e11d2e66;
+    background: var(--bg-surface);
+  }
+
+  .layout-container .technician-row .technician-row-open {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0;
+    color: var(--text-primary);
+    background: transparent;
+    text-align: left;
+  }
+
+  .layout-container .technician-row .technician-row-open:hover {
+    background: transparent;
+  }
+
   .layout-container .admin-users-page .user-role-list {
     gap: 0.65rem;
   }
