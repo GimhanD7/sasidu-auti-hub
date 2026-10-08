@@ -55,12 +55,15 @@ export async function updateAdminJobTechnician(req, res) {
       if ((nextTechnician.availabilityStatus || 'Available') !== 'Available') return res.status(409).json({ message: 'Only an Available technician can receive this assignment.' });
     }
     const action = !nextId ? 'Removed' : previousId ? 'Reassigned' : 'Assigned';
+    const previousTechnicianId = job.technician;
     job.technician = nextTechnician?._id;
-    job.technicianAssignments.push({ technician: nextTechnician?._id, assignedBy: req.user._id, assignedAt: new Date(), action });
+    job.technicianAssignments.push({ technician: nextTechnician?._id || previousTechnicianId, assignedBy: req.user._id, assignedAt: new Date(), action });
     await job.save();
     if (job.appointment) {
-      const appointment = await Appointment.findById(job.appointment);
-      if (appointment) { appointment.assignedTechnician = nextTechnician?._id; await appointment.save(); }
+      const appointmentUpdate = nextTechnician?._id
+        ? { $set: { assignedTechnician: nextTechnician._id } }
+        : { $unset: { assignedTechnician: 1 } };
+      await Appointment.updateOne({ _id: job.appointment }, appointmentUpdate);
     }
     if (previousId && previousId !== nextId) await Notification.create({ user: previousId, type: 'ServiceJobUnassigned', title: 'Service job assignment changed', message: `${job.serviceNumber} is no longer assigned to you.`, link: '/technician/jobs' }).catch(() => {});
     if (nextId) await Notification.create({ user: nextId, type: 'ServiceJobAssigned', title: action === 'Reassigned' ? 'Service job reassigned' : 'New service job assigned', message: `${job.serviceNumber} has been ${action.toLowerCase()} to you.`, link: '/technician/jobs' }).catch(() => {});
