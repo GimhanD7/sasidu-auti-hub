@@ -59,3 +59,10 @@ table { border-collapse:separate; border-spacing:0; }.section-card table { width
 .layout-container .sidebar-nav .nav-item.active svg { color:var(--primary-red); }
 .layout-container .topbar,.layout-container .sidebar { color:var(--text-primary); }
 .layout-container [class*="primary-button"],.layout-container [class*="-primary"] { --primary-red:#e11d2e; }
+.layout-container button:not(.nav-item):not(.icon-btn):not(.password-toggle):not([class*="secondary"]):not([class*="cancel"]):not([class*="delete"]):not([class*="remove"]):not([class*="back"]):not([class*="filter"]):not([class*="tab"]):not([class*="thread"]) { border-color:var(--primary-red); color:#fff; background:var(--primary-red); }
+.layout-container button:not(:disabled):not(.nav-item):not(.icon-btn):hover { border-color:var(--primary-red-hover); background:var(--primary-red-hover); }
+.layout-container.finance-theme .finance-invoice-tabs button.active,.layout-container.finance-theme .finance-payment-tabs button.active { color:#ff6871; border-color:var(--primary-red); }
+.layout-container.finance-theme .finance-invoices-heading p,.layout-container.finance-theme .finance-invoice-preview-heading > div > span,.layout-container.finance-theme .finance-invoice-parties small,.layout-container.finance-theme .finance-payment-heading p,.layout-container.finance-theme .finance-payment-receipt > div > span,.layout-container.finance-theme .finance-dashboard-heading p { color:#ff6871; }
+.layout-container.finance-theme .finance-revenue-chart svg rect { fill:var(--primary-red); }
+.layout-container.technician-theme .technician-card-section button,.layout-container.technician-theme .technician-task-edit-form button[type="submit"] { border-color:var(--primary-red); background:var(--primary-red); }
+.layout-container.technician-theme .technician-dashboard .notification-item.unread { border-left-color:var(--primary-red); }

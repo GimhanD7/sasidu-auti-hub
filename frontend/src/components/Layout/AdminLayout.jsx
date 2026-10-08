@@ -72,7 +72,7 @@ const AdminLayout = () => {
               </svg>
             </button>
             <div className="user-profile">
-              <div className="avatar" style={{backgroundColor: '#3b82f6'}}>{initials}</div>
+              <div className="avatar" style={{backgroundColor: '#e11d2e'}}>{initials}</div>
               <span>{user?.fullName}</span>
             </div>
           </div>

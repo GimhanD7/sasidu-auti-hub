@@ -22,7 +22,7 @@ const TechnicianLayout = () => {
     <div className="layout-container admin-theme technician-theme">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-icon" style={{ backgroundColor: '#10b981' }}>
+          <div className="brand-icon" style={{ backgroundColor: '#e11d2e' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
             </svg>
@@ -67,7 +67,7 @@ const TechnicianLayout = () => {
               </svg>
             </button>
             <div className="user-profile">
-              <div className="avatar" style={{backgroundColor: '#10b981'}}>{initials}</div>
+              <div className="avatar" style={{backgroundColor: '#e11d2e'}}>{initials}</div>
               <span>{user?.fullName}</span>
             </div>
           </div>
