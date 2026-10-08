@@ -2,8 +2,6 @@ import VehicleImageInput from '../../components/VehicleImageInput';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import './AdminVehicles.css';
-
 const dateText = (value) =>
   value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value)) : '—';
 const amount = (value) =>

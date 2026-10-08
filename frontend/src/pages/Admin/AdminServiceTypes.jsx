@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import './AdminServiceTypes.css';
-
 const blank = { name: '', defaultDurationMinutes: 60, estimatedCost: 0, requiredSkill: '' };
 const money = (value) =>
   new Intl.NumberFormat(undefined, {

@@ -35,7 +35,6 @@ import FinanceDashboard from './pages/Finance/FinanceDashboard';
 import FinanceInvoices from './pages/Finance/FinanceInvoices';
 import FinanceRevenueReports from './pages/Finance/FinanceRevenueReports';
 import FinancePaymentReview from './pages/Finance/FinancePaymentReview';
-import './App.css';
 import { AuthProvider } from './auth/AuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
 import PasswordReset from './pages/Auth/PasswordReset';

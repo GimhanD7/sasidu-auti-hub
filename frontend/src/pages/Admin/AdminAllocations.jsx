@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import './AdminAllocations.css';
-
 const dateText = (value) =>
   value
     ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(

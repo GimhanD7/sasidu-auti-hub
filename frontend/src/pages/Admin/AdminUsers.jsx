@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../auth/useAuth';
-import './AdminUsers.css';
-
 const roles = ['Customer', 'Technician', 'Finance', 'Admin'];
 const emptyAdminForm = { name: '', email: '', mobile: '', password: '', confirmPassword: '' };
 

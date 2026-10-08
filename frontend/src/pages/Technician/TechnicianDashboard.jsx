@@ -2,9 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../auth/useAuth';
-import '../Customer/CustomerDashboard.css';
-import './TechnicianDashboard.css';
-
 const number = (value) => new Intl.NumberFormat().format(value ?? 0);
 const dateTime = (value) =>
   value

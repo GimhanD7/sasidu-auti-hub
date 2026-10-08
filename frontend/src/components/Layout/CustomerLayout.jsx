@@ -2,8 +2,6 @@ import React from 'react';
 import LogoutButton from '../../auth/LogoutButton';
 import { useAuth } from '../../auth/useAuth';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import './CustomerLayout.css';
-
 const CustomerLayout = () => {
   const location = useLocation();
   const { user } = useAuth();

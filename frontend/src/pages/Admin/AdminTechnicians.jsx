@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import './AdminTechnicians.css';
-
 const week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const initialForm = {
   name: '',

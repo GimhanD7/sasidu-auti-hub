@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import './CustomerNotifications.css';
-
 const formatTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())

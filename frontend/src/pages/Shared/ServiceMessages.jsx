@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/useAuth';
 import { api } from '../../lib/api';
-import './ServiceMessages.css';
-
 const formatTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())

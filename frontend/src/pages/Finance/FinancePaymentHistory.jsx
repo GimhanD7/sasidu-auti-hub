@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { downloadFinanceCsv } from '../../lib/financeExport';
-import './FinancePaymentHistory.css';
-
 const methods = ['Cash', 'Card', 'Online', 'Bank Transfer', 'Pay at Workshop'];
 const money = (value) =>
   new Intl.NumberFormat(undefined, {

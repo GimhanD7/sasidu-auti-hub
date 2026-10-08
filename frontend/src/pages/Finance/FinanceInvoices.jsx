@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import FinanceInvoiceManagement from './FinanceInvoiceManagement';
-import './FinanceInvoices.css';
-
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',

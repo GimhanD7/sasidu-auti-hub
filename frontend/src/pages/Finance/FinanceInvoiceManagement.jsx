@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { downloadFinanceCsv } from '../../lib/financeExport';
-import './FinanceInvoiceManagement.css';
-
 const statuses = ['Draft', 'Pending', 'Partially Paid', 'Paid', 'Overdue', 'Cancelled'];
 const money = (value) =>
   new Intl.NumberFormat(undefined, {

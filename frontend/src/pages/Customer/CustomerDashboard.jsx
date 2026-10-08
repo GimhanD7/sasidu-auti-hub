@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import Icon from '../../components/Icon';
 import { useAuth } from '../../auth/useAuth';
-import './CustomerDashboard.css';
-
 const WORKFLOW = ['Inspecting', 'In Progress', 'Final Test', 'Ready'];
 const number = (value) => new Intl.NumberFormat().format(value ?? 0);
 const vehicleLabel = (vehicle) =>

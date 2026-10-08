@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
-import './AdminAppointments.css';
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 const dateKey = (date) => date.toISOString().slice(0, 10);
 const addDays = (date, count) => new Date(date.getTime() + count * DAY_MS);

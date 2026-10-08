@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import Icon from '../../components/Icon';
-import '../Customer/CustomerDashboard.css';
-import './AdminDashboard.css';
-
 const money = (amount) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',

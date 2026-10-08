@@ -2,7 +2,6 @@ import React from 'react';
 import LogoutButton from '../../auth/LogoutButton';
 import { useAuth } from '../../auth/useAuth';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import './AdminLayout.css'; // Reuse admin layout styling
 
 const FinanceLayout = () => {
   const location = useLocation();

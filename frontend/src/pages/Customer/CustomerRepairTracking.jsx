@@ -2,8 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import Icon from '../../components/Icon';
-import './CustomerRepairTracking.css';
-
 const STAGES = ['Inspecting', 'In Progress', 'Final Test', 'Ready'];
 const dateTime = (value) => {
   if (!value) return 'Not available';

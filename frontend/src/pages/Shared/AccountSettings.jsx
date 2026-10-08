@@ -2,8 +2,6 @@ import ChangePassword from './ChangePassword';
 import { useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../auth/useAuth';
-import './AccountSettings.css';
-
 export default function AccountSettings() {
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({

@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import './BookAppointment.css';
-
 const BookAppointment = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedVehicle, setSelectedVehicle] = useState(null);

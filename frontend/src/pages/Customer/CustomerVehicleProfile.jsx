@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import Icon from '../../components/Icon';
-import './CustomerVehicleProfile.css';
-
 const dateLabel = (value) => {
   if (!value) return 'Not available';
   const date = new Date(value);

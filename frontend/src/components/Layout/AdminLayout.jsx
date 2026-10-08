@@ -2,8 +2,6 @@ import React from 'react';
 import LogoutButton from '../../auth/LogoutButton';
 import { useAuth } from '../../auth/useAuth';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import './AdminLayout.css';
-
 const AdminLayout = () => {
   const location = useLocation();
   const { user } = useAuth();

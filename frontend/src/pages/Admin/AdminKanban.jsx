@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import './AdminKanban.css';
-
 const defaultStatuses = [
   'Inspecting',
   'In Progress',

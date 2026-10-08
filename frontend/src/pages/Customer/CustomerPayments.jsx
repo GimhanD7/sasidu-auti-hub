@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
-import './CustomerPayments.css';
-
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',

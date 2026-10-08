@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import './CustomerServiceHistory.css';
-
 const dateTime = (value) => {
   if (!value) return 'Not recorded';
   const date = new Date(value);

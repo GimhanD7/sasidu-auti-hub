@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import FinancePaymentHistory from './FinancePaymentHistory';
 import FinanceOutstandingPayments from './FinanceOutstandingPayments';
-import './FinancePaymentReview.css';
-
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',

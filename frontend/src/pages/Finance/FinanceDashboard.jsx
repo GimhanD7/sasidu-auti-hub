@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import './FinanceDashboard.css';
-
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',

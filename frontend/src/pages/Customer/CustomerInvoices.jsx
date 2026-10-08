@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import './CustomerInvoices.css';
-
 const money = (value) =>
   value == null || !Number.isFinite(Number(value))
     ? 'Not provided'

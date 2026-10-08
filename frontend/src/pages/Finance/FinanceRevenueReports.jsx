@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { downloadFinanceCsv, printFinanceReport } from '../../lib/financeExport';
-import './FinanceRevenueReports.css';
-
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',
