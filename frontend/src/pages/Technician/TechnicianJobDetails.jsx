@@ -149,7 +149,13 @@ export default function TechnicianJobDetails() {
         ...payload,
       });
       setNotice(data.message);
-      setResult({ jobId, job: await loadJob() });
+      try {
+        setResult({ jobId, job: await loadJob() });
+      } catch {
+        setError(
+          'Update saved. The latest job details could not be reloaded; refresh this page to see them.',
+        );
+      }
       return true;
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to save this job card update.');
@@ -1598,6 +1604,7 @@ export default function TechnicianJobDetails() {
               disabled={
                 busy ||
                 !customerStatusUpdate.trim() ||
+                (nextStatus === 'In Progress' && !job.inspection?.completedAt) ||
                 (nextStatus === 'Final Test' &&
                   job.tasks?.some((task) => !['Complete', 'Cancelled'].includes(task.status)))
               }
@@ -1618,6 +1625,11 @@ export default function TechnicianJobDetails() {
               Complete or cancel all repair tasks before final testing.
             </p>
           )}
+        {nextStatus === 'In Progress' && !job.inspection?.completedAt && (
+          <p className="technician-card-hint">
+            Complete and save the inspection before starting repair work.
+          </p>
+        )}
         {nextStatus === 'Ready' &&
           (job.finalTest?.result !== 'Passed' || !job.finalTest?.completedAt) && (
             <p className="technician-card-hint">
