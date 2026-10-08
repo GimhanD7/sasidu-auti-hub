@@ -30,6 +30,7 @@ const appointmentSchema = new mongoose.Schema({
 
 appointmentSchema.pre('save', function releaseFinishedSlot() {
   this.$locals.sendConfirmationNotification = !this.isNew && this.isModified('status') && this.status === 'Confirmed';
+  this.$locals.sendCheckedInNotification = !this.isNew && this.isModified('status') && this.status === 'Checked In';
   if (this.isModified('preferredDate') || this.isModified('preferredTime')) {
     if (!this.isNew) this.reminderSentAt = undefined;
     if (this.preferredDate && this.preferredTime) this.bookingSlotKey = `${this.preferredDate.toISOString().slice(0, 10)}|${this.preferredTime}`;
@@ -38,18 +39,21 @@ appointmentSchema.pre('save', function releaseFinishedSlot() {
 });
 
 appointmentSchema.post('save', async function notifyCustomerOfConfirmation(appointment) {
-  if (!appointment.$locals.sendConfirmationNotification) return;
   const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
-  try {
-    await Notification.create({
-      user: appointment.customer,
-      type: 'AppointmentConfirmation',
-      title: 'Appointment confirmed',
-      message: `Appointment ${number} is confirmed for ${appointment.preferredDate.toISOString().slice(0, 10)} at ${appointment.preferredTime}.`,
-      link: '/customer/appointments',
-      dedupeKey: `appointment-confirmed:${appointment._id}`,
-    });
-  } catch { /* Confirmation is saved; notification creation retries through other channels if available. */ }
+  const notifications = [];
+  if (appointment.$locals.sendConfirmationNotification) notifications.push({
+    type: 'AppointmentConfirmation', title: 'Appointment confirmed',
+    message: `Appointment ${number} is confirmed for ${appointment.preferredDate.toISOString().slice(0, 10)} at ${appointment.preferredTime}.`,
+    dedupeKey: `appointment-confirmed:${appointment._id}`,
+  });
+  if (appointment.$locals.sendCheckedInNotification) notifications.push({
+    type: 'VehicleCheckedIn', title: 'Vehicle checked in',
+    message: `${number}: your vehicle has been checked in at the workshop.`,
+    dedupeKey: `appointment-checked-in:${appointment._id}`,
+  });
+  if (!notifications.length) return;
+  try { await Notification.insertMany(notifications.map(item => ({ ...item, user: appointment.customer, link: '/customer/appointments' })), { ordered: false }); }
+  catch { /* Appointment state remains authoritative if notification storage is unavailable. */ }
 });
 
 export default mongoose.model('Appointment', appointmentSchema);

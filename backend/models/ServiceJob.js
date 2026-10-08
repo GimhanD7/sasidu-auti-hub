@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Notification from './Notification.js';
 
 const serviceJobSchema = new mongoose.Schema({
   serviceNumber: { type: String, unique: true, sparse: true, default: function serviceNumberFromId() { return `JOB-${String(this._id).slice(-8).toUpperCase()}`; } },
@@ -26,10 +27,21 @@ const serviceJobSchema = new mongoose.Schema({
     uploadedAt: { type: Date, default: Date.now }
   }],
   additionalRepairs: [{
-    description: String,
-    estimatedCost: Number,
+    description: { type: String, trim: true, maxlength: 2000 },
+    technicianExplanation: { type: String, trim: true, maxlength: 3000 },
+    parts: [{
+      name: { type: String, trim: true, maxlength: 200 },
+      quantity: { type: Number, min: 0 },
+      unitCost: { type: Number, min: 0 },
+      totalCost: { type: Number, min: 0 },
+    }],
+    labourCost: { type: Number, min: 0 },
+    estimatedCost: { type: Number, min: 0 },
     status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
-    photos: [String]
+    photos: [{ type: String, trim: true, maxlength: 2048 }],
+    requestedAt: { type: Date, default: Date.now },
+    customerComment: { type: String, trim: true, maxlength: 1000 },
+    decisionAt: Date,
   }],
   tasks: [{
     title: { type: String, required: true, trim: true, maxlength: 200 },
@@ -37,11 +49,54 @@ const serviceJobSchema = new mongoose.Schema({
     notes: { type: String, trim: true, maxlength: 1000 },
     completedAt: Date,
   }],
+  replacedParts: [{
+    name: { type: String, trim: true, maxlength: 200 },
+    partNumber: { type: String, trim: true, maxlength: 100 },
+    quantity: { type: Number, min: 0 },
+    unitCost: { type: Number, min: 0 },
+    replacedAt: Date,
+  }],
   timeline: [{
     status: String,
     timestamp: { type: Date, default: Date.now },
     notes: String
   }]
 }, { timestamps: true });
+
+serviceJobSchema.pre('save', function captureCustomerMilestones() {
+  const milestones = {
+    'Final Test': { type: 'FinalTest', title: 'Final testing started', message: 'Your vehicle has moved to final testing.' },
+    Ready: { type: 'VehicleReady', title: 'Vehicle ready', message: 'Your vehicle is ready for collection.' },
+  };
+  this.$locals.customerMilestones = [];
+  if (!this.$locals.suppressCustomerStatusNotifications && this.isModified('status')) {
+    if (this.status === 'In Progress') this.$locals.customerMilestones.push(
+      { type: 'InspectionCompleted', title: 'Inspection completed', message: 'The workshop has completed the inspection of your vehicle.' },
+      { type: 'RepairStarted', title: 'Repair started', message: 'Work on your vehicle has started.' },
+    );
+    else if (milestones[this.status]) this.$locals.customerMilestones.push(milestones[this.status]);
+  }
+  this.$locals.pendingApprovalNotifications = (this.isNew || this.isModified('additionalRepairs'))
+    ? this.additionalRepairs.filter(repair => (repair.status || 'Pending') === 'Pending').map(repair => ({ id: repair._id, description: repair.description || 'Additional repair' }))
+    : [];
+});
+
+serviceJobSchema.post('save', async function notifyCustomerOfServiceMilestones(job) {
+  const notifications = (job.$locals.customerMilestones || []).map(item => ({
+    user: job.customer, ...item, link: item.type === 'InvoiceNotification' ? '/customer/invoices' : '/customer/repair-tracking',
+    dedupeKey: `service-job:${job._id}:${item.type}:${job.updatedAt?.getTime() || Date.now()}`,
+  }));
+  for (const repair of job.$locals.pendingApprovalNotifications || []) notifications.push({
+    user: job.customer,
+    type: 'ApprovalRequest',
+    title: 'Additional repair approval needed',
+    message: `${repair.description} requires your review.`,
+    link: '/customer/repair-approvals',
+    dedupeKey: `repair-approval:${job._id}:${repair.id}`,
+  });
+  if (!notifications.length) return;
+  try { await Notification.insertMany(notifications, { ordered: false }); }
+  catch { /* Repair state remains authoritative if notification storage is unavailable. */ }
+});
 
 export default mongoose.model('ServiceJob', serviceJobSchema);

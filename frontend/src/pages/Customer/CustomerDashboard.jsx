@@ -76,7 +76,7 @@ function DashboardContent({ data }) {
 
       <div className="grid-col-1">
         <section className="section-card" aria-labelledby="notifications-heading">
-          <div className="section-header"><h2 id="notifications-heading">Notifications</h2><span aria-label={`${unreadCount} unread`}>{number(unreadCount)} unread</span></div>
+          <div className="section-header"><h2 id="notifications-heading">Notifications</h2><span aria-label={`${unreadCount} unread`}>{number(unreadCount)} unread</span><Link to="/customer/notifications">View all</Link></div>
           {data.notifications.length ? <div className="notification-list">{data.notifications.map(item => <article className={`notification-item ${!item.isRead ? 'unread' : ''}`} key={item.id}>
             <span className="notif-icon" aria-hidden="true">{item.isRead ? '✓' : '🔔'}</span><div className="notif-content"><p><strong>{item.title}</strong></p><p>{item.message}</p><span className="notif-time">{formatDate(item.createdAt)}</span>{item.link?.startsWith('/') && !item.link.startsWith('//') && <Link to={item.link}>View details</Link>}</div>
           </article>)}</div> : <div className="dashboard-empty"><p>You’re all caught up. New notifications will appear here.</p></div>}

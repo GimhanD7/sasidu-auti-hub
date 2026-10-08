@@ -129,64 +129,74 @@ Customer appointment management lists upcoming and past/cancelled bookings with 
 
 ### 1.8 Live Repair Tracking
 
-- [ ] View active service job and service number
-- [ ] View vehicle and assigned technician
-- [ ] View current repair status
-- [ ] View progress timeline
-- [ ] View technician updates and timestamps
-- [ ] View estimated completion time
-- [ ] View completed and pending tasks
-- [ ] Track the four main stages: Inspecting, In Progress, Final Test and Ready
+- [x] View active service job and service number
+- [x] View vehicle and assigned technician
+- [x] View current repair status
+- [x] View progress timeline
+- [x] View technician updates and timestamps
+- [x] View estimated completion time
+- [x] View completed and pending tasks
+- [x] Track the four main stages: Inspecting, In Progress, Final Test and Ready
+
+Customer repair tracking is restricted to the signed-in customer's jobs and refreshes automatically every 30 seconds. It shows service and vehicle details, technician, current status, four-stage progress, recorded updates and task completion, ETA, approval-waiting and Ready notices. Existing jobs without task or timeline records display an empty state for that section. Build, targeted lint and backend syntax checks passed; connected database records were not verified.
 
 ### 1.9 Additional Repair Approval
 
-- [ ] Receive repair approval request
-- [ ] View identified problem and technician explanation
-- [ ] View repair photos if uploaded
-- [ ] View required parts and estimated part/labour costs
-- [ ] View total additional cost
-- [ ] Approve or decline additional repair
-- [ ] Add customer comments
-- [ ] Record decision date/time
-- [ ] Notify technician/admin after decision
-- [ ] Support statuses: Pending, Approved and Rejected
+- [x] Receive repair approval request
+- [x] View identified problem and technician explanation
+- [x] View repair photos if uploaded
+- [x] View required parts and estimated part/labour costs
+- [x] View total additional cost
+- [x] Approve or decline additional repair
+- [x] Add customer comments
+- [x] Record decision date/time
+- [x] Notify technician/admin after decision
+- [x] Support statuses: Pending, Approved and Rejected
+
+Customers can review and decide on pending additional repairs from the approval page, with optional comments and a timestamped decision history. The customer-scoped API stores compatible parts/labour estimates and photo links, advances a paused job when no requests remain pending, and notifies the assigned technician and active admins after a decision. Production build, targeted lint, backend syntax checks and diff checks passed; connected database behavior and notification delivery were not verified.
 
 ### 1.10 Customer Messaging
 
-- [ ] Message service manager/workshop
-- [ ] Receive messages
-- [ ] Send text messages
-- [ ] View conversation history and timestamps
-- [ ] Link conversation to service job
-- [ ] Open repair approval links from messages
-- [ ] Mark messages as read
-- [ ] Receive new-message notification
+- [x] Message service manager/workshop
+- [x] Receive messages
+- [x] Send text messages
+- [x] View conversation history and timestamps
+- [x] Link conversation to service job
+- [x] Open repair approval links from messages
+- [x] Mark messages as read
+- [x] Receive new-message notification
+
+Customer, admin and assigned-technician conversations are scoped to accessible service jobs. Messages are timestamped, automatically refresh while open, mark incoming messages as read, and create in-app notifications for the other party/workshop. Approval links in messages and pending-approval shortcuts open the customer approval page. Production build, targeted lint, backend syntax and diff checks passed; connected database and live notification behavior were not verified.
 
 ### 1.11 Customer Notifications
 
-- [ ] Appointment confirmation
-- [ ] Appointment reminder
-- [ ] Vehicle checked-in notification
-- [ ] Inspection completed notification
-- [ ] Repair started notification
-- [ ] Approval-request notification
-- [ ] Final-test notification
-- [ ] Vehicle-ready notification
-- [ ] Invoice notification
-- [ ] Payment confirmation
-- [ ] Mark notification as read
-- [ ] Mark all notifications as read
+- [x] Appointment confirmation
+- [x] Appointment reminder
+- [x] Vehicle checked-in notification
+- [x] Inspection completed notification
+- [x] Repair started notification
+- [x] Approval-request notification
+- [x] Final-test notification
+- [x] Vehicle-ready notification
+- [x] Invoice notification
+- [x] Payment confirmation
+- [x] Mark notification as read
+- [x] Mark all notifications as read
+
+The customer notification inbox lists recent events, filters unread items, marks one or all read, and links to the relevant customer page. Appointment confirmation/reminder and check-in, repair milestones/approval requests, invoice creation and payment confirmation create in-app notifications through their model or scheduler events. Production build, targeted lint, backend syntax and diff checks passed; live database and event delivery were not verified.
 
 ### 1.12 Service History
 
-- [ ] View all previous services
-- [ ] Filter by vehicle
-- [ ] Search service records
-- [ ] View service date, service number and service type
-- [ ] View technician and mileage
-- [ ] View replaced parts and completed work
-- [ ] View final cost and corresponding invoice
-- [ ] Download service record
+- [x] View all previous services
+- [x] Filter by vehicle
+- [x] Search service records
+- [x] View service date, service number and service type
+- [x] View technician and mileage
+- [x] View replaced parts and completed work
+- [x] View final cost and corresponding invoice
+- [x] Download service record
+
+Customer service history is restricted to the signed-in customer's vehicles and jobs. It supports vehicle filtering and text search, shows completed tasks, replaced parts, timeline, technician, mileage and invoice breakdown, and downloads a per-job text record. The service job model now supports itemized replaced parts; older records without task or parts data display that detail as unrecorded. Production build, targeted lint, backend syntax and diff checks passed; connected database records were not verified.
 
 ### 1.13 Customer Invoice
 

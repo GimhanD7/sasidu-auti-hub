@@ -6,6 +6,11 @@ import CustomerDashboard from './pages/Customer/CustomerDashboard';
 import CustomerVehicles from './pages/Customer/CustomerVehicles';
 import CustomerVehicleProfile from './pages/Customer/CustomerVehicleProfile';
 import CustomerAppointments from './pages/Customer/CustomerAppointments';
+import CustomerRepairTracking from './pages/Customer/CustomerRepairTracking';
+import CustomerRepairApprovals from './pages/Customer/CustomerRepairApprovals';
+import ServiceMessages from './pages/Shared/ServiceMessages';
+import CustomerNotifications from './pages/Customer/CustomerNotifications';
+import CustomerServiceHistory from './pages/Customer/CustomerServiceHistory';
 import AdminLayout from './components/Layout/AdminLayout';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminKanban from './pages/Admin/AdminKanban';
@@ -40,8 +45,11 @@ function App() {
             <Route path=":vehicleId" element={<CustomerVehicleProfile />} />
           </Route>
           <Route path="appointments" element={<CustomerAppointments />} />
-          <Route path="repair-tracking" element={<div style={{padding: '2rem'}}>Live Repair Tracking (Coming Soon)</div>} />
-          <Route path="history" element={<div style={{padding: '2rem'}}>Service History (Coming Soon)</div>} />
+          <Route path="repair-tracking" element={<CustomerRepairTracking />} />
+          <Route path="repair-approvals" element={<CustomerRepairApprovals />} />
+          <Route path="messages" element={<ServiceMessages />} />
+          <Route path="notifications" element={<CustomerNotifications />} />
+          <Route path="history" element={<CustomerServiceHistory />} />
           <Route path="invoices" element={<div style={{padding: '2rem'}}>Invoices & Payments (Coming Soon)</div>} />
         </Route>
         </Route>
@@ -53,6 +61,7 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="appointments" element={<div style={{padding: '2rem'}}>Appointments & Calendar (Coming Soon)</div>} />
           <Route path="kanban" element={<AdminKanban />} />
+          <Route path="messages" element={<ServiceMessages />} />
           <Route path="customers" element={<div style={{padding: '2rem'}}>Customer Management (Coming Soon)</div>} />
           <Route path="technicians" element={<div style={{padding: '2rem'}}>Technician Management (Coming Soon)</div>} />
           <Route path="services" element={<div style={{padding: '2rem'}}>Service Type Management (Coming Soon)</div>} />
@@ -64,6 +73,7 @@ function App() {
         <Route path="/technician" element={<TechnicianLayout />}>
           <Route index element={<Navigate to="/technician/dashboard" replace />} />
           <Route path="dashboard" element={<TechnicianDashboard />} />
+          <Route path="messages" element={<ServiceMessages />} />
           <Route path="jobs" element={<div style={{padding: '2rem'}}>My Jobs (Coming Soon)</div>} />
           <Route path="history" element={<div style={{padding: '2rem'}}>Job History (Coming Soon)</div>} />
         </Route>

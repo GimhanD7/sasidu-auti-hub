@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import Notification from './Notification.js';
+import ServiceJob from './ServiceJob.js';
 
 const invoiceSchema = new mongoose.Schema({
   serviceJob: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceJob', required: true },
@@ -18,5 +20,28 @@ const invoiceSchema = new mongoose.Schema({
   paymentMethod: { type: String },
   paymentDate: { type: Date }
 }, { timestamps: true });
+
+invoiceSchema.pre('save', function captureCustomerInvoiceEvents() {
+  this.$locals.customerInvoiceEvent = null;
+  if (this.paymentStatus === 'Paid' && (this.isNew || this.isModified('paymentStatus'))) this.$locals.customerInvoiceEvent = 'PaymentConfirmation';
+  else if ((this.isNew && this.paymentStatus !== 'Draft') || (!this.isNew && this.isModified('paymentStatus') && this.paymentStatus !== 'Draft' && this.paymentStatus !== 'Cancelled')) this.$locals.customerInvoiceEvent = 'InvoiceNotification';
+});
+
+invoiceSchema.post('save', async function notifyCustomerOfInvoiceEvent(invoice) {
+  const type = invoice.$locals.customerInvoiceEvent;
+  if (!type) return;
+  try {
+    const job = await ServiceJob.findById(invoice.serviceJob).select('serviceNumber').lean();
+    const paid = type === 'PaymentConfirmation';
+    await Notification.create({
+      user: invoice.customer,
+      type,
+      title: paid ? 'Payment received' : 'New invoice available',
+      message: paid ? `Payment for invoice ${invoice.invoiceNumber} was recorded.` : `Invoice ${invoice.invoiceNumber} for ${job?.serviceNumber || 'your service job'} is ready to review.`,
+      link: '/customer/invoices',
+      dedupeKey: `invoice:${invoice._id}:${type}`,
+    });
+  } catch { /* Invoice state remains authoritative if notification storage is unavailable. */ }
+});
 
 export default mongoose.model('Invoice', invoiceSchema);
