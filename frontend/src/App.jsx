@@ -24,7 +24,6 @@ import AdminServiceTypes from './pages/Admin/AdminServiceTypes';
 import AdminTechnicians from './pages/Admin/AdminTechnicians';
 import AdminAllocations from './pages/Admin/AdminAllocations';
 import AdminKanban from './pages/Admin/AdminKanban';
-import AdminAccounts from './pages/Admin/AdminAccounts';
 import TechnicianLayout from './components/Layout/TechnicianLayout';
 import TechnicianDashboard from './pages/Technician/TechnicianDashboard';
 import TechnicianSecurity from './pages/Technician/TechnicianSecurity';
@@ -95,7 +94,7 @@ function App() {
           <Route path="technicians" element={<AdminTechnicians />} />
           <Route path="allocations" element={<AdminAllocations />} />
           <Route path="services" element={<AdminServiceTypes />} />
-          <Route path="accounts" element={<AdminAccounts />} />
+          <Route path="accounts" element={<Navigate to="/admin/users" replace />} />
           <Route path="service-types" element={<AdminServiceTypes />} />
           <Route path="account" element={<AccountSettings />} />
         </Route>
