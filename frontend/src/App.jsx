@@ -6,6 +6,7 @@ import CustomerDashboard from './pages/Customer/CustomerDashboard';
 import CustomerVehicles from './pages/Customer/CustomerVehicles';
 import CustomerVehicleProfile from './pages/Customer/CustomerVehicleProfile';
 import CustomerAppointments from './pages/Customer/CustomerAppointments';
+import BookAppointment from './pages/Customer/BookAppointment';
 import CustomerRepairTracking from './pages/Customer/CustomerRepairTracking';
 import CustomerRepairApprovals from './pages/Customer/CustomerRepairApprovals';
 import ServiceMessages from './pages/Shared/ServiceMessages';
@@ -63,6 +64,7 @@ function App() {
             <Route path=":vehicleId" element={<CustomerVehicleProfile />} />
           </Route>
           <Route path="appointments" element={<CustomerAppointments />} />
+          <Route path="appointments/book" element={<BookAppointment />} />
           <Route path="repair-tracking" element={<CustomerRepairTracking />} />
           <Route path="repair-approvals" element={<CustomerRepairApprovals />} />
           <Route path="messages" element={<ServiceMessages />} />
