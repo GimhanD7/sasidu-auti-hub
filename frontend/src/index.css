@@ -11981,6 +11981,18 @@
     @apply bg-app-black;
   }
 
+  .layout-container [class*='-list'] > *,
+  .layout-container [class*='-table'] tbody tr,
+  .layout-container table tbody tr {
+    background-color: var(--bg-dark) !important;
+  }
+
+  .layout-container [class*='-list'] > *:hover,
+  .layout-container [class*='-table'] tbody tr:hover,
+  .layout-container table tbody tr:hover {
+    background-color: var(--bg-surface) !important;
+  }
+
   .layout-container .section-card,
   .layout-container .glass-panel,
   .layout-container [class*='-card'] {
