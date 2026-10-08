@@ -23,6 +23,11 @@
 .technician-jobs-pagination button:disabled { opacity: .45; cursor: not-allowed; }
 .technician-back-link { display: inline-block; margin-bottom: 1rem; color: var(--text-secondary); text-decoration: none; }
 .technician-job-detail-heading { align-items: center; }
+.technician-history-link { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
+.technician-history-controls { margin-bottom: 1rem; }
+.technician-history-controls label { display: grid; max-width: 600px; gap: .4rem; color: var(--text-secondary); font-size: .84rem; font-weight: 650; }
+.technician-history-controls input { width: 100%; min-height: 42px; border: 1px solid var(--border-color); border-radius: 8px; padding: .6rem .7rem; color: var(--text-primary); background: var(--bg-input); font: inherit; }
+.technician-completed-badge { display: inline-flex; padding: .2rem .55rem; border-radius: 999px; color: #166534; background: #dcfce7; font-size: .75rem; font-weight: 750; }
 .technician-job-detail-card h2 { margin: 0 0 1rem; }
 .technician-job-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 0; }
 .technician-job-detail-grid > div { padding: .85rem; border-radius: 8px; background: var(--bg-input); }

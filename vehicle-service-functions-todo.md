@@ -544,53 +544,63 @@ Added a required customer-facing note to each technician status transition. The 
 
 ### 3.13 Upload Repair Evidence
 
-- [ ] Upload before-repair photo
-- [ ] Upload damaged-part photo
-- [ ] Upload after-repair photo
-- [ ] Add image description
-- [ ] Link evidence to job
-- [ ] View uploaded evidence
+- [x] Upload before-repair photo
+- [x] Upload damaged-part photo
+- [x] Upload after-repair photo
+- [x] Add image description
+- [x] Link evidence to job
+- [x] View uploaded evidence
+
+Added typed repair evidence for Before Repair, Damaged Part, and After Repair, with a required image description. Evidence stays linked to the job, follows stage-specific workflow rules, and appears in the technician job card with its description and upload time. Existing customer approval evidence remains separately tagged and shared through the approval view. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.14 Final Testing
 
-- [ ] Start final test
-- [ ] Complete final checklist
-- [ ] Record test results
-- [ ] Add final notes
-- [ ] Identify unresolved issue
-- [ ] Return job to In Progress when required
-- [ ] Approve vehicle as Ready
+- [x] Start final test
+- [x] Complete final checklist
+- [x] Record test results
+- [x] Add final notes
+- [x] Identify unresolved issue
+- [x] Return job to In Progress when required
+- [x] Approve vehicle as Ready
+
+Added a final-test workflow with required checks for brakes, steering, lights and signals, tyres and wheels, fluid leaks, and road test. Technicians can record pass/fail results, per-check notes, final notes, and unresolved issues. A failure returns the job to In Progress; Ready is blocked until a completed test passes. Added integration coverage for incomplete, failed, retested, passed, and Ready transitions. Backend tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.15 Complete Job
 
-- [ ] Verify all tasks are complete
-- [ ] Verify used parts and labour hours
-- [ ] Save final technician report
-- [ ] Change status to Ready
-- [ ] Notify admin and customer
-- [ ] Send completed job information to billing module
+- [x] Verify all tasks are complete
+- [x] Verify used parts and labour hours
+- [x] Save final technician report
+- [x] Change status to Ready
+- [x] Notify admin and customer
+- [x] Send completed job information to billing module
+
+Added a guarded Complete Job action requiring a passing final test, all tasks complete or cancelled, no pending approvals or active labour timer, explicit task/parts/labour verification, and a final technician report. Completion marks the vehicle Ready, triggers the existing customer notification, notifies admins, and creates an idempotently reused Draft invoice with parts, labour, and approved additional repair costs for billing review. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 ### 3.16 Technician Job History
 
-- [ ] View completed jobs
-- [ ] Search completed jobs
-- [ ] View job card
-- [ ] View diagnosis and repair tasks
-- [ ] View parts used and labour time
-- [ ] View completion date
+- [x] View completed jobs
+- [x] Search completed jobs
+- [x] View job card
+- [x] View diagnosis and repair tasks
+- [x] View parts used and labour time
+- [x] View completion date
+
+Replaced the Job History placeholder with a technician-scoped completed-jobs page, searchable by service number, vehicle registration, or complaint and paginated. Each result shows its completion timestamp and opens the complete job card with diagnosis, tasks, used parts, and labour records. Added a protected history endpoint and links from the dashboard and My Jobs. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed. Live database records were not verified.
 
 
 ## 4. Billing & Revenue Report
 
 ### 4.1 Billing Dashboard
 
-- [ ] View today's revenue
-- [ ] View monthly revenue
-- [ ] View total invoices
-- [ ] View paid, pending and overdue invoices
-- [ ] View outstanding value
-- [ ] View recent payments
-- [ ] View revenue graph
+- [x] View today's revenue
+- [x] View monthly revenue
+- [x] View total invoices
+- [x] View paid, pending and overdue invoices
+- [x] View outstanding value
+- [x] View recent payments
+- [x] View revenue graph
+
+Replaced the sample dashboard with live billing metrics for Finance and Admin roles: verified-payment revenue for today and this month, invoice counts by status, outstanding balances, the latest eight payments, and a six-month revenue chart. Values display in LKR, and the dashboard links to payment review. Backend integration tests, production build, targeted lint, syntax checks, and diff checks passed; live database values were not verified.
 
 ### 4.2 Generate Invoice
 

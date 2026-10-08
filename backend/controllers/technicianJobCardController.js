@@ -1,12 +1,17 @@
 import mongoose from 'mongoose';
+import { randomBytes } from 'node:crypto';
 import ServiceJob from '../models/ServiceJob.js';
 import JobPhoto from '../models/JobPhoto.js';
+import Invoice from '../models/Invoice.js';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 const MAX_PHOTO_BYTES = 1.4 * 1024 * 1024;
 const NEXT_STATUS = { Inspecting: ['In Progress'], 'In Progress': ['Final Test'], 'Final Test': ['Ready'] };
 const DIAGNOSTIC_CATEGORIES = ['Engine', 'Transmission', 'Brakes', 'Electrical', 'Suspension', 'Cooling', 'Exhaust', 'Tyres', 'Body', 'Other'];
 const DIAGNOSTIC_SEVERITIES = ['Low', 'Medium', 'High', 'Critical'];
 const LABOUR_TYPES = ['Inspection', 'Diagnostics', 'Repair', 'Testing', 'Other'];
+const FINAL_TEST_ITEMS = ['Brakes', 'Steering', 'Lights and signals', 'Tyres and wheels', 'Fluid leaks', 'Road test'];
 const text = (value, max, label, { required = false } = {}) => {
   if (typeof value !== 'string') throw new Error(`${label} must be text.`);
   const normalized = value.trim();
@@ -132,6 +137,76 @@ export async function updateTechnicianJobCard(req, res) {
       job.labourEntries.push({ description: timer.description, labourType: timer.labourType, minutes: Math.max(1, minutes), ratePerHour: timer.ratePerHour, technician: timer.technician, startedAt: timer.startedAt, endedAt: now, recordedAt: now });
       job.activeLabourTimer = undefined;
       message = 'Labour timer stopped and time recorded.';
+    } else if (action === 'finalTestStart') {
+      if (job.status !== 'Final Test') return res.status(409).json({ message: 'A final test can only start while the job is in Final Test status.' });
+      job.finalTest = { startedAt: now, notes: '', unresolvedIssue: '', checklist: [] };
+      job.timeline.push({ status: 'Final Test Started', timestamp: now, notes: 'Final vehicle checks started.' });
+      message = 'Final test started.';
+    } else if (action === 'finalTestComplete') {
+      if (job.status !== 'Final Test' || !job.finalTest?.startedAt || job.finalTest?.completedAt) return res.status(409).json({ message: 'Start or restart the final test before recording its results.' });
+      const checklist = req.body.checklist;
+      if (!Array.isArray(checklist) || checklist.length !== FINAL_TEST_ITEMS.length || new Set(checklist.map(item => item?.item)).size !== FINAL_TEST_ITEMS.length || FINAL_TEST_ITEMS.some(item => !checklist.some(entry => entry?.item === item && ['Passed', 'Failed'].includes(entry.result)))) return res.status(400).json({ message: 'Complete every final test checklist item with Passed or Failed.' });
+      const normalizedChecklist = checklist.map(entry => ({ item: entry.item, result: entry.result, notes: text(entry.notes || '', 500, 'Checklist note') }));
+      const notes = text(req.body.notes || '', 2000, 'Final test notes');
+      const unresolvedIssue = text(req.body.unresolvedIssue || '', 2000, 'Unresolved issue');
+      const failedChecks = normalizedChecklist.filter(entry => entry.result === 'Failed');
+      const passed = failedChecks.length === 0 && !unresolvedIssue;
+      job.finalTest.checklist = normalizedChecklist;
+      job.finalTest.notes = notes;
+      job.finalTest.unresolvedIssue = unresolvedIssue;
+      job.finalTest.result = passed ? 'Passed' : 'Failed';
+      job.finalTest.completedAt = now;
+      if (passed) {
+        job.timeline.push({ status: 'Final Test Passed', timestamp: now, notes: notes || 'All final test checks passed.' });
+        message = 'Final test passed. This vehicle can be marked Ready.';
+      } else {
+        const failureSummary = [failedChecks.map(item => item.item).join(', '), unresolvedIssue].filter(Boolean).join(' — ');
+        const customerUpdate = `Final testing found an issue: ${failureSummary}.${notes ? ` ${notes}` : ''}`;
+        job.$locals.statusTransitionFrom = job.status;
+        job.status = 'In Progress';
+        job.timeline.push({ status: 'Final Test Failed', timestamp: now, notes: customerUpdate });
+        job.timeline.push({ status: 'In Progress', timestamp: now, notes: customerUpdate });
+        message = 'Final test failed. The job returned to In Progress for further repair.';
+      }
+    } else if (action === 'completeJob') {
+      if (job.status !== 'Final Test' || job.finalTest?.result !== 'Passed' || !job.finalTest?.completedAt) return res.status(409).json({ message: 'A completed, passing final test is required before completing this job.' });
+      if (job.tasks.some(task => !['Complete', 'Cancelled'].includes(task.status))) return res.status(409).json({ message: 'Complete or cancel all repair tasks before completing this job.' });
+      if (job.additionalRepairs.some(repair => repair.status === 'Pending')) return res.status(409).json({ message: 'Resolve all pending customer approvals before completing this job.' });
+      if (job.activeLabourTimer?.startedAt) return res.status(409).json({ message: 'Stop the active labour timer before completing this job.' });
+      if (req.body.tasksVerified !== true || req.body.partsVerified !== true || req.body.labourVerified !== true) return res.status(400).json({ message: 'Confirm that tasks, parts, and labour have been verified.' });
+      const reportNotes = text(req.body.reportNotes, 3000, 'Final technician report', { required: true });
+      const parts = (job.replacedParts || []).map(part => ({ name: part.name || 'Part', partNumber: part.partNumber || '', quantity: Number(part.quantity) || 0, unitPrice: Number(part.unitCost) || 0, total: Math.round((Number(part.quantity) || 0) * (Number(part.unitCost) || 0) * 100) / 100 }));
+      const labourItems = (job.labourEntries || []).map(entry => ({ description: `${entry.labourType || 'Repair'} · ${entry.description || 'Labour'}`, hours: Math.round((Number(entry.minutes) || 0) / 60 * 100) / 100, rate: Number(entry.ratePerHour) || 0, total: Math.round(((Number(entry.minutes) || 0) / 60) * (Number(entry.ratePerHour) || 0) * 100) / 100 }));
+      const partsCost = Math.round(parts.reduce((sum, part) => sum + part.total, 0) * 100) / 100;
+      const labourCost = Math.round(labourItems.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
+      const additionalRepairsCost = Math.round(job.additionalRepairs.filter(repair => repair.status === 'Approved').reduce((sum, repair) => sum + (Number(repair.estimatedCost) || 0), 0) * 100) / 100;
+      const totalAmount = Math.round((partsCost + labourCost + additionalRepairsCost) * 100) / 100;
+      const existingInvoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
+      const invoice = existingInvoice || await Invoice.create({
+        serviceJob: job._id,
+        customer: job.customer?._id || job.customer,
+        invoiceNumber: `INV-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`,
+        parts,
+        labourItems,
+        partsCost,
+        labourCost,
+        additionalRepairsCost,
+        tax: 0,
+        discount: 0,
+        totalAmount,
+        paymentStatus: 'Draft',
+      });
+      job.finalReport = { notes: reportNotes, tasksVerified: true, partsVerified: true, labourVerified: true, technician: req.user._id, completedAt: now };
+      job.billingInvoice = invoice._id;
+      job.$locals.statusTransitionFrom = job.status;
+      job.status = 'Ready';
+      job.timeline.push({ status: 'Ready', timestamp: now, notes: reportNotes });
+      await job.save();
+      try {
+        const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
+        if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'ServiceJobCompleted', title: 'Service job completed', message: `${job.serviceNumber || 'A service job'} is ready. Draft invoice ${invoice.invoiceNumber} is available for billing review.`, link: '/admin/kanban', dedupeKey: `service-job-complete:${job._id}:${admin._id}` })), { ordered: false });
+      } catch { /* Job completion and its draft billing record remain authoritative if admin notification delivery fails. */ }
+      return res.json({ message: `Job completed, customer notified, and draft invoice ${invoice.invoiceNumber} sent to billing.`, status: job.status, invoice: { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus, totalAmount: invoice.totalAmount } });
     } else if (action === 'approvalRequest') {
       const description = text(req.body.description, 2000, 'Additional repair description', { required: true });
       const technicianExplanation = text(req.body.explanation || '', 3000, 'Repair explanation');
@@ -168,7 +243,9 @@ export async function updateTechnicianJobCard(req, res) {
       if (job.status === 'Waiting for Approval' || !NEXT_STATUS[job.status]?.includes(nextStatus)) return res.status(409).json({ message: 'This job cannot move to that status yet.' });
       if (nextStatus === 'In Progress' && !job.inspection?.completedAt) return res.status(409).json({ message: 'Complete the vehicle inspection before starting repairs.' });
       if (nextStatus === 'Final Test' && job.tasks.some(task => !['Complete', 'Cancelled'].includes(task.status))) return res.status(409).json({ message: 'Complete or cancel all repair tasks before moving this job to final test.' });
+      if (nextStatus === 'Ready') return res.status(409).json({ message: 'Use Complete Job to verify the final report and send billing information before marking this vehicle Ready.' });
       const customerUpdate = text(req.body.notes, 1000, 'Customer update', { required: true });
+      job.$locals.statusTransitionFrom = job.status;
       job.status = nextStatus;
       job.timeline.push({ status: nextStatus, timestamp: now, notes: customerUpdate });
       message = `Job status updated to ${nextStatus}.`;
@@ -192,8 +269,13 @@ function photoSignatureMatches(buffer, contentType) {
 export async function uploadTechnicianJobPhoto(req, res) {
   const { filename, contentType, data } = req.body || {};
   const category = req.body?.category || 'Job';
+  const evidenceType = req.body?.evidenceType || (category === 'RepairEvidence' ? 'Additional Repair' : 'General');
+  let description;
+  try { description = text(req.body?.description ?? '', 300, 'Photo description', { required: category === 'RepairEvidence' }); }
+  catch (error) { return res.status(400).json({ message: error.message }); }
   if (typeof filename !== 'string' || typeof contentType !== 'string' || typeof data !== 'string' || !['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) return res.status(400).json({ message: 'Choose a JPEG, PNG, or WebP photo.' });
   if (!['Job', 'Inspection', 'RepairEvidence'].includes(category)) return res.status(400).json({ message: 'Choose a valid photo category.' });
+  if (!['General', 'Before Repair', 'Damaged Part', 'After Repair', 'Additional Repair'].includes(evidenceType) || (category !== 'RepairEvidence' && evidenceType !== 'General')) return res.status(400).json({ message: 'Choose a valid repair evidence type.' });
   const base64 = data.replace(/^data:image\/(?:jpeg|png|webp);base64,/i, '');
   if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64)) return res.status(400).json({ message: 'The selected photo is invalid.' });
   const buffer = Buffer.from(base64, 'base64');
@@ -206,9 +288,11 @@ export async function uploadTechnicianJobPhoto(req, res) {
     const safeFilename = filename.replace(/[\\/\u0000-\u001f]/g, '_').trim().slice(0, 160) || 'job-photo';
     if (category === 'Inspection' && !job.inspection?.startedAt) return res.status(409).json({ message: 'Start the inspection before uploading inspection images.' });
     if (category === 'Inspection' && (job.status !== 'Inspecting' || job.inspection?.completedAt)) return res.status(409).json({ message: 'Inspection images can only be added before the inspection is completed.' });
-    if (category === 'RepairEvidence' && !['Inspecting', 'In Progress'].includes(job.status)) return res.status(409).json({ message: 'Supporting images can only be added while inspecting or repairing the vehicle.' });
-    const photo = await JobPhoto.create({ job: job._id, uploadedBy: req.user._id, filename: safeFilename, contentType, category, data: buffer });
-    return res.status(201).json({ photo: { id: String(photo._id), filename: photo.filename, contentType: photo.contentType, category: photo.category, createdAt: photo.createdAt } });
+    if (category === 'RepairEvidence' && evidenceType === 'Additional Repair' && !['Inspecting', 'In Progress'].includes(job.status)) return res.status(409).json({ message: 'Additional repair images can only be added while inspecting or repairing the vehicle.' });
+    if (category === 'RepairEvidence' && evidenceType === 'After Repair' && !['In Progress', 'Final Test', 'Ready'].includes(job.status)) return res.status(409).json({ message: 'After-repair images can be added while repair or final testing is underway.' });
+    if (category === 'RepairEvidence' && evidenceType !== 'Additional Repair' && evidenceType !== 'After Repair' && !['Inspecting', 'In Progress'].includes(job.status)) return res.status(409).json({ message: 'Before-repair and damaged-part images can only be added while inspecting or repairing the vehicle.' });
+    const photo = await JobPhoto.create({ job: job._id, uploadedBy: req.user._id, filename: safeFilename, contentType, category, evidenceType, description, data: buffer });
+    return res.status(201).json({ photo: { id: String(photo._id), filename: photo.filename, contentType: photo.contentType, category: photo.category, evidenceType: photo.evidenceType, description: photo.description, createdAt: photo.createdAt } });
   } catch { return res.status(503).json({ message: 'Unable to upload this job photo. Please try again.' }); }
 }
 

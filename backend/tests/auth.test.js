@@ -7,18 +7,22 @@ import AuthSession from '../models/AuthSession.js';
 import ServiceJob from '../models/ServiceJob.js';
 import Notification from '../models/Notification.js';
 import JobPhoto from '../models/JobPhoto.js';
+import Invoice from '../models/Invoice.js';
+import Vehicle from '../models/Vehicle.js';
+import Payment from '../models/Payment.js';
 import { passwordResetEmail } from '../services/passwordResetEmail.js';
 import { hashToken } from '../utils/session.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 test('auth HTTP flow: credentials, cookies, access, logout and one-time password reset', async t => {
   const customer = { _id: 'customer', name: 'Test Customer', email: 'customer@example.com', mobile: '+94771234567', password: await bcrypt.hash('old-password', 10), role: 'user', isActive: true, sessionVersion: 0 };
-  const users = [customer];
+  const financeUser = { _id: 'finance-user', name: 'Finance User', email: 'finance@example.com', password: await bcrypt.hash('finance-password', 10), role: 'Finance', isActive: true, sessionVersion: 0 };
+  const users = [customer, financeUser];
   const sessions = [];
   let sentEmail;
   t.mock.method(User, 'findOne', async query => users.find(user => (!query.email || user.email === query.email) && (!query.mobile || user.mobile === query.mobile) && (!query.isActive || user.isActive !== false)) || null);
   t.mock.method(User, 'findById', id => ({ select: async () => users.find(user => user._id === id) || null }));
-  t.mock.method(User, 'find', () => ({ select() { return this; }, lean: async () => [] }));
+  t.mock.method(User, 'find', () => ({ select() { return this; }, lean: async () => [{ _id: 'admin-user' }] }));
   t.mock.method(User, 'updateOne', async (query, update) => {
     const user = users.find(user => user._id === query._id && (!query.resetTokenHash || user.resetTokenHash === query.resetTokenHash));
     if (user) {
@@ -131,11 +135,14 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal(technicianLogin.data.role, 'Technician');
     assert.match(technicianLogin.response.headers.get('set-cookie'), /HttpOnly/);
     assert.equal((await request('/api/auth/me', { cookie: technicianLogin.cookie })).data.role, 'Technician');
+    const financeLogin = await request('/api/auth/login', { body: { email: financeUser.email, password: 'finance-password' } });
+    assert.equal(financeLogin.response.status, 200);
     const dashboardJobs = [
       { _id: '64f000000000000000000001', serviceNumber: 'JOB-ACTIVE', status: 'In Progress', priority: 'Urgent', customerComplaint: 'Brake noise', updatedAt: new Date(), customer: { name: 'Workshop Customer' }, vehicle: { make: 'Toyota', model: 'Corolla', year: 2022, registrationNumber: 'ABC-1234' }, appointment: { serviceType: 'Brake repair', preferredDate: new Date(), preferredTime: '09:00' } },
       { _id: '64f000000000000000000002', serviceNumber: 'JOB-PENDING', status: 'Inspecting', priority: 'High', updatedAt: new Date(), customer: { name: 'Workshop Customer' }, vehicle: { make: 'Honda', model: 'Civic', registrationNumber: 'XYZ-9876' }, appointment: { serviceType: 'Inspection', preferredDate: new Date(), preferredTime: '10:00' } },
       { _id: '64f000000000000000000003', serviceNumber: 'JOB-READY', status: 'Ready', priority: 'Normal', updatedAt: new Date(), customer: { name: 'Workshop Customer' }, vehicle: { make: 'Suzuki', model: 'Swift' }, appointment: { serviceType: 'Repair', preferredDate: new Date(), preferredTime: '11:00' } },
     ];
+    dashboardJobs[2].timeline = [{ status: 'Ready', timestamp: new Date('2026-10-01T10:00:00.000Z') }];
     dashboardJobs[0].inspection = { findings: '', diagnosis: '', notes: '', issues: [], recommendedRepairs: [] };
     dashboardJobs[0].repairNotes = [];
     dashboardJobs[0].tasks = [];
@@ -149,6 +156,7 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     dashboardJobs[0].labourEntries = [];
     dashboardJobs[0].additionalRepairs = [];
     dashboardJobs[0].timeline = [];
+    dashboardJobs[0].$locals = {};
     dashboardJobs[0].save = async function save() { return this; };
     dashboardJobs[1].additionalRepairs = [];
     dashboardJobs[1].additionalRepairs.id = id => dashboardJobs[1].additionalRepairs.find(repair => String(repair._id) === String(id));
@@ -168,9 +176,21 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     });
     t.mock.method(ServiceJob, 'countDocuments', async query => query.timeline ? 1 : query.status === 'Inspecting' ? 1 : query.status === 'In Progress' ? 1 : query.status === 'Waiting for Approval' ? 0 : query.status === 'Ready' ? 1 : query.priority ? 2 : Object.keys(query).length === 1 && query.technician ? dashboardJobs.length : 0);
     t.mock.method(ServiceJob, 'aggregate', async () => [{ name: 'Brake pad set', partNumber: 'BP-01', unitPrice: 125, lastUsedAt: new Date() }]);
+    t.mock.method(Vehicle, 'find', () => ({ select() { return this; }, limit() { return this; }, lean: async () => [] }));
     const dashboardNotifications = [{ _id: 'notice-1', type: 'ServiceJobAssigned', title: 'New job assigned', message: 'JOB-ACTIVE is ready.', link: '/technician/jobs', isRead: false, createdAt: new Date() }];
     t.mock.method(Notification, 'find', () => ({ select() { return this; }, sort() { return this; }, limit() { return this; }, lean: async () => dashboardNotifications }));
     t.mock.method(Notification, 'countDocuments', async () => 1);
+    const deliveredNotifications = [];
+    t.mock.method(Notification, 'insertMany', async items => { deliveredNotifications.push(...items); return items; });
+    t.mock.method(Invoice, 'findOne', async () => null);
+    t.mock.method(Invoice, 'create', async data => ({ ...data, _id: '64f000000000000000000060' }));
+    t.mock.method(Invoice, 'countDocuments', async query => query.paymentStatus === 'Paid' ? 3 : query.paymentStatus === 'Overdue' ? 2 : query.paymentStatus?.$in ? 2 : 7);
+    t.mock.method(Invoice, 'aggregate', async () => [{ total: 1250 }]);
+    const dashboardPayments = [{ _id: 'payment-1', amount: 250, method: 'Bank Transfer', receiptNumber: 'RCPT-001', status: 'Completed', createdAt: new Date(), reviewedAt: new Date(), customer: { name: 'Billing Customer' }, invoice: { invoiceNumber: 'INV-001' } }];
+    t.mock.method(Payment, 'aggregate', async pipeline => pipeline[1]?.$group?._id && typeof pipeline[1].$group._id === 'object'
+      ? [{ _id: { year: new Date().getFullYear(), month: new Date().getMonth() + 1 }, total: 400 }]
+      : [{ total: pipeline[0].$match.reviewedAt.$lt ? 100 : 400 }]);
+    t.mock.method(Payment, 'find', () => ({ sort() { return this; }, limit() { return this; }, populate() { return this; }, lean: async () => dashboardPayments }));
     t.mock.method(JobPhoto, 'find', () => ({ select() { return this; }, sort() { return this; }, lean: async () => [] }));
     t.mock.method(JobPhoto, 'countDocuments', async () => 0);
     t.mock.method(JobPhoto, 'create', async photo => ({ ...photo, _id: '64f000000000000000000010', createdAt: new Date() }));
@@ -181,6 +201,15 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal(dashboard.data.pendingJobs[0].serviceNumber, 'JOB-PENDING');
     assert.equal(dashboard.data.completedJobs[0].serviceNumber, 'JOB-READY');
     assert.equal(dashboard.data.notifications[0].title, 'New job assigned');
+    assert.equal((await request('/api/finance/dashboard', { cookie: customerCurrentLogin.cookie })).response.status, 403);
+    const financeDashboard = await request('/api/finance/dashboard', { cookie: financeLogin.cookie });
+    assert.equal(financeDashboard.response.status, 200);
+    assert.equal(financeDashboard.data.summary.todayRevenue, 100);
+    assert.equal(financeDashboard.data.summary.monthlyRevenue, 400);
+    assert.equal(financeDashboard.data.summary.totalInvoices, 7);
+    assert.equal(financeDashboard.data.summary.outstandingValue, 1250);
+    assert.equal(financeDashboard.data.revenueByMonth.length, 6);
+    assert.equal(financeDashboard.data.recentPayments[0].invoiceNumber, 'INV-001');
     const spareParts = await request('/api/auth/technician/parts?search=brake', { cookie: technicianLogin.cookie });
     assert.equal(spareParts.response.status, 200);
     assert.equal(spareParts.data.parts[0].unitPrice, 125);
@@ -190,6 +219,12 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal(myJobs.data.total, 1);
     assert.equal(myJobs.data.jobs.length, 1);
     assert.equal(myJobs.data.jobs[0].serviceType, 'Brake repair');
+    const history = await request('/api/auth/technician/jobs/history?search=JOB-READY', { cookie: technicianLogin.cookie });
+    assert.equal(history.response.status, 200);
+    assert.equal(history.data.total, 1);
+    assert.equal(history.data.jobs[0].serviceNumber, 'JOB-READY');
+    assert.equal(history.data.jobs[0].completedAt, '2026-10-01T10:00:00.000Z');
+    assert.equal((await request('/api/auth/technician/jobs/history', { cookie: customerCurrentLogin.cookie })).response.status, 403);
     const jobDetails = await request('/api/auth/technician/jobs/64f000000000000000000001', { cookie: technicianLogin.cookie });
     assert.equal(jobDetails.response.status, 200);
     assert.equal(jobDetails.data.job.priority, 'Urgent');
@@ -217,6 +252,10 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     const inspectionImage = await request('/api/auth/technician/jobs/64f000000000000000000002/photos', { cookie: technicianLogin.cookie, body: { filename: 'belt.png', contentType: 'image/png', category: 'Inspection', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/bWsAAAAASUVORK5CYII=' } });
     assert.equal(inspectionImage.response.status, 201);
     assert.equal(inspectionImage.data.photo.category, 'Inspection');
+    const repairEvidence = await request('/api/auth/technician/jobs/64f000000000000000000001/photos', { cookie: technicianLogin.cookie, body: { filename: 'damaged-belt.png', contentType: 'image/png', category: 'RepairEvidence', evidenceType: 'Damaged Part', description: 'Cracks across the belt ribs.', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/bWsAAAAASUVORK5CYII=' } });
+    assert.equal(repairEvidence.response.status, 201);
+    assert.equal(repairEvidence.data.photo.evidenceType, 'Damaged Part');
+    assert.equal(repairEvidence.data.photo.description, 'Cracks across the belt ribs.');
     const inspectionComplete = await request('/api/auth/technician/jobs/64f000000000000000000002/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'inspection', findings: 'Belt cracking', diagnosis: 'Belt replacement recommended', issues: ['Drive belt crack'], recommendedRepairs: ['Replace drive belt'], notes: 'Checked under inspection lamp.', complete: true } });
     assert.equal(inspectionComplete.response.status, 200);
     assert.ok(dashboardJobs[1].inspection.completedAt);
@@ -284,6 +323,31 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal(statusUpdate.response.status, 200);
     assert.equal(dashboardJobs[0].status, 'Final Test');
     assert.equal(dashboardJobs[0].timeline.at(-1).notes, 'Repair tasks are complete; final safety checks are underway.');
+    const earlyReady = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'status', status: 'Ready', notes: 'Attempting to mark this ready before testing.' } });
+    assert.equal(earlyReady.response.status, 409);
+    const finalTestStart = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'finalTestStart' } });
+    assert.equal(finalTestStart.response.status, 200);
+    const incompleteFinalTest = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'finalTestComplete', checklist: [] } });
+    assert.equal(incompleteFinalTest.response.status, 400);
+    const finalTestItems = ['Brakes', 'Steering', 'Lights and signals', 'Tyres and wheels', 'Fluid leaks', 'Road test'];
+    const failedFinalTest = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'finalTestComplete', checklist: finalTestItems.map(item => ({ item, result: item === 'Brakes' ? 'Failed' : 'Passed' })), notes: 'Brake pedal travel exceeds specification.', unresolvedIssue: 'Brake pedal still feels soft.' } });
+    assert.equal(failedFinalTest.response.status, 200);
+    assert.equal(dashboardJobs[0].finalTest.result, 'Failed');
+    assert.equal(dashboardJobs[0].status, 'In Progress');
+    const restartFinalTest = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'status', status: 'Final Test', notes: 'Brake system adjusted; beginning final checks again.' } });
+    assert.equal(restartFinalTest.response.status, 200);
+    assert.equal((await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'finalTestStart' } })).response.status, 200);
+    const passedFinalTest = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'finalTestComplete', checklist: finalTestItems.map(item => ({ item, result: 'Passed' })), notes: 'All checks passed on the second test.' } });
+    assert.equal(passedFinalTest.response.status, 200);
+    assert.equal(dashboardJobs[0].finalTest.result, 'Passed');
+    const readyUpdate = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'completeJob', tasksVerified: true, partsVerified: true, labourVerified: true, reportNotes: 'Brake service completed and final test passed.' } });
+    assert.equal(readyUpdate.response.status, 200);
+    assert.equal(dashboardJobs[0].status, 'Ready');
+    assert.equal(dashboardJobs[0].billingInvoice, '64f000000000000000000060');
+    assert.equal(dashboardJobs[0].finalReport.notes, 'Brake service completed and final test passed.');
+    assert.equal(readyUpdate.data.invoice.paymentStatus, 'Draft');
+    assert.ok(readyUpdate.data.invoice.totalAmount >= 125 && readyUpdate.data.invoice.totalAmount <= 126);
+    assert.ok(deliveredNotifications.some(notification => notification.type === 'ServiceJobCompleted'));
     assert.equal((await request('/api/auth/technician-dashboard', { cookie: customerCurrentLogin.cookie })).response.status, 403);
     assert.equal((await request('/api/auth/technician/change-password', {
       cookie: technicianLogin.cookie, body: { currentPassword: 'incorrect', newPassword: 'better-tech-password', confirmPassword: 'better-tech-password' },

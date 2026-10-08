@@ -8,6 +8,7 @@ import './TechnicianJobCard.css';
 const dateTime = value => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Not scheduled';
 const imageUrl = (jobId, photoId) => `${api.defaults.baseURL}/auth/technician/jobs/${jobId}/photos/${photoId}`;
 const lines = value => value.split('\n').map(item => item.trim()).filter(Boolean);
+const finalTestItems = ['Brakes', 'Steering', 'Lights and signals', 'Tyres and wheels', 'Fluid leaks', 'Road test'];
 
 async function preparePhoto(file) {
   if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
@@ -52,6 +53,9 @@ export default function TechnicianJobDetails() {
   const [additionalPhotoIds, setAdditionalPhotoIds] = useState([]);
   const [additionalLabourCost, setAdditionalLabourCost] = useState('0');
   const [customerStatusUpdate, setCustomerStatusUpdate] = useState('');
+  const [finalReportNotes, setFinalReportNotes] = useState('');
+  const [evidenceType, setEvidenceType] = useState('Before Repair');
+  const [evidenceDescription, setEvidenceDescription] = useState('');
   const activeTimerStartedAt = result?.job?.activeLabourTimer?.startedAt;
 
   useEffect(() => {
@@ -109,17 +113,18 @@ export default function TechnicianJobDetails() {
     if (await updateCard(action, buildPayload(form))) formElement.reset();
   }
 
-  async function uploadPhoto(event, category = 'Job') {
+  async function uploadPhoto(event, category = 'Job', evidence = {}) {
     const file = event.target.files?.[0];
     if (!file) return;
     setPhotoBusy(true); setError(''); setNotice('');
     try {
       const photo = await preparePhoto(file);
-      const { data } = await api.post(`/auth/technician/jobs/${jobId}/photos`, { ...photo, category }, { timeout: 30000 });
+      const { data } = await api.post(`/auth/technician/jobs/${jobId}/photos`, { ...photo, category, ...evidence }, { timeout: 30000 });
       if (category === 'RepairEvidence') setAdditionalPhotoIds(ids => [...ids, data.photo.id].slice(0, 3));
       setNotice(`${data.photo.filename} uploaded.`);
       setResult({ jobId, job: await loadJob() });
-    } catch (requestError) { setError(requestError.response?.data?.message || requestError.message || 'Unable to upload this photo.'); }
+      return true;
+    } catch (requestError) { setError(requestError.response?.data?.message || requestError.message || 'Unable to upload this photo.'); return false; }
     finally { setPhotoBusy(false); event.target.value = ''; }
   }
 
@@ -221,8 +226,13 @@ export default function TechnicianJobDetails() {
     </section>
 
     <section className="section-card technician-card-section"><header><div><h2>Job photos</h2><p>Upload JPEG, PNG, or WebP photos. Images are resized and limited to 1.4 MB.</p></div><span>{job.photos?.length || 0} / 12 total</span></header>
-      <label className="technician-photo-picker">{photoBusy ? 'Uploading photo…' : 'Choose a job photo'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || (job.photos?.length || 0) >= 12} onChange={uploadPhoto} /></label>
-      {job.photos?.some(photo => photo.category !== 'Inspection') ? <div className="technician-photo-grid">{job.photos.filter(photo => photo.category !== 'Inspection').map(photo => <figure key={photo.id}><img src={imageUrl(job.id, photo.id)} alt={photo.filename} loading="lazy" /><figcaption>{photo.filename}<small>{dateTime(photo.createdAt)}</small></figcaption></figure>)}</div> : <p className="technician-card-empty">No job photos attached.</p>}
+      <label className="technician-photo-picker">{photoBusy ? 'Uploading photo…' : 'Choose a job photo'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || (job.photos?.length || 0) >= 12} onChange={event => uploadPhoto(event, 'Job')} /></label>
+      {job.photos?.some(photo => photo.category === 'Job') ? <div className="technician-photo-grid">{job.photos.filter(photo => photo.category === 'Job').map(photo => <figure key={photo.id}><img src={imageUrl(job.id, photo.id)} alt={photo.filename} loading="lazy" /><figcaption>{photo.filename}<small>{dateTime(photo.createdAt)}</small></figcaption></figure>)}</div> : <p className="technician-card-empty">No general job photos attached.</p>}
+    </section>
+
+    <section className="section-card technician-card-section"><header><div><h2>Repair evidence</h2><p>Upload and review before-repair, damaged-part, and after-repair photos linked to this service job.</p></div></header>
+      <div className="technician-repair-evidence-form"><label>Evidence type<select value={evidenceType} onChange={event => setEvidenceType(event.target.value)}><option>Before Repair</option><option>Damaged Part</option><option>After Repair</option></select></label><label>Image description<input required maxLength={300} value={evidenceDescription} onChange={event => setEvidenceDescription(event.target.value)} placeholder="Describe what this image shows" /></label><label className="technician-photo-picker">{photoBusy ? 'Uploading evidence…' : 'Choose evidence photo'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || !evidenceDescription.trim() || (job.photos?.length || 0) >= 12} onChange={async event => { if (await uploadPhoto(event, 'RepairEvidence', { evidenceType, description: evidenceDescription })) setEvidenceDescription(''); }} /></label></div>
+      {job.photos?.some(photo => photo.category === 'RepairEvidence' && photo.evidenceType !== 'Additional Repair') ? <div className="technician-photo-grid">{job.photos.filter(photo => photo.category === 'RepairEvidence' && photo.evidenceType !== 'Additional Repair').map(photo => <figure key={photo.id}><img src={imageUrl(job.id, photo.id)} alt={photo.description || photo.filename} loading="lazy" /><figcaption><strong>{photo.evidenceType}</strong><p>{photo.description || 'No description'}</p><small>{photo.filename} · {dateTime(photo.createdAt)}</small></figcaption></figure>)}</div> : <p className="technician-card-empty">No repair evidence uploaded yet.</p>}
     </section>
 
     <section className="section-card technician-card-section"><header><div><h2>Customer approval</h2><p>Request approval before performing additional repair work.</p></div></header>
@@ -232,14 +242,30 @@ export default function TechnicianJobDetails() {
         <div className="technician-additional-parts"><strong>Estimated parts</strong>{additionalParts.map((part, index) => <div className="technician-additional-part-row" key={index}><label>Part<input value={part.name} maxLength={200} onChange={event => setAdditionalParts(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, name: event.target.value } : row))} /></label><label>Qty<input type="number" min="0.01" step="any" value={part.quantity} onChange={event => setAdditionalParts(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, quantity: event.target.value } : row))} /></label><label>Unit cost<input type="number" min="0" step="0.01" value={part.unitCost} onChange={event => setAdditionalParts(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, unitCost: event.target.value } : row))} /></label><button type="button" className="technician-task-cancel" disabled={additionalParts.length === 1} onClick={() => setAdditionalParts(rows => rows.filter((_, rowIndex) => rowIndex !== index))}>Remove</button></div>)}<button type="button" disabled={additionalParts.length >= 20} onClick={() => setAdditionalParts(rows => [...rows, { name: '', quantity: '1', unitCost: '' }])}>Add part</button></div>
         <label>Related repair task<select name="relatedTaskId" defaultValue=""><option value="">No related task</option>{(job.tasks || []).filter(task => task.status !== 'Cancelled').map(task => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label><label>Estimated labour cost<input name="labourCost" type="number" min="0" step="0.01" value={additionalLabourCost} onChange={event => setAdditionalLabourCost(event.target.value)} required /></label>
         <strong>Estimated additional total: {(additionalParts.reduce((sum, part) => sum + (Number(part.quantity) || 0) * (Number(part.unitCost) || 0), 0) + (Number(additionalLabourCost) || 0)).toFixed(2)}</strong>
-        <div className="technician-additional-photos"><label className="technician-photo-picker">{photoBusy ? 'Uploading…' : `Add supporting image (${additionalPhotoIds.length}/3)`}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || additionalPhotoIds.length >= 3 || (job.photos?.length || 0) >= 12} onChange={event => uploadPhoto(event, 'RepairEvidence')} /></label><small>Upload up to 3 images. They will be shared with the customer for this approval request.</small></div>
+        <div className="technician-additional-photos"><label className="technician-photo-picker">{photoBusy ? 'Uploading…' : `Add supporting image (${additionalPhotoIds.length}/3)`}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || additionalPhotoIds.length >= 3 || (job.photos?.length || 0) >= 12} onChange={event => uploadPhoto(event, 'RepairEvidence', { evidenceType: 'Additional Repair', description: 'Supporting image for additional repair approval.' })} /></label><small>Upload up to 3 images. They will be shared with the customer for this approval request.</small></div>
         <button type="submit" disabled={busy || photoBusy || pendingApproval || !['Inspecting', 'In Progress'].includes(job.status)}>{pendingApproval ? 'Approval pending' : 'Send for customer approval'}</button>
       </form>
     </section>
 
+    <section className="section-card technician-card-section"><header><div><h2>Final vehicle test</h2><p>Record safety checks and road-test results before marking the vehicle Ready.</p></div>{job.finalTest?.result && <span className={job.finalTest.result === 'Passed' ? 'technician-card-complete' : 'technician-card-hint'}>{job.finalTest.result}</span>}</header>
+      {job.status !== 'Final Test' && !job.finalTest?.result && <p className="technician-card-empty">Move the job to Final Test after completing or cancelling all repair tasks.</p>}
+      {job.status === 'Final Test' && (!job.finalTest?.startedAt || job.finalTest?.completedAt) && <button type="button" disabled={busy} onClick={() => updateCard('finalTestStart')}>{job.finalTest?.result === 'Failed' ? 'Restart final test' : 'Start final test'}</button>}
+      {job.status === 'Final Test' && job.finalTest?.startedAt && !job.finalTest?.completedAt && <form className="technician-final-test-form" onSubmit={event => submitForm(event, 'finalTestComplete', form => ({ checklist: finalTestItems.map(item => ({ item, result: form.get(`result-${item}`), notes: form.get(`note-${item}`) })), notes: form.get('notes'), unresolvedIssue: form.get('unresolvedIssue') }))}>
+        <p>Started {dateTime(job.finalTest.startedAt)}. Each check needs a result.</p>
+        <div className="technician-final-test-checklist">{finalTestItems.map(item => <fieldset key={item}><legend>{item}</legend><label>Result<select name={`result-${item}`} required defaultValue=""><option value="">Choose result</option><option>Passed</option><option>Failed</option></select></label><label>Notes<input name={`note-${item}`} maxLength={500} /></label></fieldset>)}</div>
+        <label>Final test notes<textarea name="notes" maxLength={2000} rows={3} /></label><label>Unresolved issue<textarea name="unresolvedIssue" maxLength={2000} rows={2} placeholder="Leave blank if there are no unresolved issues." /></label><button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Complete final test'}</button>
+      </form>}
+      {job.finalTest?.completedAt && <div className="technician-final-test-result"><p><strong>{job.finalTest.result}</strong> · Completed {dateTime(job.finalTest.completedAt)}</p>{job.finalTest.notes && <p>{job.finalTest.notes}</p>}{job.finalTest.unresolvedIssue && <p><strong>Unresolved issue:</strong> {job.finalTest.unresolvedIssue}</p>}<ul>{(job.finalTest.checklist || []).map(check => <li key={check.item}><strong>{check.item}:</strong> {check.result}{check.notes ? ` · ${check.notes}` : ''}</li>)}</ul></div>}
+      {job.finalReport?.completedAt && <div className="technician-final-test-result"><p><strong>Final technician report</strong> · {dateTime(job.finalReport.completedAt)}</p><p>{job.finalReport.notes}</p>{job.billingInvoice && <p>Draft invoice sent to billing: {job.billingInvoice.invoiceNumber || job.billingInvoice.id}{job.billingInvoice.totalAmount != null ? ` · ${Number(job.billingInvoice.totalAmount).toFixed(2)}` : ''}</p>}</div>}
+    </section>
+
     <section className="section-card technician-card-section"><header><div><h2>Update job status</h2><p>Job status changes are added to the service history.</p></div></header>
-      {nextStatus ? <form className="technician-status-update-form" onSubmit={async event => { event.preventDefault(); if (await updateCard('status', { status: nextStatus, notes: customerStatusUpdate })) setCustomerStatusUpdate(''); }}><label>Update for customer<textarea required maxLength={1000} rows={3} value={customerStatusUpdate} onChange={event => setCustomerStatusUpdate(event.target.value)} placeholder="Share a brief update that will appear in repair tracking and the customer notification." /></label><button type="submit" disabled={busy || !customerStatusUpdate.trim() || (nextStatus === 'Final Test' && job.tasks?.some(task => !['Complete', 'Cancelled'].includes(task.status)))}>{busy ? 'Saving…' : `Move to ${nextStatus} and notify customer`}</button></form> : <p className="technician-card-empty">{job.status === 'Waiting for Approval' ? 'This job will return to repair when the customer responds.' : 'This job is at its final workflow stage.'}</p>}
+      {nextStatus === 'Ready' ? <form className="technician-job-complete-form" onSubmit={async event => { event.preventDefault(); const form = new FormData(event.currentTarget); if (await updateCard('completeJob', { tasksVerified: form.get('tasksVerified') === 'on', partsVerified: form.get('partsVerified') === 'on', labourVerified: form.get('labourVerified') === 'on', reportNotes: finalReportNotes })) setFinalReportNotes(''); }}><p>Review the task list, used parts, and labour entries above before completing the job.</p><label><input type="checkbox" name="tasksVerified" required /> All repair tasks are complete or cancelled</label><label><input type="checkbox" name="partsVerified" required /> Used parts and quantities are verified</label><label><input type="checkbox" name="labourVerified" required /> Labour time and charges are verified</label><label>Final technician report<textarea required maxLength={3000} rows={4} value={finalReportNotes} onChange={event => setFinalReportNotes(event.target.value)} placeholder="Summarize the completed work and anything the service team should know." /></label><button type="submit" disabled={busy || job.finalTest?.result !== 'Passed' || !job.finalTest?.completedAt || job.tasks?.some(task => !['Complete', 'Cancelled'].includes(task.status)) || pendingApproval || Boolean(job.activeLabourTimer?.startedAt)}>{busy ? 'Completing…' : 'Complete job, notify, and send to billing'}</button></form> : nextStatus ? <form className="technician-status-update-form" onSubmit={async event => { event.preventDefault(); if (await updateCard('status', { status: nextStatus, notes: customerStatusUpdate })) setCustomerStatusUpdate(''); }}><label>Update for customer<textarea required maxLength={1000} rows={3} value={customerStatusUpdate} onChange={event => setCustomerStatusUpdate(event.target.value)} placeholder="Share a brief update that will appear in repair tracking and the customer notification." /></label><button type="submit" disabled={busy || !customerStatusUpdate.trim() || (nextStatus === 'Final Test' && job.tasks?.some(task => !['Complete', 'Cancelled'].includes(task.status)))}>{busy ? 'Saving…' : `Move to ${nextStatus} and notify customer`}</button></form> : <p className="technician-card-empty">{job.status === 'Waiting for Approval' ? 'This job will return to repair when the customer responds.' : 'This job is at its final workflow stage.'}</p>}
       {nextStatus === 'Final Test' && job.tasks?.some(task => !['Complete', 'Cancelled'].includes(task.status)) && <p className="technician-card-hint">Complete or cancel all repair tasks before final testing.</p>}
+      {nextStatus === 'Ready' && (job.finalTest?.result !== 'Passed' || !job.finalTest?.completedAt) && <p className="technician-card-hint">A completed, passing final test is required before this vehicle can be marked Ready.</p>}
+      {nextStatus === 'Ready' && job.tasks?.some(task => !['Complete', 'Cancelled'].includes(task.status)) && <p className="technician-card-hint">Complete or cancel every task before completing this job.</p>}
+      {nextStatus === 'Ready' && pendingApproval && <p className="technician-card-hint">Resolve pending customer approval requests before completing this job.</p>}
+      {nextStatus === 'Ready' && job.activeLabourTimer?.startedAt && <p className="technician-card-hint">Stop the running labour timer before completing this job.</p>}
     </section>
 
     {job.timeline?.length > 0 && <section className="section-card technician-card-section"><header><h2>Job history</h2></header><ol className="technician-job-timeline">{[...job.timeline].reverse().slice(0, 10).map((event, index) => <li key={`${event.status}-${index}`}><strong>{event.status}</strong><span>{dateTime(event.timestamp)}</span>{event.notes && <p>{event.notes}</p>}</li>)}</ol></section>}

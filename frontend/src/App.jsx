@@ -26,6 +26,7 @@ import TechnicianLayout from './components/Layout/TechnicianLayout';
 import TechnicianDashboard from './pages/Technician/TechnicianDashboard';
 import TechnicianSecurity from './pages/Technician/TechnicianSecurity';
 import TechnicianJobs from './pages/Technician/TechnicianJobs';
+import TechnicianJobHistory from './pages/Technician/TechnicianJobHistory';
 import TechnicianJobDetails from './pages/Technician/TechnicianJobDetails';
 import FinanceLayout from './components/Layout/FinanceLayout';
 import FinanceDashboard from './pages/Finance/FinanceDashboard';
@@ -93,8 +94,8 @@ function App() {
           <Route path="security" element={<TechnicianSecurity />} />
           <Route path="messages" element={<ServiceMessages />} />
           <Route path="jobs" element={<TechnicianJobs />} />
+          <Route path="history" element={<TechnicianJobHistory />} />
           <Route path="jobs/:jobId" element={<TechnicianJobDetails />} />
-          <Route path="history" element={<div style={{padding: '2rem'}}>Job History (Coming Soon)</div>} />
         </Route>
         </Route>
 

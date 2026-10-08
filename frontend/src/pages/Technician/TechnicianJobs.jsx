@@ -30,7 +30,7 @@ export default function TechnicianJobs() {
   function resetPage(setter, value) { setter(value); setPage(1); }
 
   return <main className="technician-jobs-page">
-    <header className="technician-jobs-heading"><div><p className="technician-jobs-eyebrow">TECHNICIAN WORKSPACE</p><h1 className="page-title">My Jobs</h1><p className="page-subtitle">Search and organize the service jobs assigned to you.</p></div><span className="technician-jobs-total">{current?.data ? `${current.data.total} jobs` : ' '}</span></header>
+    <header className="technician-jobs-heading"><div><p className="technician-jobs-eyebrow">TECHNICIAN WORKSPACE</p><h1 className="page-title">My Jobs</h1><p className="page-subtitle">Search and organize the service jobs assigned to you.</p></div><Link className="technician-history-link" to="/technician/history">Completed history</Link><span className="technician-jobs-total">{current?.data ? `${current.data.total} jobs` : ' '}</span></header>
     <section className="section-card technician-jobs-controls" aria-label="Search and filter jobs">
       <label className="technician-jobs-search">Search jobs<input type="search" value={search} maxLength={100} placeholder="Service number, vehicle registration, or complaint" onChange={event => resetPage(setSearch, event.target.value)} /></label>
       <label>Status<select value={status} onChange={event => resetPage(setStatus, event.target.value)}><option value="">All statuses</option>{['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test', 'Ready'].map(value => <option key={value}>{value}</option>)}</select></label>

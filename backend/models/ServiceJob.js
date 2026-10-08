@@ -60,6 +60,27 @@ const serviceJobSchema = new mongoose.Schema({
     technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     startedAt: Date,
   },
+  finalTest: {
+    startedAt: Date,
+    completedAt: Date,
+    result: { type: String, enum: ['Passed', 'Failed'] },
+    notes: { type: String, trim: true, maxlength: 2000, default: '' },
+    unresolvedIssue: { type: String, trim: true, maxlength: 2000, default: '' },
+    checklist: [{
+      item: { type: String, required: true, trim: true, maxlength: 120 },
+      result: { type: String, enum: ['Passed', 'Failed'], required: true },
+      notes: { type: String, trim: true, maxlength: 500, default: '' },
+    }],
+  },
+  finalReport: {
+    notes: { type: String, trim: true, maxlength: 3000, default: '' },
+    tasksVerified: { type: Boolean, default: false },
+    partsVerified: { type: Boolean, default: false },
+    labourVerified: { type: Boolean, default: false },
+    technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    completedAt: Date,
+  },
+  billingInvoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
   priority: { type: String, enum: ['Low', 'Normal', 'High', 'Urgent'], default: 'Normal' },
   expectedCompletionTime: { type: Date },
   mileageAtService: { type: Number, min: 0 },
@@ -120,7 +141,10 @@ serviceJobSchema.pre('save', function captureCustomerMilestones() {
   this.$locals.customerMilestones = [];
   if (!this.$locals.suppressCustomerStatusNotifications && this.isModified('status')) {
     const statusUpdate = [...(this.timeline || [])].reverse().find(event => event.status === this.status)?.notes?.trim();
-    if (this.status === 'In Progress') this.$locals.customerMilestones.push(
+    if (this.status === 'In Progress' && this.$locals.statusTransitionFrom === 'Final Test') this.$locals.customerMilestones.push(
+      { type: 'FinalTestFailed', title: 'Additional work needed after final test', message: statusUpdate || 'The workshop found an issue during final testing and is returning your vehicle to repair.' },
+    );
+    else if (this.status === 'In Progress') this.$locals.customerMilestones.push(
       { type: 'InspectionCompleted', title: 'Inspection completed', message: `The workshop has completed the inspection of your vehicle.${statusUpdate ? ` ${statusUpdate}` : ''}` },
       { type: 'RepairStarted', title: 'Repair started', message: `Work on your vehicle has started.${statusUpdate ? ` ${statusUpdate}` : ''}` },
     );

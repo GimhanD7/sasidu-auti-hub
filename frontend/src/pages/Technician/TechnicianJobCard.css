@@ -37,6 +37,17 @@
 .technician-parts-total th, .technician-parts-total td { font-weight: 800; color: var(--text-primary); }
 .technician-card-approval-form { grid-template-columns: 1fr 1fr; }
 .technician-status-update-form { grid-template-columns: 1fr; }
+.technician-final-test-form { grid-template-columns: 1fr; }
+.technician-final-test-checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.technician-final-test-checklist fieldset { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: .6rem; padding: .7rem; border: 1px solid var(--border-color); border-radius: 8px; }
+.technician-final-test-checklist legend { padding: 0 .35rem; color: var(--text-primary); font-weight: 700; }
+.technician-final-test-checklist fieldset label { min-width: 0; }
+.technician-final-test-result { padding: .8rem; border-radius: 8px; background: var(--bg-input); }
+.technician-final-test-result > p { color: var(--text-primary); }
+.technician-final-test-result ul { display: grid; gap: .35rem; margin-bottom: 0; color: var(--text-secondary); }
+.technician-job-complete-form { grid-template-columns: 1fr; }
+.technician-job-complete-form > label:has(input[type="checkbox"]) { display: flex !important; align-items: center; gap: .6rem !important; }
+.technician-job-complete-form input[type="checkbox"] { width: 18px !important; min-height: 18px !important; accent-color: #10b981; }
 .technician-card-approval-form label:nth-child(2), .technician-additional-parts, .technician-additional-photos { grid-column: 1 / -1; }
 .technician-additional-parts { display: grid; gap: .7rem; }
 .technician-additional-parts > strong { color: var(--text-primary); }
@@ -84,6 +95,8 @@
   .technician-part-fields { grid-template-columns: 1fr; }
   .technician-additional-part-row { grid-template-columns: 1fr 1fr; }
   .technician-task-edit-form { grid-template-columns: 1fr; }
+  .technician-final-test-checklist { grid-template-columns: 1fr; }
+  .technician-final-test-checklist fieldset { grid-template-columns: 1fr; }
   .technician-task-status { justify-content: flex-start; }
   .technician-card-section > header { flex-direction: column; }
   .technician-inspection-images { align-items: flex-start; flex-direction: column; }
