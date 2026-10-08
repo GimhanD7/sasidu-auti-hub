@@ -6,7 +6,7 @@ import AuthSession from '../models/AuthSession.js';
 import ServiceType from '../models/ServiceType.js';
 import { changeTechnicianPassword } from '../controllers/authController.js';
 import { setAdminCustomerStatus, createAdminCustomer } from '../controllers/adminCustomerController.js';
-import { deleteAdminServiceType } from '../controllers/adminServiceTypeController.js';
+import { activateAdminServiceType, deleteAdminServiceType } from '../controllers/adminServiceTypeController.js';
 import { passwordResetEmail } from '../services/passwordResetEmail.js';
 import { validVehicleImage, MAX_IMAGE_BYTES } from '../utils/vehicleImage.js';
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, set() { return this; }, clearCookie() { return this; }, json(body) { this.body = body; return this; } });
@@ -51,4 +51,18 @@ test('admin customer creation hashes the requested default password', async t =>
 test('deleting service types hides bookings without deleting historical records', async t => {
   t.mock.method(ServiceType, 'findOneAndUpdate', async (filter, update) => { assert.deepEqual(update, { isActive: false, isDeleted: true }); return { _id: filter._id }; });
   const res = response(); await deleteAdminServiceType({ params: { serviceTypeId: '507f1f77bcf86cd799439011' } }, res); assert.equal(res.code, 200);
+});
+
+test('admin can reactivate a service type that has not been deleted', async t => {
+  t.mock.method(ServiceType, 'exists', async () => true);
+  t.mock.method(ServiceType, 'findOneAndUpdate', async (filter, update, options) => {
+    assert.deepEqual(filter, { _id: '507f1f77bcf86cd799439011', isDeleted: { $ne: true } });
+    assert.deepEqual(update, { isActive: true });
+    assert.equal(options.new, true);
+    return { _id: filter._id, isActive: true };
+  });
+  const res = response();
+  await activateAdminServiceType({ params: { serviceTypeId: '507f1f77bcf86cd799439011' } }, res);
+  assert.equal(res.code, 200);
+  assert.deepEqual(res.body.serviceType, { id: '507f1f77bcf86cd799439011', isActive: true });
 });

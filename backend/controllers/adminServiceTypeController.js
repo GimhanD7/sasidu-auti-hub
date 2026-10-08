@@ -64,6 +64,20 @@ export async function deactivateAdminServiceType(req, res) {
   } catch { res.status(503).json({ message: 'Unable to deactivate the service type.' }); }
 }
 
+export async function activateAdminServiceType(req, res) {
+  if (!mongoose.isValidObjectId(req.params.serviceTypeId)) return res.status(400).json({ message: 'Invalid service type.' });
+  try {
+    await ensureDefaultServiceTypes();
+    const serviceType = await ServiceType.findOneAndUpdate(
+      { _id: req.params.serviceTypeId, isDeleted: { $ne: true } },
+      { isActive: true },
+      { new: true }
+    );
+    if (!serviceType) return res.status(404).json({ message: 'Service type not found.' });
+    res.json({ serviceType: { id: String(serviceType._id), isActive: serviceType.isActive } });
+  } catch { res.status(503).json({ message: 'Unable to activate the service type.' }); }
+}
+
 export async function getActiveServiceTypeNames() {
   await ensureDefaultServiceTypes();
   return (await ServiceType.find({ isActive: true, isDeleted: { $ne: true } }).select('name').sort({ name: 1 }).lean()).map(item => item.name);

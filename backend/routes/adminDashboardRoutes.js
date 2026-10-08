@@ -4,7 +4,7 @@ import { getAdminDashboard, listAdminAppointments } from '../controllers/adminDa
 import { getAdminAppointmentOptions, createAdminAppointment, getAdminAppointment, updateAdminAppointment, convertAdminAppointmentToJob } from '../controllers/adminAppointmentController.js';
 import { listAdminCustomers, getAdminCustomer, createAdminCustomer, updateAdminCustomer, setAdminCustomerStatus } from '../controllers/adminCustomerController.js';
 import { listAdminVehicles, getAdminVehicle, createAdminVehicle, updateAdminVehicle } from '../controllers/adminVehicleController.js';
-import { listAdminServiceTypes, createAdminServiceType, updateAdminServiceType, deactivateAdminServiceType, deleteAdminServiceType } from '../controllers/adminServiceTypeController.js';
+import { listAdminServiceTypes, createAdminServiceType, updateAdminServiceType, activateAdminServiceType, deactivateAdminServiceType, deleteAdminServiceType } from '../controllers/adminServiceTypeController.js';
 import { listAdminTechnicians, createAdminTechnician, getAdminTechnician, updateAdminTechnician, updateAdminTechnicianAvailability } from '../controllers/adminTechnicianController.js';
 import { listAdminAllocations, updateAdminJobTechnician } from '../controllers/adminAllocationController.js';
 import { listAdminJobBoard } from '../controllers/adminJobBoardController.js';
@@ -34,6 +34,7 @@ router.patch('/vehicles/:vehicleId', updateAdminVehicle);
 router.get('/service-types', listAdminServiceTypes);
 router.post('/service-types', createAdminServiceType);
 router.patch('/service-types/:serviceTypeId', updateAdminServiceType);
+router.patch('/service-types/:serviceTypeId/activate', activateAdminServiceType);
 router.patch('/service-types/:serviceTypeId/deactivate', deactivateAdminServiceType);
 router.delete('/service-types/:serviceTypeId', deleteAdminServiceType);
 router.get('/technicians', listAdminTechnicians);
