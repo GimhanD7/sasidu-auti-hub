@@ -1,192 +1,157 @@
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api } from '../../lib/api';
 import './CustomerVehicles.css';
 
-const CustomerVehicles = () => {
-  // Mock data based on the provided design
-  const [vehicles] = useState([
-    {
-      id: 1,
-      make: 'Toyota',
-      model: 'Corolla',
-      year: '2019',
-      fuel: 'Petrol',
-      mileage: '54,200 km',
-      reg: 'CAA-1234',
-      lastService: 'Aug 15, 2023',
-      nextDue: 'Feb 15, 2024',
-      status: 'ACTIVE SERVICE',
-      health: 'GOOD',
-      image: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      id: 2,
-      make: 'Honda',
-      model: 'Civic',
-      year: '2021',
-      fuel: 'Hybrid',
-      mileage: '28,150 km',
-      reg: 'BXY-8821',
-      lastService: 'Oct 02, 2023',
-      nextDue: 'Apr 02, 2024',
-      status: 'SERVICE DUE SOON',
-      health: 'GOOD',
-      image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-    },
-    {
-      id: 3,
-      make: 'Ford',
-      model: 'F-150',
-      year: '2022',
-      fuel: 'Diesel',
-      mileage: '12,400 km',
-      reg: 'TRK-5001',
-      lastService: 'Jun 10, 2023',
-      nextDue: 'Jun 10, 2024',
-      status: 'NO CURRENT SERVICE',
-      health: 'GOOD',
-      image: 'https://images.unsplash.com/photo-1559416523-140ddc3d238c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-    }
-  ]);
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'ACTIVE SERVICE':
-        return { color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)', bg: 'rgba(239, 68, 68, 0.1)' };
-      case 'SERVICE DUE SOON':
-        return { color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.2)', bg: 'rgba(245, 158, 11, 0.1)' };
-      default:
-        return { color: '#9ca3af', borderColor: 'rgba(156, 163, 175, 0.2)', bg: 'rgba(156, 163, 175, 0.1)' };
-    }
-  };
-
-  return (
-    <div className="vehicles-container">
-      <div className="vehicles-header">
-        <div>
-          <h1 className="page-title">MY VEHICLES</h1>
-          <p className="page-subtitle">Manage your garage and track service status for all registered vehicles.</p>
-        </div>
-        <button className="btn-primary" style={{ padding: '0.75rem 1.5rem', width: 'auto' }}>
-          + ADD VEHICLE
-        </button>
-      </div>
-
-      <div className="vehicles-toolbar">
-        <div className="search-bar">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          <input type="text" placeholder="Search by make, model, or license plate..." />
-        </div>
-        <div className="toolbar-actions">
-          <button className="btn-outline">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-            </svg>
-            Filters
-          </button>
-          <button className="btn-outline">Sort: Recently Added</button>
-        </div>
-      </div>
-
-      <div className="vehicles-grid">
-        {vehicles.map(vehicle => {
-          const style = getStatusStyle(vehicle.status);
-          return (
-            <div key={vehicle.id} className="vehicle-card">
-              <div className="vehicle-image-wrapper">
-                <img src={vehicle.image} alt={vehicle.model} className="vehicle-image" />
-                <div className="status-badge" style={{ color: style.color, backgroundColor: style.bg, borderColor: style.color }}>
-                  {vehicle.status}
-                </div>
-                <button className="context-menu-btn">⋮</button>
-              </div>
-              
-              <div className="vehicle-info">
-                <div className="vehicle-title-row">
-                  <h2>{vehicle.make} {vehicle.model}</h2>
-                  <span className="reg-badge">{vehicle.reg}</span>
-                </div>
-                <p className="vehicle-specs">{vehicle.year} • {vehicle.fuel} • {vehicle.mileage}</p>
-                
-                <div className="service-dates">
-                  <div className="date-box">
-                    <span className="date-label">
-                      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                      LAST SERVICE
-                    </span>
-                    <span className="date-value">{vehicle.lastService}</span>
-                  </div>
-                  <div className="date-box align-right">
-                    <span className="date-label">
-                      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                      NEXT DUE
-                    </span>
-                    <span className="date-value">{vehicle.nextDue}</span>
-                  </div>
-                </div>
-
-                <div className="health-section">
-                  <div className="health-header">
-                    <span className="health-label">HEALTH STATUS</span>
-                    <span className="health-status">{vehicle.health}</span>
-                  </div>
-                  <div className="health-bar-bg">
-                    <div className="health-bar-fill" style={{ width: '85%' }}></div>
-                  </div>
-                </div>
-
-                <button className="view-details-btn">VIEW VEHICLE DETAILS &gt;</button>
-              </div>
-            </div>
-          );
-        })}
-
-        <div className="add-vehicle-card">
-          <div className="add-icon">+</div>
-          <h3>REGISTER NEW VEHICLE</h3>
-          <p>Expanding your fleet? Add a new ride.</p>
-        </div>
-      </div>
-
-      <div className="service-forecast-section">
-        <h2 className="forecast-title">
-          <svg width="24" height="24" fill="none" stroke="var(--primary-red)" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-          </svg>
-          Service Forecast
-        </h2>
-        
-        <div className="forecast-grid">
-          <div className="forecast-card warning">
-            <div className="forecast-icon warning-icon">
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-              </svg>
-            </div>
-            <div className="forecast-content">
-              <h3>IMMEDIATE ATTENTION REQUIRED</h3>
-              <p>Your <strong>Honda Civic (BXY-8821)</strong> is approaching its 30,000 km milestone. We recommend booking a Major Service within the next 15 days to maintain warranty coverage.</p>
-              <button className="text-btn warning-text">SCHEDULE NOW</button>
-            </div>
-          </div>
-
-          <div className="forecast-card promo">
-            <div className="forecast-icon promo-icon">
-              <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path>
-              </svg>
-            </div>
-            <div className="forecast-content">
-              <h3>WORKSHOP AVAILABILITY</h3>
-              <p>Our main workshop at <strong>Metro Central</strong> has open slots this Thursday for express oil changes. Exclusive 10% discount for app users.</p>
-              <button className="text-btn promo-text">CLAIM DISCOUNT</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+const EMPTY_VEHICLE = { registrationNumber: '', make: '', model: '', year: '', fuelType: '', mileage: '', vinNumber: '', imageUrl: '' };
+const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'LPG', 'Other'];
+const MAX_VEHICLE_YEAR = new Date().getFullYear() + 1;
+const formatMileage = value => value == null ? 'Not provided' : `${new Intl.NumberFormat().format(value)} km`;
+const formatDate = value => {
+  if (!value) return 'Not available';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Not available' : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
 };
 
-export default CustomerVehicles;
+function VehicleForm({ vehicle, saving, error, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({ ...EMPTY_VEHICLE, ...vehicle }));
+  function change(event) {
+    setForm(previous => ({ ...previous, [event.target.name]: event.target.value }));
+  }
+  function submit(event) {
+    event.preventDefault();
+    onSave(form);
+  }
+
+  return <div className="vehicle-dialog-backdrop">
+    <section className="vehicle-dialog" role="dialog" aria-modal="true" aria-labelledby="vehicle-dialog-title">
+      <div className="vehicle-dialog-header"><div><h2 id="vehicle-dialog-title">{vehicle?._id || vehicle?.id ? 'Edit vehicle' : 'Add a vehicle'}</h2><p>Enter the details shown on your vehicle and registration documents.</p></div><button className="vehicle-icon-button" type="button" aria-label="Close" disabled={saving} onClick={onClose}>×</button></div>
+      {error && <p className="vehicle-feedback error" role="alert">{error}</p>}
+      <form className="vehicle-form" onSubmit={submit}>
+        <div className="vehicle-form-grid">
+          <div className="vehicle-form-field"><label htmlFor="vehicle-registration">Registration number *</label><input id="vehicle-registration" name="registrationNumber" autoComplete="off" autoCapitalize="characters" maxLength={25} required value={form.registrationNumber || ''} onChange={change} /></div>
+          <div className="vehicle-form-field"><label htmlFor="vehicle-make">Make *</label><input id="vehicle-make" name="make" autoComplete="off" maxLength={80} required value={form.make || ''} onChange={change} /></div>
+          <div className="vehicle-form-field"><label htmlFor="vehicle-model">Model *</label><input id="vehicle-model" name="model" autoComplete="off" maxLength={80} required value={form.model || ''} onChange={change} /></div>
+          <div className="vehicle-form-field"><label htmlFor="vehicle-year">Year</label><input id="vehicle-year" name="year" type="number" inputMode="numeric" min="1886" max={MAX_VEHICLE_YEAR} step="1" value={form.year ?? ''} onChange={change} /></div>
+          <div className="vehicle-form-field"><label htmlFor="vehicle-fuel">Fuel type</label><input id="vehicle-fuel" name="fuelType" list="vehicle-fuel-types" maxLength={50} value={form.fuelType || ''} onChange={change} /><datalist id="vehicle-fuel-types">{FUEL_TYPES.map(type => <option key={type} value={type} />)}</datalist></div>
+          <div className="vehicle-form-field"><label htmlFor="vehicle-mileage">Mileage (km)</label><input id="vehicle-mileage" name="mileage" type="number" inputMode="numeric" min="0" max="99999999" step="any" value={form.mileage ?? ''} onChange={change} /></div>
+          <div className="vehicle-form-field vehicle-form-wide"><label htmlFor="vehicle-vin">VIN / chassis number</label><input id="vehicle-vin" name="vinNumber" autoComplete="off" maxLength={32} value={form.vinNumber || ''} onChange={change} /></div>
+          <div className="vehicle-form-field vehicle-form-wide"><label htmlFor="vehicle-image-url">Vehicle image URL (optional)</label><input id="vehicle-image-url" name="imageUrl" type="url" placeholder="https://example.com/vehicle.jpg" maxLength={2048} value={form.imageUrl || ''} onChange={change} /><small>Use an HTTPS image URL. Images are optional.</small></div>
+        </div>
+        <div className="vehicle-form-actions"><button type="button" className="btn-outline" disabled={saving} onClick={onClose}>Cancel</button><button type="submit" className="btn-primary vehicle-save-button" disabled={saving}>{saving ? 'Saving…' : vehicle?._id || vehicle?.id ? 'Save changes' : 'Add vehicle'}</button></div>
+      </form>
+    </section>
+  </div>;
+}
+
+function VehicleCard({ vehicle, deleting, confirmDelete, onEdit, onRequestDelete, onCancelDelete, onDelete }) {
+  return <article className="vehicle-card">
+    <div className="vehicle-image-wrapper">
+      {vehicle.imageUrl ? <img src={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} className="vehicle-image" loading="lazy" referrerPolicy="no-referrer" /> : <div className="vehicle-photo-placeholder" aria-label="No vehicle image provided">🚗</div>}
+      <span className="status-badge vehicle-status-neutral">Registered vehicle</span>
+    </div>
+    <div className="vehicle-info">
+      <div className="vehicle-title-row"><h2>{vehicle.make} {vehicle.model}</h2><span className="reg-badge">{vehicle.registrationNumber}</span></div>
+      <p className="vehicle-specs">{[vehicle.year, vehicle.fuelType, vehicle.mileage == null ? null : formatMileage(vehicle.mileage)].filter(Boolean).join(' · ') || 'Details not provided'}</p>
+      <details className="vehicle-details"><summary>View vehicle details</summary><dl>
+        <div><dt>Registration number</dt><dd>{vehicle.registrationNumber}</dd></div>
+        <div><dt>Make</dt><dd>{vehicle.make}</dd></div>
+        <div><dt>Model</dt><dd>{vehicle.model}</dd></div>
+        <div><dt>Year</dt><dd>{vehicle.year || 'Not provided'}</dd></div>
+        <div><dt>Fuel type</dt><dd>{vehicle.fuelType || 'Not provided'}</dd></div>
+        <div><dt>Mileage</dt><dd>{formatMileage(vehicle.mileage)}</dd></div>
+        <div><dt>VIN / chassis number</dt><dd>{vehicle.vinNumber || 'Not provided'}</dd></div>
+        <div><dt>Added</dt><dd>{formatDate(vehicle.createdAt)}</dd></div>
+      </dl></details>
+      <div className="vehicle-card-actions"><Link className="view-details-btn vehicle-profile-link" to={`/customer/vehicles/${vehicle._id || vehicle.id}`}>Vehicle profile</Link><button className="view-details-btn" type="button" onClick={() => onEdit(vehicle)}>Edit details</button>{confirmDelete ? <div className="vehicle-delete-confirm"><p>Removal is allowed only when there are no appointments or repair records.</p><div><button className="btn-outline" type="button" onClick={onCancelDelete} disabled={deleting}>Keep vehicle</button><button className="vehicle-delete-button" type="button" onClick={() => onDelete(vehicle)} disabled={deleting}>{deleting ? 'Removing…' : 'Confirm removal'}</button></div></div> : <button className="vehicle-delete-trigger" type="button" onClick={onRequestDelete}>Remove</button>}</div>
+    </div>
+  </article>;
+}
+
+export default function CustomerVehicles() {
+  const [vehicles, setVehicles] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('recent');
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [pageError, setPageError] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/vehicles', { signal: controller.signal })
+      .then(response => { if (!controller.signal.aborted) { setVehicles(response.data); setLoadError(''); } })
+      .catch(error => { if (!controller.signal.aborted) setLoadError(error.response?.data?.message || 'Unable to load your vehicles. Please try again.'); });
+    return () => controller.abort();
+  }, [retry]);
+
+  const filteredVehicles = useMemo(() => {
+    if (!vehicles) return [];
+    const query = search.trim().toLocaleLowerCase();
+    const matches = vehicles.filter(vehicle => [vehicle.registrationNumber, vehicle.make, vehicle.model, vehicle.year, vehicle.fuelType, vehicle.vinNumber]
+      .filter(value => value != null).some(value => String(value).toLocaleLowerCase().includes(query)));
+    return [...matches].sort((a, b) => {
+      if (sort === 'name') return `${a.make} ${a.model}`.localeCompare(`${b.make} ${b.model}`);
+      if (sort === 'year') return (b.year || 0) - (a.year || 0);
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+  }, [vehicles, search, sort]);
+
+  function openAdd() { setFormError(''); setEditingVehicle({ ...EMPTY_VEHICLE }); }
+  function openEdit(vehicle) { setFormError(''); setEditingVehicle(vehicle); }
+  function closeForm() { if (!saving) { setEditingVehicle(null); setFormError(''); } }
+
+  async function saveVehicle(form) {
+    if (saving) return;
+    setSaving(true);
+    setFormError('');
+    const id = editingVehicle?._id || editingVehicle?.id;
+    const payload = Object.fromEntries(Object.entries(form).filter(([, value]) => value !== undefined));
+    try {
+      const response = id ? await api.patch(`/vehicles/${id}`, payload) : await api.post('/vehicles', payload);
+      setVehicles(previous => id
+        ? previous.map(vehicle => (vehicle._id || vehicle.id) === id ? response.data : vehicle)
+        : [response.data, ...previous]);
+      setEditingVehicle(null);
+      setPageError('');
+    } catch (error) {
+      setFormError(error.response?.data?.message || 'Unable to save this vehicle. Please try again.');
+    } finally { setSaving(false); }
+  }
+
+  async function removeVehicle(vehicle) {
+    const id = vehicle._id || vehicle.id;
+    if (deletingId) return;
+    setDeletingId(id);
+    setPageError('');
+    try {
+      await api.delete(`/vehicles/${id}`);
+      setVehicles(previous => previous.filter(item => (item._id || item.id) !== id));
+      setConfirmDeleteId(null);
+    } catch (error) {
+      setPageError(error.response?.data?.message || 'Unable to remove this vehicle. Please try again.');
+      setConfirmDeleteId(null);
+    } finally { setDeletingId(null); }
+  }
+
+  return <div className="vehicles-container">
+    <div className="vehicles-header"><div><h1 className="page-title">MY VEHICLES</h1><p className="page-subtitle">Manage the vehicles registered to your account.</p></div><button className="btn-primary vehicle-add-button" type="button" onClick={openAdd}>+ ADD VEHICLE</button></div>
+    {pageError && <div className="vehicle-feedback error" role="alert">{pageError}</div>}
+    {loadError && <div className="vehicle-feedback error" role="alert"><p>{loadError}</p><button className="btn-outline" type="button" onClick={() => setRetry(value => value + 1)}>Try again</button></div>}
+    <div className="vehicles-toolbar"><div className="search-bar"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg><input type="search" aria-label="Search vehicles" placeholder="Search registration, make, model or VIN…" value={search} onChange={event => setSearch(event.target.value)} /></div><label className="vehicle-sort">Sort by<select aria-label="Sort vehicles" value={sort} onChange={event => setSort(event.target.value)}><option value="recent">Recently added</option><option value="name">Make and model</option><option value="year">Newest model year</option></select></label></div>
+    {vehicles === null && !loadError ? <p className="vehicle-feedback" role="status">Loading your vehicles…</p> : null}
+    {vehicles && !loadError && <>
+      <p className="vehicle-result-count">{filteredVehicles.length} {filteredVehicles.length === 1 ? 'vehicle' : 'vehicles'}{search.trim() ? ` matching “${search.trim()}”` : ''}</p>
+      {filteredVehicles.length > 0 && <div className="vehicles-grid">{filteredVehicles.map(vehicle => <VehicleCard key={vehicle._id || vehicle.id} vehicle={vehicle} deleting={deletingId === (vehicle._id || vehicle.id)} confirmDelete={confirmDeleteId === (vehicle._id || vehicle.id)} onEdit={openEdit} onRequestDelete={() => { setPageError(''); setConfirmDeleteId(vehicle._id || vehicle.id); }} onCancelDelete={() => setConfirmDeleteId(null)} onDelete={removeVehicle} />)}
+        <button className="add-vehicle-card" type="button" onClick={openAdd}><span className="add-icon" aria-hidden="true">+</span><strong>REGISTER A VEHICLE</strong><span>Add a vehicle to your account.</span></button>
+      </div>}
+      {!filteredVehicles.length && <div className="vehicle-empty-state"><h2>{vehicles.length ? 'No matching vehicles' : 'No vehicles registered yet'}</h2><p>{vehicles.length ? 'Try another registration number, make, model or VIN.' : 'Add your first vehicle to keep its service information in one place.'}</p>{vehicles.length ? <button className="btn-outline" type="button" onClick={() => setSearch('')}>Clear search</button> : <button className="btn-primary vehicle-add-button" type="button" onClick={openAdd}>+ ADD VEHICLE</button>}</div>}
+    </>}
+    {editingVehicle && <VehicleForm vehicle={editingVehicle} saving={saving} error={formError} onClose={closeForm} onSave={saveVehicle} />}
+    <p className="vehicles-dashboard-link"><Link to="/customer/dashboard">Back to dashboard</Link></p>
+  </div>;
+}

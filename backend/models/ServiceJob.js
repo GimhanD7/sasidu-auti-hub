@@ -12,6 +12,18 @@ const serviceJobSchema = new mongoose.Schema({
   },
   priority: { type: String, enum: ['Low', 'Normal', 'High', 'Urgent'], default: 'Normal' },
   expectedCompletionTime: { type: Date },
+  mileageAtService: { type: Number, min: 0 },
+  recommendations: [{
+    title: { type: String, trim: true, maxlength: 120 },
+    description: { type: String, trim: true, maxlength: 1000 },
+    dueAt: { type: Date },
+    dueMileage: { type: Number, min: 0 }
+  }],
+  documents: [{
+    title: { type: String, trim: true, maxlength: 120 },
+    url: { type: String, trim: true, maxlength: 2048 },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
   additionalRepairs: [{
     description: String,
     estimatedCost: Number,

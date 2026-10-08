@@ -54,8 +54,20 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Enter your email or mobile number and password.' });
     }
     const identifier = email.trim();
-    const query = identifier.includes('@') ? { email: identifier.toLowerCase() } : { mobile: identifier.replace(/[\s()-]/g, '') };
-    const user = await User.findOne(query);
+    let user;
+    if (identifier.includes('@')) {
+      const normalizedEmail = identifier.toLowerCase();
+      user = await User.findOne({ email: normalizedEmail });
+      // Earlier registrations preserved email casing. Match those existing accounts
+      // while all newly registered addresses remain stored in normalized form.
+      if (!user) {
+        const escapedEmail = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        user = await User.findOne({ email: { $regex: `^${escapedEmail}$`, $options: 'i' } });
+      }
+    } else {
+      const normalizedMobile = identifier.replace(/[\s()-]/g, '');
+      user = await User.findOne({ mobile: normalizedMobile });
+    }
     if (!user || user.isActive === false || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }

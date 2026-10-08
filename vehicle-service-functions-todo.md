@@ -60,37 +60,43 @@ Implemented role-aware routing, 24-hour or optional 30-day HTTP-only sessions, a
 
 ### 1.3 Customer Dashboard
 
-- [ ] Display customer name and profile summary
-- [ ] Display registered vehicles
-- [ ] Display active service/repair
-- [ ] Display current repair status
-- [ ] Display estimated completion date/time
-- [ ] Display upcoming appointment
-- [ ] Display latest invoice
-- [ ] Display unread messages and notifications
-- [ ] Provide quick access to Book Appointment, Track Repair and My Vehicles
-- [ ] Show summary cards for vehicles, active repairs, appointments and outstanding invoices
+- [x] Display customer name and profile summary
+- [x] Display registered vehicles
+- [x] Display active service/repair
+- [x] Display current repair status
+- [x] Display estimated completion date/time
+- [x] Display upcoming appointment
+- [x] Display latest invoice
+- [x] Display unread messages and notifications
+- [x] Provide quick access to Book Appointment, Track Repair and My Vehicles
+- [x] Show summary cards for vehicles, active repairs, appointments and outstanding invoices
+
+Implementation uses customer-scoped dashboard data from the authenticated session, including live database query logic for counts, repairs, appointments, invoices, vehicles, notifications and unread messages. Production build and changed-file lint passed. Connected database records were not verified.
 
 ### 1.4 Vehicle Management
 
-- [ ] Add vehicle
-- [ ] Edit vehicle details
-- [ ] View vehicle
-- [ ] Remove vehicle if permitted
-- [ ] Search vehicle
-- [ ] View vehicle service history
-- [ ] Store registration number, make, model, year, fuel type, mileage, VIN/chassis number and optional vehicle image
+- [x] Add vehicle
+- [x] Edit vehicle details
+- [x] View vehicle
+- [x] Remove vehicle if permitted
+- [x] Search vehicle
+- [x] View vehicle service history
+- [x] Store registration number, make, model, year, fuel type, mileage, VIN/chassis number and optional vehicle image
+
+Customer-scoped vehicle list and CRUD, profile, and per-vehicle service history are implemented. Delete is blocked when appointments or repair records exist. Production build and changed-file lint passed; connected database records were not verified.
 
 ### 1.5 Vehicle Profile
 
-- [ ] View complete vehicle information
-- [ ] View current repair
-- [ ] View previous services and repairs
-- [ ] View invoices
-- [ ] View service recommendations
-- [ ] View last-service mileage
-- [ ] View next recommended service
-- [ ] View repair/service documents
+- [x] View complete vehicle information
+- [x] View current repair
+- [x] View previous services and repairs
+- [x] View invoices
+- [x] View service recommendations
+- [x] View last-service mileage
+- [x] View next recommended service
+- [x] View repair/service documents
+
+The profile reads only the signed-in customer's vehicle, jobs, appointments and invoices. ServiceJob now supports service mileage, recommendations and document links. These sections show an explicit empty state until workshop records include those values; document viewing supports HTTPS links. Production build, targeted lint and backend syntax checks passed. Connected database records were not verified.
 
 ### 1.6 Book Service Appointment
 

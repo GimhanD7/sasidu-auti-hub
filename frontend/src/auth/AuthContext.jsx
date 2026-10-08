@@ -36,7 +36,6 @@ export function AuthProvider({ children }) {
     const { data } = await api.post('/auth/login', credentials);
     setUser(data);
     setSignedOut(false);
-    setSignedOut(false);
     setSessionError('');
     return data;
   }
