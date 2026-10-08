@@ -11993,6 +11993,35 @@
     background-color: var(--bg-surface) !important;
   }
 
+  .layout-container button:not(.nav-item):not(.icon-btn):not(.password-toggle),
+  .layout-container [role='button'] {
+    min-height: 34px !important;
+    padding: 0.45rem 0.8rem !important;
+    border-radius: 0.55rem;
+    font-size: 0.82rem;
+    font-weight: 650;
+    line-height: 1.25;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .layout-container [class*='-list'] > * {
+    padding: 0.7rem 0.85rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .layout-container [class*='-list'] > *:last-child {
+    border-bottom: 0;
+  }
+
+  .layout-container table th,
+  .layout-container table td {
+    padding: 0.65rem 0.75rem;
+  }
+
   .layout-container .section-card,
   .layout-container .glass-panel,
   .layout-container [class*='-card'] {
