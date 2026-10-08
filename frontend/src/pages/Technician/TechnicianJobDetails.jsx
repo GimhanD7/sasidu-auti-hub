@@ -115,6 +115,22 @@ export default function TechnicianJobDetails() {
   }, [jobId, retry, loadJob]);
 
   useEffect(() => {
+    if (result?.jobId !== jobId || result.job?.status !== 'Waiting for Approval') return undefined;
+
+    const refreshIfIdle = () => {
+      if (document.visibilityState === 'visible' && !busy && !photoBusy) {
+        setRetry((value) => value + 1);
+      }
+    };
+    const interval = window.setInterval(refreshIfIdle, 20000);
+    window.addEventListener('focus', refreshIfIdle);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshIfIdle);
+    };
+  }, [busy, jobId, photoBusy, result]);
+
+  useEffect(() => {
     if (partSearch.trim().length < 2) return undefined;
     const controller = new AbortController();
     const timer = setTimeout(
