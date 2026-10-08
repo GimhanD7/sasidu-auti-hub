@@ -67,14 +67,26 @@ export default function AdminAllocations() {
       setNotice(
         data.action === 'Removed'
           ? `${job.reference} is now unassigned.`
-          : `${job.reference} ${data.action.toLowerCase()} successfully.`,
+          : data.action
+            ? `${job.reference} ${data.action.toLowerCase()} successfully.`
+            : data.message || `${job.reference} assignment is up to date.`,
       );
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Unable to change this assignment.');
+      setSavingId('');
+      return;
+    }
+
+    try {
       const { data: refreshed } = await api.get('/admin/allocations', {
         params: search ? { search } : {},
       });
+      setJobs(refreshed.jobs);
       setTechnicians(refreshed.technicians);
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to change this assignment.');
+    } catch {
+      setError(
+        'Assignment saved, but workload totals could not refresh. Use Refresh to reload them.',
+      );
     } finally {
       setSavingId('');
     }

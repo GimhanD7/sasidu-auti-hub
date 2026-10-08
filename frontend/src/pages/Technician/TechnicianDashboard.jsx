@@ -259,6 +259,16 @@ export default function TechnicianDashboard() {
       });
     return () => controller.abort();
   }, [user?._id, retry]);
+
+  useEffect(() => {
+    const refresh = () => setRetry((value) => value + 1);
+    const interval = window.setInterval(refresh, 20000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
   const current = result?.userId === user?._id ? result : null;
   if (current?.error)
     return (

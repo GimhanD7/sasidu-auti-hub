@@ -49,6 +49,16 @@ export default function TechnicianJobs() {
     };
   }, [search, status, priority, sort, page, retry]);
 
+  useEffect(() => {
+    const refresh = () => setRetry((value) => value + 1);
+    const interval = window.setInterval(refresh, 20000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
+
   const key = `${search}|${status}|${priority}|${sort}|${page}`;
   const current = result?.key === key ? result : null;
   function resetPage(setter, value) {
@@ -67,6 +77,13 @@ export default function TechnicianJobs() {
         <Link className="technician-history-link" to="/technician/history">
           Completed history
         </Link>
+        <button
+          className="technician-history-link"
+          type="button"
+          onClick={() => setRetry((value) => value + 1)}
+        >
+          Refresh jobs
+        </button>
         <span className="technician-jobs-total">
           {current?.data ? `${current.data.total} jobs` : ' '}
         </span>
