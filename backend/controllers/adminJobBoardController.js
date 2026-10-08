@@ -20,15 +20,11 @@ export async function listAdminJobBoard(req, res) {
   if (priority && !PRIORITIES.includes(priority)) return res.status(400).json({ message: 'Choose a valid job priority.' });
   if (technician && technician !== 'unassigned' && !mongoose.isValidObjectId(technician)) return res.status(400).json({ message: 'Choose a valid technician.' });
   if (customer && !mongoose.isValidObjectId(customer)) return res.status(400).json({ message: 'Choose a valid customer.' });
-  if (customer) filter.customer = customer;
-  if (typeof serviceType === 'string' && serviceType.trim()) {
-    const appointments = await Appointment.find({ serviceType: { $regex: escapeRegex(serviceType.trim().slice(0, 100)), $options: 'i' } }).select('_id').lean();
-    filter.appointment = { $in: appointments.map(item => item._id) };
-  }
   const start = dateFrom ? parseDate(dateFrom) : null;
   const end = dateTo ? parseDate(dateTo) : null;
   if ((dateFrom && !start) || (dateTo && !end) || (start && end && start > end)) return res.status(400).json({ message: 'Choose a valid date range.' });
   const filter = {};
+  if (customer) filter.customer = customer;
   if (status) filter.status = status;
   if (priority) filter.priority = priority;
   if (technician === 'unassigned') filter.$or = [{ technician: { $exists: false } }, { technician: null }];
@@ -36,6 +32,10 @@ export async function listAdminJobBoard(req, res) {
   if (start || end) filter.createdAt = { ...(start ? { $gte: start } : {}), ...(end ? { $lt: new Date(end.getTime() + 86400000) } : {}) };
   const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
   try {
+    if (typeof serviceType === 'string' && serviceType.trim()) {
+      const appointments = await Appointment.find({ serviceType: { $regex: escapeRegex(serviceType.trim().slice(0, 100)), $options: 'i' } }).select('_id').lean();
+      filter.appointment = { $in: appointments.map(item => item._id) };
+    }
     if (search) {
       const expression = escapeRegex(search);
       const vehicles = await Vehicle.find({ registrationNumber: { $regex: expression, $options: 'i' } }).select('_id').limit(100).lean();
