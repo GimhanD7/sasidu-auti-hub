@@ -11965,6 +11965,14 @@
     @apply bg-app-black text-zinc-100;
   }
 
+  .layout-container .vehicle-directory-row {
+    @apply bg-app-black text-zinc-100;
+  }
+
+  .layout-container .vehicle-directory-row:hover {
+    @apply bg-app-surface;
+  }
+
   .layout-container .section-card,
   .layout-container .glass-panel,
   .layout-container [class*='-card'] {
