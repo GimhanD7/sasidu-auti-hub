@@ -117,7 +117,7 @@ export default function AdminAppointments() {
             type="button"
             onClick={loadAppointments}
             disabled={loading}
-            style={{ padding: '0.6rem 1rem', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', cursor: 'pointer' }}
+            style={{ padding: '0.6rem 1rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '8px', cursor: 'pointer' }}
           >
             {loading ? 'Refreshing…' : '↻ Refresh'}
           </button>
@@ -140,34 +140,34 @@ export default function AdminAppointments() {
       )}
 
       {/* Filter Bar */}
-      <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
+      <div style={{ background: 'var(--bg-card, #161619)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', alignItems: 'center' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Search</label>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)', fontWeight: 600, marginBottom: '0.2rem' }}>Search</label>
             <input
               type="search"
               placeholder="Search customer, plate, service…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+              style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '8px', fontSize: '0.9rem' }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Date Filter</label>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)', fontWeight: 600, marginBottom: '0.2rem' }}>Date Filter</label>
             <div style={{ display: 'flex', gap: '0.25rem' }}>
               <input
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                style={{ flex: 1, padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+                style={{ flex: 1, padding: '0.55rem 0.75rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '8px', fontSize: '0.9rem' }}
               />
               {dateFilter && (
                 <button
                   type="button"
                   onClick={() => setDateFilter('')}
                   title="Clear Date"
-                  style={{ padding: '0 0.5rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer' }}
+                  style={{ padding: '0 0.5rem', background: '#27272a', color: '#f4f4f5', border: '1px solid #52525b', borderRadius: '8px', cursor: 'pointer' }}
                 >
                   ✕
                 </button>
@@ -176,11 +176,11 @@ export default function AdminAppointments() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Status</label>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)', fontWeight: 600, marginBottom: '0.2rem' }}>Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+              style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '8px', fontSize: '0.9rem' }}
             >
               <option value="">All Statuses</option>
               {STATUSES.map((status) => (
@@ -192,11 +192,11 @@ export default function AdminAppointments() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Technician</label>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)', fontWeight: 600, marginBottom: '0.2rem' }}>Technician</label>
             <select
               value={technicianFilter}
               onChange={(e) => setTechnicianFilter(e.target.value)}
-              style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+              style={{ width: '100%', padding: '0.55rem 0.75rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '8px', fontSize: '0.9rem' }}
             >
               <option value="">All Technicians</option>
               {technicians.map((t) => (
@@ -496,13 +496,13 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Customer Selection */}
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
+          <div style={{ border: '1px solid var(--border-color, #2c2c32)', background: 'var(--bg-surface, #111114)', borderRadius: '8px', padding: '0.85rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Customer Details</label>
               <button
                 type="button"
                 onClick={() => setIsNewCustomer(!isNewCustomer)}
-                style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}
+                style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}
               >
                 {isNewCustomer ? '← Choose Existing Customer' : '+ Add New Customer'}
               </button>
@@ -517,7 +517,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                     placeholder="Customer Name *"
                     value={newCustomerName}
                     onChange={(e) => setNewCustomerName(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                   />
                 </div>
                 <div>
@@ -527,7 +527,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                     placeholder="Email *"
                     value={newCustomerEmail}
                     onChange={(e) => setNewCustomerEmail(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                   />
                 </div>
                 <div>
@@ -536,7 +536,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                     placeholder="Mobile"
                     value={newCustomerMobile}
                     onChange={(e) => setNewCustomerMobile(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                   />
                 </div>
               </div>
@@ -546,7 +546,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                   required
                   value={customerId}
                   onChange={(e) => handleCustomerChange(e.target.value)}
-                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                 >
                   <option value="">Select Existing Customer...</option>
                   {(options.customers || []).map((c) => (
@@ -560,14 +560,14 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
           </div>
 
           {/* Vehicle Selection */}
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
+          <div style={{ border: '1px solid var(--border-color, #2c2c32)', background: 'var(--bg-surface, #111114)', borderRadius: '8px', padding: '0.85rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Vehicle Information</label>
               {!isNewCustomer && customerVehicles.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setIsNewVehicle(!isNewVehicle)}
-                  style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}
+                  style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}
                 >
                   {isNewVehicle ? '← Choose Existing Vehicle' : '+ Add New Vehicle'}
                 </button>
@@ -583,7 +583,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                     placeholder="Make (e.g. Toyota) *"
                     value={vehicleMake}
                     onChange={(e) => setVehicleMake(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                   />
                 </div>
                 <div>
@@ -593,7 +593,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                     placeholder="Model (e.g. Corolla) *"
                     value={vehicleModel}
                     onChange={(e) => setVehicleModel(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                   />
                 </div>
                 <div>
@@ -602,7 +602,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                     placeholder="Year (e.g. 2022)"
                     value={vehicleYear}
                     onChange={(e) => setVehicleYear(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                   />
                 </div>
                 <div>
@@ -612,7 +612,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                     placeholder="Plate / Reg Number *"
                     value={vehicleReg}
                     onChange={(e) => setVehicleReg(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                   />
                 </div>
               </div>
@@ -622,7 +622,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                   required
                   value={vehicleId}
                   onChange={(e) => setVehicleId(e.target.value)}
-                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                 >
                   {customerVehicles.map((v) => (
                     <option key={v._id || v.id} value={v._id || v.id}>
@@ -642,7 +642,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                 required
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
-                style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               >
                 {(options.serviceTypes || []).map((st) => (
                   <option key={st} value={st}>
@@ -658,7 +658,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                 type="date"
                 value={preferredDate}
                 onChange={(e) => setPreferredDate(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               />
             </div>
             <div>
@@ -668,7 +668,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                 type="time"
                 value={preferredTime}
                 onChange={(e) => setPreferredTime(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               />
             </div>
           </div>
@@ -683,7 +683,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
               placeholder="Describe customer's issues or requested service details..."
               value={problemDescription}
               onChange={(e) => setProblemDescription(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+              style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
             />
           </div>
 
@@ -696,7 +696,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
               placeholder="Staff notes..."
               value={internalNotes}
               onChange={(e) => setInternalNotes(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+              style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
             />
           </div>
 
@@ -705,7 +705,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
             <button
               type="button"
               onClick={onClose}
-              style={{ padding: '0.6rem 1.2rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer' }}
+              style={{ padding: '0.6rem 1.2rem', background: '#27272a', color: '#f4f4f5', border: '1px solid #52525b', borderRadius: '6px', cursor: 'pointer' }}
             >
               Cancel
             </button>
@@ -861,17 +861,17 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Customer & Vehicle Info Box */}
-            <div style={{ background: 'var(--bg-surface, #f8fafc)', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', fontSize: '0.9rem' }}>
+            <div style={{ background: 'var(--bg-surface, #111114)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '8px', padding: '0.85rem', fontSize: '0.9rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div>
-                  <span style={{ color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600 }}>Customer</span>
+                  <span style={{ color: 'var(--text-secondary, #b3b3bc)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600 }}>Customer</span>
                   <div style={{ fontWeight: 600 }}>{appt?.customer?.name || appt?.customer}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{appt?.customer?.email || appt?.customer?.mobile}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)' }}>{appt?.customer?.email || appt?.customer?.mobile}</div>
                 </div>
                 <div>
-                  <span style={{ color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600 }}>Vehicle</span>
+                  <span style={{ color: 'var(--text-secondary, #b3b3bc)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600 }}>Vehicle</span>
                   <div style={{ fontWeight: 600 }}>{appt?.vehicle?.make} {appt?.vehicle?.model}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Plate: {appt?.vehicle?.registrationNumber || 'N/A'}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)' }}>Plate: {appt?.vehicle?.registrationNumber || 'N/A'}</div>
                 </div>
               </div>
             </div>
@@ -883,7 +883,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                 >
                   {STATUSES.map((st) => (
                     <option key={st} value={st}>
@@ -898,7 +898,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                 <select
                   value={technicianId}
                   onChange={(e) => setTechnicianId(e.target.value)}
-                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                 >
                   <option value="">Unassigned</option>
                   {technicians.map((t) => (
@@ -915,7 +915,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                   type="date"
                   value={preferredDate}
                   onChange={(e) => setPreferredDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                 />
               </div>
 
@@ -925,7 +925,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                   type="time"
                   value={preferredTime}
                   onChange={(e) => setPreferredTime(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
                 />
               </div>
             </div>
@@ -936,14 +936,14 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                 type="text"
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               />
             </div>
 
             {appt?.problemDescription && (
               <div>
-                <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>Customer Complaint:</span>
-                <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}>
+                <span style={{ color: 'var(--text-secondary, #b3b3bc)', fontSize: '0.8rem', fontWeight: 600 }}>Customer Complaint:</span>
+                <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', padding: '0.5rem', borderRadius: '6px' }}>
                   {appt.problemDescription}
                 </p>
               </div>
@@ -955,12 +955,12 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                 rows="2"
                 value={internalNotes}
                 onChange={(e) => setInternalNotes(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               />
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color, #2c2c32)' }}>
               <button
                 type="button"
                 onClick={handleConvertToJob}
@@ -983,7 +983,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                 <button
                   type="button"
                   onClick={onClose}
-                  style={{ padding: '0.55rem 1rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer' }}
+                  style={{ padding: '0.55rem 1rem', background: '#27272a', color: '#f4f4f5', border: '1px solid #52525b', borderRadius: '6px', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
