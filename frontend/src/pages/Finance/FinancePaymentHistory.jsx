@@ -26,7 +26,7 @@ export default function FinancePaymentHistory() {
   useEffect(() => {
     const controller = new AbortController();
     api
-      .get('/finance/payments/history', {
+      .get('/admin/payments/history', {
         params: { page, limit: 25, ...applied },
         signal: controller.signal,
       })
@@ -52,14 +52,14 @@ export default function FinancePaymentHistory() {
   async function downloadPaymentReport() {
     setExporting(true);
     try {
-      const first = await api.get('/finance/payments/history', {
+      const first = await api.get('/admin/payments/history', {
         params: { limit: 100, page: 1, ...applied },
       });
       const payments = [...first.data.payments];
       for (let start = 2; start <= first.data.totalPages; start += 10) {
         const pages = await Promise.all(
           Array.from({ length: Math.min(10, first.data.totalPages - start + 1) }, (_, index) =>
-            api.get('/finance/payments/history', {
+            api.get('/admin/payments/history', {
               params: { limit: 100, page: start + index, ...applied },
             }),
           ),
@@ -103,7 +103,7 @@ export default function FinancePaymentHistory() {
     <section className="finance-payment-history">
       <header className="finance-payment-history-heading">
         <div>
-          <p>FINANCE · RECORDS</p>
+          <p>ADMIN · RECORDS</p>
           <h1>Payment history</h1>
           <span>Search and review recorded transactions.</span>
         </div>

@@ -35,10 +35,10 @@ export default function FinanceRevenueReports() {
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([
-      api.get('/finance/reports', { params: applied, signal: controller.signal }),
-      api.get('/finance/reports/by-service', { params: applied, signal: controller.signal }),
-      api.get('/finance/reports/parts', { params: applied, signal: controller.signal }),
-      api.get('/finance/reports/technicians', { params: applied, signal: controller.signal }),
+      api.get('/admin/reports', { params: applied, signal: controller.signal }),
+      api.get('/admin/reports/by-service', { params: applied, signal: controller.signal }),
+      api.get('/admin/reports/parts', { params: applied, signal: controller.signal }),
+      api.get('/admin/reports/technicians', { params: applied, signal: controller.signal }),
     ])
       .then(([{ data }, { data: serviceData }, { data: partsData }, { data: technicianData }]) => {
         if (!controller.signal.aborted) {
@@ -134,10 +134,10 @@ export default function FinanceRevenueReports() {
     <main className={`finance-revenue-reports ${printing ? 'printing' : ''}`}>
       <header className="finance-reports-heading">
         <div>
-          <p>FINANCE · ANALYTICS</p>
+          <p>ADMIN · ANALYTICS</p>
           <h1>Revenue reports</h1>
           <span>
-            Revenue reflects Finance-verified payments; invoice value uses invoices issued in the
+            Revenue reflects Admin-verified payments; invoice value uses invoices issued in the
             period.
           </span>
         </div>

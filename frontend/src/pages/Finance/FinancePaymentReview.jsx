@@ -34,8 +34,8 @@ export default function FinancePaymentReview() {
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([
-      api.get('/finance/payments', { signal: controller.signal }),
-      api.get('/finance/payments/payable-invoices', { signal: controller.signal }),
+      api.get('/admin/payments', { signal: controller.signal }),
+      api.get('/admin/payments/payable-invoices', { signal: controller.signal }),
     ])
       .then(([{ data: paymentData }, { data: invoiceData }]) => {
         if (!controller.signal.aborted) {
@@ -63,7 +63,7 @@ export default function FinancePaymentReview() {
     setError('');
     setNotice('');
     try {
-      const { data } = await api.patch(`/finance/payments/${payment.id}/review`, {
+      const { data } = await api.patch(`/admin/payments/${payment.id}/review`, {
         decision,
         failureReason: reasons[payment.id] || '',
       });
@@ -97,7 +97,7 @@ export default function FinancePaymentReview() {
     setError('');
     setNotice('');
     try {
-      const { data } = await api.post('/finance/payments/record', {
+      const { data } = await api.post('/admin/payments/record', {
         invoiceId: selectedInvoiceId,
         amount: Number(amount),
         method,
@@ -181,7 +181,7 @@ export default function FinancePaymentReview() {
     <main className={`finance-payment-review ${printingReceipt ? 'printing-receipt' : ''}`}>
       <header className="finance-payment-heading">
         <div>
-          <p>FINANCE</p>
+          <p>ADMIN</p>
           <h1>Payment Review</h1>
           <span>Verify submitted bank transfers and pay-at-workshop records.</span>
         </div>

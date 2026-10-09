@@ -71,8 +71,8 @@ const authenticateUser = async (req, res, requiredRole) => {
     if (!user || user.isActive === false || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-    if (!['user', 'admin', 'Customer', 'Admin', 'Technician', 'Finance'].includes(user.role)) {
-      return res.status(403).json({ message: 'This account does not have access.' });
+    if (!['user', 'admin', 'Customer', 'Admin', 'Technician'].includes(user.role)) {
+      return res.status(403).json({ message: 'This account role is no longer supported. Ask an administrator to assign a role in Accounts & Roles.' });
     }
     const normalizedRole = user.role === 'admin' ? 'Admin' : user.role === 'user' ? 'Customer' : user.role;
     if (requiredRole && normalizedRole !== requiredRole) {

@@ -90,8 +90,6 @@ export async function listAdminAppointments(req, res) {
     filter.assignedTechnician = technician;
   }
   try {
-    const configuredTimes = process.env.APPOINTMENT_SLOT_TIMES?.split(',').map(time => time.trim()).filter(time => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time));
-    const times = [...new Set(configuredTimes?.length ? configuredTimes : ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'])].sort();
     const configuredDays = process.env.APPOINTMENT_BUSINESS_DAYS?.split(',').map(Number).filter(day => Number.isInteger(day) && day >= 1 && day <= 7);
     const businessDays = new Set(configuredDays?.length ? configuredDays : [1, 2, 3, 4, 5, 6, 7]);
     const [appointments, technicians, bookedSlots] = await Promise.all([
@@ -111,13 +109,14 @@ export async function listAdminAppointments(req, res) {
     for (let day = new Date(startDate); day < endDate; day.setUTCDate(day.getUTCDate() + 1)) {
       const date = day.toISOString().slice(0, 10);
       const businessDay = businessDays.has(day.getUTCDay() || 7);
+      const times = [...bookedCounts.keys()].filter(key => key.startsWith(date + '|')).map(key => key.split('|')[1]).sort();
       const slots = times.map(time => ({
         time,
         count: bookedCounts.get(`${date}|${time}`) || 0,
         status: !businessDay ? 'Closed' : bookedCounts.has(`${date}|${time}`) ? 'Booked' : new Date(`${date}T${time}:00.000Z`) > new Date() ? 'Available' : 'Past',
       }));
       availability.push({
-        date, closed: !businessDay, capacity: businessDay ? times.length : 0,
+        date, closed: !businessDay,
         bookedCount: slots.reduce((total, slot) => total + Math.min(slot.count, 1), 0),
         overlapCount: slots.reduce((total, slot) => total + Math.max(0, slot.count - 1), 0),
         slots,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../auth/useAuth';
-const roles = ['Customer', 'Technician', 'Finance', 'Admin'];
+const roles = ['Customer', 'Technician', 'Admin'];
 const emptyAdminForm = { name: '', email: '', mobile: '', password: '', confirmPassword: '' };
 
 export default function AdminUsers() {
@@ -261,6 +261,7 @@ function RoleRow({ account, ownAccount, onSaved, onNotice }) {
             disabled={saving || ownAccount}
             onChange={(event) => setRole(event.target.value)}
           >
+            {!roles.includes(role) && <option value={role} disabled>{role} (retired — choose a role)</option>}
             {roles.map((value) => (
               <option key={value}>{value}</option>
             ))}

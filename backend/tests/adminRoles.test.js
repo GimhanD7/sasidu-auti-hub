@@ -51,10 +51,10 @@ test('only admins can change roles; changes invalidate sessions and preserve acc
   assert.equal((await request(path, null, { role: 'Admin' })).status, 401);
   assert.equal((await request('/api/admin/users', tokens[1])).status, 403);
   assert.equal((await request(path, tokens[1], { role: 'Admin' })).status, 403);
-  assert.equal((await request(path, tokens[0], { role: 'Owner' })).status, 400);
+  assert.equal((await request(path, tokens[0], { role: 'Finance' })).status, 400);
   assert.equal((await request(`/api/admin/users/${admin._id}/role`, tokens[0], { role: 'Customer' })).status, 400);
   assert.equal((await request('/api/admin/users/507f1f77bcf86cd799439099/role', tokens[0], { role: 'Admin' })).status, 404);
-  for (const role of ['Technician', 'Finance', 'Admin', 'Customer']) {
+  for (const role of ['Technician', 'Admin', 'Customer']) {
     const res = await request(path, tokens[0], { role });
     assert.equal(res.status, 200);
     const data = await res.json();
@@ -64,5 +64,5 @@ test('only admins can change roles; changes invalidate sessions and preserve acc
     assert.equal(customer.isActive, true);
     assert.equal((await request('/api/auth/me', tokens[1])).status, 401);
   }
-  assert.equal(customer.sessionVersion, 4);
+  assert.equal(customer.sessionVersion, 3);
 });

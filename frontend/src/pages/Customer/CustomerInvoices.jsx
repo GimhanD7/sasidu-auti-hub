@@ -1,3 +1,4 @@
+import { amountDue, canPayInvoice } from '../../lib/invoicePayment';
 import { invoiceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -20,7 +21,6 @@ const vehicleName = (vehicle) =>
   vehicle
     ? `${vehicle.year ? `${vehicle.year} ` : ''}${vehicle.make} ${vehicle.model}${vehicle.registrationNumber ? ` · ${vehicle.registrationNumber}` : ''}`
     : 'Vehicle details unavailable';
-const canPay = (status) => ['Pending', 'Partially Paid', 'Overdue'].includes(status);
 
 function InvoiceCard({ invoice, printTarget, onPrint }) {
   return (
@@ -38,7 +38,7 @@ function InvoiceCard({ invoice, printTarget, onPrint }) {
         <span
           className={`invoice-status status-${invoice.paymentStatus.toLowerCase().replaceAll(' ', '-')}`}
         >
-          {invoiceStatus(invoice.paymentStatus)}
+          {amountDue(invoice) === 0 && invoice.paymentStatus !== 'Paid' ? 'No payment due' : invoiceStatus(invoice.paymentStatus)}
         </span>
       </header>
       <div className="invoice-meta">
@@ -109,11 +109,12 @@ function InvoiceCard({ invoice, printTarget, onPrint }) {
           <dd>{money(invoice.totalAmount)}</dd>
         </div>
       </dl>
+      {amountDue(invoice) === 0 && <p role="status">No payment is required for this invoice. If you expected service charges, contact the workshop to correct the invoice.</p>}
       <footer className="invoice-actions">
         <button type="button" className="invoice-print-button" onClick={() => onPrint(invoice.id)}>
           Print / Save PDF
         </button>
-        {canPay(invoice.paymentStatus) && (
+        {canPayInvoice(invoice) && (
           <Link
             className="invoice-pay-button"
             to={`/customer/payments?invoice=${encodeURIComponent(invoice.id)}`}
@@ -156,7 +157,7 @@ export default function CustomerInvoices() {
     setPrintTarget(id);
     window.setTimeout(() => window.print(), 120);
   };
-  const outstanding = (invoices || []).filter((invoice) => canPay(invoice.paymentStatus)).length;
+  const outstanding = (invoices || []).filter((invoice) => canPayInvoice(invoice)).length;
 
   return (
     <main className="customer-invoices-page">

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { normalizeRole } from '../utils/session.js';
 
-const ROLES = ['Customer', 'Technician', 'Finance', 'Admin'];
+const ROLES = ['Customer', 'Technician', 'Admin'];
 const view = user => ({ id: String(user._id), name: user.name, email: user.email, role: normalizeRole(user.role), isActive: user.isActive !== false });
 
 export async function listAdminUsers(req, res) {

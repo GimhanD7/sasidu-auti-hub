@@ -5,14 +5,9 @@ import Vehicle from '../models/Vehicle.js';
 import User from '../models/User.js';
 import { getActiveServiceTypeNames } from './adminServiceTypeController.js';
 
-const DEFAULT_TIMES = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'];
 const ACTIVE_STATUSES = ['Pending', 'Confirmed', 'Checked In', 'In Service'];
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
-function availableTimes() {
-  const configured = process.env.APPOINTMENT_SLOT_TIMES?.split(',').map(time => time.trim()).filter(time => TIME_PATTERN.test(time));
-  return [...new Set(configured?.length ? configured : DEFAULT_TIMES)].sort();
-}
 
 function businessWeekdays() {
   const configured = process.env.APPOINTMENT_BUSINESS_DAYS?.split(',').map(day => Number(day.trim())).filter(day => Number.isInteger(day) && day >= 1 && day <= 7);
@@ -38,7 +33,7 @@ function isFutureSlot(date, time) { return new Date(`${date}T${time}:00`).getTim
 export async function getAppointmentOptions(req, res) {
   try {
     const serviceTypes = await getActiveServiceTypeNames();
-    res.set('Cache-Control', 'private, no-store').json({ serviceTypes, times: availableTimes(), businessDays: [...businessWeekdays()], daysAhead: 30 });
+    res.set('Cache-Control', 'private, no-store').json({ serviceTypes, businessDays: [...businessWeekdays()], daysAhead: 30 });
   } catch { res.status(503).json({ message: 'Unable to load appointment options.' }); }
 }
 
@@ -115,12 +110,11 @@ export async function getAppointmentAvailability(req, res) {
       const key = slotKey(dateKey(appointment.preferredDate), appointment.preferredTime);
       counts.set(key, (counts.get(key) || 0) + 1);
     }
-    const times = availableTimes();
     const dates = Array.from({ length: days }, (_, index) => {
       const date = dateKey(new Date(from.getTime() + index * 24 * 60 * 60 * 1000));
       const businessDay = isBusinessDay(new Date(`${date}T00:00:00.000Z`));
-      const slots = times.map(time => ({ time, available: businessDay && isFutureSlot(date, time) && !counts.has(slotKey(date, time)) }));
-      return { date, closed: !businessDay, available: slots.some(slot => slot.available), slots };
+      const bookedTimes = [...counts.keys()].filter(key => key.startsWith(date + '|')).map(key => key.split('|')[1]);
+      return { date, closed: !businessDay, available: businessDay && isFutureSlot(date, '23:59'), bookedTimes };
     });
     res.set('Cache-Control', 'private, no-store').json({ dates });
   } catch {
@@ -168,7 +162,7 @@ export async function requestCustomerAppointmentReschedule(req, res) {
   if (!mongoose.isValidObjectId(req.params.appointmentId)) return res.status(400).json({ message: 'Invalid appointment ID.' });
   const { preferredDate, preferredTime, notes = '' } = req.body || {};
   const day = parseDay(preferredDate);
-  if (!day || !availableTimes().includes(preferredTime) || !isBusinessDay(day) || !isFutureSlot(dateKey(day), preferredTime)) return res.status(400).json({ message: 'Choose a valid available date and time for your reschedule request.' });
+  if (!day || !TIME_PATTERN.test(preferredTime || '') || !isBusinessDay(day) || !isFutureSlot(dateKey(day), preferredTime)) return res.status(400).json({ message: 'Choose a valid available date and time for your reschedule request.' });
   if (typeof notes !== 'string' || notes.trim().length > 500) return res.status(400).json({ message: 'Reschedule notes must be 500 characters or fewer.' });
   const today = new Date(); today.setUTCHours(0, 0, 0, 0);
   if (day < today || day.getTime() > today.getTime() + 30 * 24 * 60 * 60 * 1000) return res.status(400).json({ message: 'Choose a date from today through the next 30 days.' });
@@ -206,7 +200,7 @@ export async function createCustomerAppointment(req, res) {
   try { serviceTypeNames = await getActiveServiceTypeNames(); }
   catch { return res.status(503).json({ message: 'Unable to validate the selected service type.' }); }
   if (!serviceTypeNames.includes(serviceType)) return res.status(400).json({ message: 'Choose a valid service type.' });
-  if (!day || !TIME_PATTERN.test(preferredTime || '') || !availableTimes().includes(preferredTime)) return res.status(400).json({ message: 'Choose an available date and time slot.' });
+  if (!day || !TIME_PATTERN.test(preferredTime || '')) return res.status(400).json({ message: 'Choose an available date and time slot.' });
   if (typeof problemDescription !== 'string' || !problemDescription.trim() || problemDescription.trim().length > 1000) {
     return res.status(400).json({ message: 'Describe the service problem in 1 to 1,000 characters.' });
   }

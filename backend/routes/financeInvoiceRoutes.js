@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { deleteDraftInvoice, listBillableJobs, listFinanceInvoices, saveJobInvoice, sendFinanceInvoice, updateDraftInvoice } from '../controllers/financeInvoiceController.js';
 
 const router = express.Router();
-router.use(requireAuth, requireRole('Finance', 'Admin'));
+router.use(requireAuth, requireRole('Admin'));
 router.get('/', listFinanceInvoices);
 router.get('/jobs', listBillableJobs);
 router.post('/jobs/:jobId/invoice', saveJobInvoice);

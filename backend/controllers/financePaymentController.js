@@ -200,8 +200,8 @@ export async function recordFinancePayment(req, res) {
       await Notification.create({ user: invoice.customer, type: 'PaymentConfirmation', title: 'Payment received', message: `Payment ${payment.receiptNumber} of LKR ${amount.toFixed(2)} for invoice ${invoice.invoiceNumber} was recorded.`, link: '/customer/invoices', dedupeKey: `payment:${payment._id}:finance-recorded` });
     } catch { /* Payment and invoice remain authoritative if notification delivery fails. */ }
     try {
-      const admins = await User.find({ role: { $in: ['Admin', 'admin', 'Finance'] }, isActive: { $ne: false }, _id: { $ne: req.user._id } }).select('_id').lean();
-      if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'PaymentConfirmation', title: 'Payment recorded', message: `${payment.receiptNumber} for invoice ${invoice.invoiceNumber} was recorded by Finance (${method}, LKR ${amount.toFixed(2)}).`, link: '/finance/payments', dedupeKey: `payment:${payment._id}:finance-recorded:admin:${admin._id}` })), { ordered: false });
+      const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false }, _id: { $ne: req.user._id } }).select('_id').lean();
+      if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'PaymentConfirmation', title: 'Payment recorded', message: `${payment.receiptNumber} for invoice ${invoice.invoiceNumber} was recorded by Admin (${method}, LKR ${amount.toFixed(2)}).`, link: '/admin/payments', dedupeKey: `payment:${payment._id}:finance-recorded:admin:${admin._id}` })), { ordered: false });
     } catch { /* Finance retains the completed payment even if an admin notification cannot be delivered. */ }
     let receiptEmailSent = false;
     if (invoiceEmail.isConfigured()) {
@@ -261,7 +261,7 @@ export async function reviewFinancePayment(req, res) {
     }
 
     try {
-      const admins = await User.find({ role: { $in: ['Admin', 'admin', 'Finance'] }, isActive: { $ne: false }, _id: { $ne: req.user._id } }).select('_id').lean();
+      const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false }, _id: { $ne: req.user._id } }).select('_id').lean();
       const notifications = [{
         user: payment.customer,
         type: decision === 'Completed' ? 'PaymentConfirmation' : 'PaymentFailed',
@@ -269,7 +269,7 @@ export async function reviewFinancePayment(req, res) {
         message: decision === 'Completed' ? `Payment ${payment.receiptNumber} for invoice ${invoice.invoiceNumber} was confirmed.` : `Payment ${payment.receiptNumber} for invoice ${invoice.invoiceNumber} failed verification: ${payment.failureReason}`,
         dedupeKey: `payment:${payment._id}:${decision}:customer`,
         link: `/customer/payments?invoice=${invoice._id}`,
-      }, ...admins.map(admin => ({ user: admin._id, type: 'PaymentReviewComplete', title: `Payment ${decision.toLowerCase()}`, message: `${payment.receiptNumber} for ${invoice.invoiceNumber} was marked ${decision.toLowerCase()}.`, dedupeKey: `payment:${payment._id}:${decision}:admin:${admin._id}`, link: '/finance/payments' }))];
+      }, ...admins.map(admin => ({ user: admin._id, type: 'PaymentReviewComplete', title: `Payment ${decision.toLowerCase()}`, message: `${payment.receiptNumber} for ${invoice.invoiceNumber} was marked ${decision.toLowerCase()}.`, dedupeKey: `payment:${payment._id}:${decision}:admin:${admin._id}`, link: '/admin/payments' }))];
       await Notification.insertMany(notifications, { ordered: false });
     } catch { /* Payment review remains saved if notification storage is unavailable. */ }
 

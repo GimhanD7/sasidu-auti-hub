@@ -5,5 +5,4 @@ export const dashboardForRole = (role) =>
     Admin: '/admin/dashboard',
     admin: '/admin/dashboard',
     Technician: '/technician/dashboard',
-    Finance: '/finance/dashboard',
   })[role] || '/login';

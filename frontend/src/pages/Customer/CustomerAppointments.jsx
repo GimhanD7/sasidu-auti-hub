@@ -38,7 +38,7 @@ export default function CustomerAppointments() {
   const [actionId, setActionId] = useState('');
   const [cancelConfirmId, setCancelConfirmId] = useState('');
   const [rescheduleForm, setRescheduleForm] = useState(null);
-  const [rescheduleSlots, setRescheduleSlots] = useState([]);
+  const [rescheduleDay, setRescheduleDay] = useState(null);
   const [rescheduleError, setRescheduleError] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -135,7 +135,7 @@ export default function CustomerAppointments() {
         signal: controller.signal,
       })
       .then(({ data }) => {
-        if (!controller.signal.aborted) setRescheduleSlots(data.dates?.[0]?.slots || []);
+        if (!controller.signal.aborted) setRescheduleDay(data.dates?.[0] || null);
       })
       .catch((error) => {
         if (!controller.signal.aborted)
@@ -239,7 +239,7 @@ export default function CustomerAppointments() {
         notes: rescheduleForm.notes,
       });
       setRescheduleForm(null);
-      setRescheduleSlots([]);
+      setRescheduleDay(null);
       setManagementMessage(
         `Reschedule request sent for appointment ${data.appointment.appointmentNumber}. The current booking remains active until the workshop reviews the request.`,
       );
@@ -446,7 +446,7 @@ export default function CustomerAppointments() {
                             onClick={() => {
                               setManagementError('');
                               setRescheduleError('');
-                              setRescheduleSlots([]);
+                              setRescheduleDay(null);
                               setRescheduleForm({
                                 id: appointment.id,
                                 date: appointment.preferredDate,
@@ -506,7 +506,7 @@ export default function CustomerAppointments() {
                             aria-label="Close reschedule form"
                             onClick={() => {
                               setRescheduleForm(null);
-                              setRescheduleSlots([]);
+                              setRescheduleDay(null);
                             }}
                           >
                             ×
@@ -531,41 +531,18 @@ export default function CustomerAppointments() {
                                   date: event.target.value,
                                   time: '',
                                 }));
-                                setRescheduleSlots([]);
+                                setRescheduleDay(null);
                                 setRescheduleError('');
                               }}
                             />
                           </label>
                           <label>
-                            Available time
-                            <select
-                              required
-                              disabled={
-                                !rescheduleForm.date ||
-                                !rescheduleSlots.some((slot) => slot.available)
-                              }
+                            Preferred time
+                            <input type="time" step="60" required disabled={!rescheduleDay?.available}
                               value={rescheduleForm.time}
-                              onChange={(event) =>
-                                setRescheduleForm((form) => ({ ...form, time: event.target.value }))
-                              }
-                            >
-                              <option value="">Select a time</option>
-                              {rescheduleSlots.map((slot) => (
-                                <option
-                                  key={slot.time}
-                                  value={slot.time}
-                                  disabled={!slot.available}
-                                >
-                                  {slot.time}
-                                  {slot.available ? '' : ' · Unavailable'}
-                                </option>
-                              ))}
-                            </select>
-                            {rescheduleForm.date &&
-                              rescheduleSlots.length > 0 &&
-                              !rescheduleSlots.some((slot) => slot.available) && (
-                                <small>No times available on this date. Choose another day.</small>
-                              )}
+                              onChange={event => setRescheduleForm(form => ({ ...form, time: event.target.value }))} />
+                            {rescheduleDay?.bookedTimes?.length > 0 && <small>Already booked: {rescheduleDay.bookedTimes.join(', ')}</small>}
+                            {rescheduleDay?.closed && <small>The workshop is closed on this date.</small>}
                           </label>
                           <label className="appointment-reschedule-note">
                             Note (optional)
@@ -593,7 +570,7 @@ export default function CustomerAppointments() {
                             type="button"
                             onClick={() => {
                               setRescheduleForm(null);
-                              setRescheduleSlots([]);
+                              setRescheduleDay(null);
                             }}
                           >
                             Close
@@ -758,7 +735,7 @@ export default function CustomerAppointments() {
                 <span>02</span>
                 <div>
                   <h2>Choose a date and time</h2>
-                  <p>Unavailable times are disabled. Slots are held for one booking at a time.</p>
+                  <p>Enter your preferred time. Each time can have one booking.</p>
                 </div>
               </div>
               <div className="appointment-date-range">
@@ -816,7 +793,7 @@ export default function CustomerAppointments() {
                           {day.closed
                             ? 'Workshop closed'
                             : day.available
-                              ? `${day.slots.filter((slot) => slot.available).length} times available`
+                              ? 'Choose your time'
                               : 'Fully booked'}
                         </small>
                       </button>
@@ -825,26 +802,15 @@ export default function CustomerAppointments() {
                   <div className="appointment-times">
                     <h3>
                       {selectedDay
-                        ? `Available times · ${dateLabel(selectedDay.date)}`
+                        ? `Preferred time · ${dateLabel(selectedDay.date)}`
                         : 'Choose a date to view times'}
                     </h3>
-                    <div className="appointment-time-grid">
-                      {selectedDay?.slots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          type="button"
-                          className={`appointment-time-option ${selectedTime === slot.time ? 'selected' : ''}`}
-                          disabled={!slot.available}
-                          aria-pressed={selectedTime === slot.time}
-                          onClick={() => {
-                            setSelectedTime(slot.time);
-                            setFormError('');
-                          }}
-                        >
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
+                    <label>
+                      Custom time
+                      <input type="time" step="60" required value={selectedTime} disabled={!selectedDay?.available}
+                        onChange={event => { setSelectedTime(event.target.value); setFormError(''); }} />
+                    </label>
+                    {selectedDay?.bookedTimes?.length > 0 && <p>Already booked: {selectedDay.bookedTimes.join(', ')}</p>}
                   </div>
                 </>
               )}

@@ -1,10 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 const AuthLayout = ({ children, title, subtitle, features }) => {
   return (
     <div className="auth-container">
       {/* Left Side - Branding */}
       <div className="auth-left">
-        <div className="brand-logo">
+        <Link className="brand-logo" to="/home" aria-label="Go to home">
           <div className="logo-icon">
             <svg
               width="20"
@@ -20,7 +21,7 @@ const AuthLayout = ({ children, title, subtitle, features }) => {
             </svg>
           </div>
           <span className="logo-text">AutoServ Pro</span>
-        </div>
+        </Link>
 
         <h1 className="auth-title">
           {title.map((line, idx) => (

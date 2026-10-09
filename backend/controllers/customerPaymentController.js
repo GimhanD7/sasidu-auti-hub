@@ -73,8 +73,8 @@ export async function submitCustomerPayment(req, res) {
     const generatedReference = method === 'Pay at Workshop' ? `WORKSHOP-${new mongoose.Types.ObjectId().toString().slice(-8).toUpperCase()}` : transactionReference.trim();
     const payment = await Payment.create({ invoice: invoice._id, customer: req.user._id, amount: amountDue, method, transactionReference: generatedReference });
     try {
-      const admins = await User.find({ role: { $in: ['Admin', 'admin', 'Finance'] }, isActive: { $ne: false } }).select('_id').lean();
-      if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'PaymentVerificationRequired', title: 'Payment needs verification', message: `${invoice.invoiceNumber}: ${method} payment of LKR ${amountDue.toFixed(2)} was submitted.`, dedupeKey: `payment:${payment._id}:verification:${admin._id}`, link: '/finance/payments' })), { ordered: false });
+      const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
+      if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'PaymentVerificationRequired', title: 'Payment needs verification', message: `${invoice.invoiceNumber}: ${method} payment of LKR ${amountDue.toFixed(2)} was submitted.`, dedupeKey: `payment:${payment._id}:verification:${admin._id}`, link: '/admin/payments' })), { ordered: false });
     } catch { /* Payment record remains available in the finance queue if notifications fail. */ }
     res.status(201).set('Cache-Control', 'private, no-store').json({
       id: String(payment._id), invoiceId: String(invoice._id), invoiceNumber: invoice.invoiceNumber,

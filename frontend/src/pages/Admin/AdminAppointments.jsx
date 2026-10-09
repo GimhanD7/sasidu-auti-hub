@@ -377,18 +377,15 @@ export default function AdminAppointments() {
         <section className="appointment-day-view">
           <h2>{fullDate(selectedDate)}</h2>
           <p className="appointment-capacity">
-            Capacity: {availabilityForDay(selectedDate)?.capacity || 0} slots ·{' '}
             {availabilityForDay(selectedDate)?.bookedCount || 0} booked ·{' '}
-            {availabilityForDay(selectedDate)?.slots.filter((slot) => slot.status === 'Available')
-              .length || 0}{' '}
-            open · {availabilityForDay(selectedDate)?.overlapCount || 0} slot conflicts
+            {availabilityForDay(selectedDate)?.overlapCount || 0} time conflicts
           </p>
           {appointmentsForDay(selectedDate).length ? (
             appointmentsForDay(selectedDate).map((item) => appointmentCard(item))
           ) : (
             <p className="appointment-empty">No appointments for this day.</p>
           )}
-          <h3>Appointment slots</h3>
+          <h3>Booked times</h3>
           {availabilityForDay(selectedDate)?.closed ? (
             <p className="calendar-no-bookings">Workshop closed</p>
           ) : (
@@ -410,10 +407,7 @@ export default function AdminAppointments() {
               <header>
                 <strong>{dayLabel(day)}</strong>
                 <span>
-                  {appointmentsForDay(day).length} bookings ·{' '}
-                  {availabilityForDay(day)?.slots.filter((slot) => slot.status === 'Available')
-                    .length || 0}{' '}
-                  open / {availabilityForDay(day)?.capacity || 0}
+                  {appointmentsForDay(day).length} bookings
                 </span>
                 {availabilityForDay(day)?.overlapCount > 0 && (
                   <em className="calendar-overlap">
@@ -462,14 +456,7 @@ export default function AdminAppointments() {
                 {appointmentsForDay(day).length > 3 && (
                   <small>+{appointmentsForDay(day).length - 3} more</small>
                 )}
-                <small className="month-open-slots">
-                  {availabilityForDay(day)?.slots.filter((slot) => slot.status === 'Available')
-                    .length || 0}{' '}
-                  open / {availabilityForDay(day)?.capacity || 0} slots
-                  {availabilityForDay(day)?.overlapCount
-                    ? ` · ${availabilityForDay(day).overlapCount} conflict`
-                    : ''}
-                </small>
+                <small className="month-open-slots">{availabilityForDay(day)?.closed ? "Closed" : "Custom booking times"}</small>
               </div>
             ))}
           </div>
@@ -549,17 +536,12 @@ function AdminAppointmentForm({ onClose, onCreated }) {
     api
       .get('/admin/appointments', { params: { start, end }, signal: controller.signal })
       .then(({ data }) => {
+        if (controller.signal.aborted) return;
         const day = data.availability?.[0];
         setSlots(day?.slots || []);
-        setTime((current) =>
-          day?.slots.some((slot) => slot.time === current && slot.status === 'Available')
-            ? current
-            : day?.slots.find((slot) => slot.status === 'Available')?.time || '',
-        );
+
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setSlots([]);
-      })
+      .catch(() => { if (!controller.signal.aborted) setSlots([]); })
       .finally(() => {
         if (!controller.signal.aborted) setAvailabilityLoading(false);
       });
@@ -606,7 +588,6 @@ function AdminAppointmentForm({ onClose, onCreated }) {
     }
   }
 
-  const availableSlots = slots.filter((slot) => slot.status === 'Available');
   return (
     <div
       className="appointment-modal-backdrop"
@@ -840,31 +821,13 @@ function AdminAppointmentForm({ onClose, onCreated }) {
               </label>
               <label>
                 Time
-                <select
-                  required
-                  value={time}
-                  onChange={(event) => setTime(event.target.value)}
-                  disabled={availabilityLoading || !availableSlots.length}
-                >
-                  <option value="">
-                    {availabilityLoading
-                      ? 'Checking availability…'
-                      : availableSlots.length
-                        ? 'Select an open slot'
-                        : 'No slots available'}
-                  </option>
-                  {availableSlots.map((slot) => (
-                    <option key={slot.time} value={slot.time}>
-                      {slot.time}
-                    </option>
-                  ))}
-                </select>
+                <input type="time" step="60" required value={time} onChange={event => setTime(event.target.value)} disabled={availabilityLoading} />
               </label>
             </div>
             {!availabilityLoading && (
               <p className="appointment-availability-message" role="status">
-                {availableSlots.length} available slot{availableSlots.length === 1 ? '' : 's'} for
-                this date. The server checks again when you confirm.
+                {slots.length ? `Booked times: ${slots.map(slot => slot.time).join(', ')}. ` : ''}
+                Enter a custom time. Availability is checked when you confirm.
               </p>
             )}
             <label className="appointment-form-block">
@@ -929,7 +892,6 @@ function AdminAppointmentForm({ onClose, onCreated }) {
 function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved, onConverted }) {
   const [record, setRecord] = useState(null);
   const [serviceTypes, setServiceTypes] = useState([]);
-  const [slots, setSlots] = useState([]);
   const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -971,28 +933,12 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
       .get('/admin/appointments', { params: { start, end }, signal: controller.signal })
       .then(({ data }) => {
         if (!controller.signal.aborted) {
-          const nextSlots = data.availability?.[0]?.slots || [];
-          setSlots(nextSlots);
-          setRecord((current) => {
-            if (!current || current.preferredDate !== preferredDate) return current;
-            if (
-              nextSlots.some(
-                (slot) =>
-                  slot.time === current.preferredTime &&
-                  (slot.status === 'Available' ||
-                    current.preferredDate === current.originalPreferredDate),
-              )
-            )
-              return current;
-            return {
-              ...current,
-              preferredTime: nextSlots.find((slot) => slot.status === 'Available')?.time || '',
-            };
-          });
+          if (data.availability?.[0]?.closed) setError("The workshop is closed on this date.");
+
         }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setSlots([]);
+        if (!controller.signal.aborted) setError('Unable to check this date. Please try again.');
       })
       .finally(() => {
         if (!controller.signal.aborted) setAvailabilityLoading(false);
@@ -1091,14 +1037,6 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
         </section>
       </div>
     );
-  const currentTimeAvailable =
-    record.preferredDate === record.originalPreferredDate &&
-    record.preferredTime &&
-    slots.some((slot) => slot.time === record.preferredTime && slot.status === 'Booked');
-  const selectableTimes = slots.filter(
-    (slot) =>
-      slot.status === 'Available' || (slot.time === record.preferredTime && currentTimeAvailable),
-  );
   return (
     <div className="appointment-modal-backdrop">
       <section
@@ -1222,18 +1160,8 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
           </label>
           <label>
             Time
-            <select
-              value={record.preferredTime}
-              disabled={availabilityLoading}
-              onChange={(event) => update('preferredTime', event.target.value)}
-            >
-              {selectableTimes.map((slot) => (
-                <option key={slot.time} value={slot.time}>
-                  {slot.time}
-                  {slot.status === 'Booked' ? ' (current booking)' : ''}
-                </option>
-              ))}
-            </select>
+            <input type="time" step="60" required value={record.preferredTime}
+              disabled={availabilityLoading} onChange={event => update('preferredTime', event.target.value)} />
           </label>
           <label className="appointment-form-wide">
             Assign technician

@@ -26,7 +26,7 @@ export default function FinanceInvoiceManagement() {
   useEffect(() => {
     let active = true;
     api
-      .get('/finance/invoices')
+      .get('/admin/invoices')
       .then(({ data }) => {
         if (active) {
           setInvoices(data.invoices || []);
@@ -83,7 +83,7 @@ export default function FinanceInvoiceManagement() {
     setError('');
     setNotice('');
     try {
-      const { data } = await api.patch(`/finance/invoices/${invoice.id}`, {
+      const { data } = await api.patch(`/admin/invoices/${invoice.id}`, {
         taxRate: Number(taxRate) || 0,
         discountRate: Number(discountRate) || 0,
         finalize,
@@ -117,7 +117,7 @@ export default function FinanceInvoiceManagement() {
     setError('');
     setNotice('');
     try {
-      const { data } = await api.delete(`/finance/invoices/${invoice.id}`);
+      const { data } = await api.delete(`/admin/invoices/${invoice.id}`);
       const remaining = invoices.filter((item) => item.id !== invoice.id);
       setInvoices(remaining);
       setSelectedId(remaining[0]?.id || '');
@@ -135,7 +135,7 @@ export default function FinanceInvoiceManagement() {
     setError('');
     setNotice('');
     try {
-      const { data } = await api.post(`/finance/invoices/${invoice.id}/send`);
+      const { data } = await api.post(`/admin/invoices/${invoice.id}/send`);
       setNotice(data.message);
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to send this invoice.');
@@ -181,7 +181,7 @@ export default function FinanceInvoiceManagement() {
     <main className={`finance-invoice-management ${printing ? 'printing' : ''}`}>
       <header className="finance-invoice-management-heading">
         <div>
-          <p>FINANCE · BILLING</p>
+          <p>ADMIN · BILLING</p>
           <h1>Invoice management</h1>
           <span>Search invoices, review payment status, and manage drafts.</span>
         </div>

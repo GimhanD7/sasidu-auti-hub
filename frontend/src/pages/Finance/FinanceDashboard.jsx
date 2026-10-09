@@ -21,7 +21,7 @@ export default function FinanceDashboard() {
   useEffect(() => {
     const controller = new AbortController();
     api
-      .get('/finance/dashboard', { signal: controller.signal })
+      .get('/admin/billing', { signal: controller.signal })
       .then(({ data: dashboard }) => {
         if (!controller.signal.aborted) {
           setData(dashboard);
@@ -40,7 +40,7 @@ export default function FinanceDashboard() {
       <main className="finance-dashboard">
         <header className="finance-dashboard-heading">
           <div>
-            <p>FINANCE</p>
+            <p>ADMIN</p>
             <h1>Billing &amp; Revenue</h1>
           </div>
         </header>
@@ -77,11 +77,11 @@ export default function FinanceDashboard() {
     <main className="finance-dashboard">
       <header className="finance-dashboard-heading">
         <div>
-          <p>FINANCE</p>
+          <p>ADMIN</p>
           <h1>Billing &amp; Revenue</h1>
-          <span>Revenue is based on finance-verified payments.</span>
+          <span>Revenue is based on admin-verified payments.</span>
         </div>
-        <Link to="/finance/payments">Review payments</Link>
+        <Link to="/admin/payments">Review payments</Link>
       </header>
       <section className="finance-dashboard-cards" aria-label="Revenue summary">
         {cards.map((card) => (
@@ -149,7 +149,7 @@ export default function FinanceDashboard() {
               <h2>Recent payments</h2>
               <p>Latest payment records, including verification status.</p>
             </div>
-            <Link to="/finance/payments">All payments</Link>
+            <Link to="/admin/payments">All payments</Link>
           </header>
           {recentPayments.length ? (
             <ul>

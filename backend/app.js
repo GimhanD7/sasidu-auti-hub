@@ -45,6 +45,10 @@ export function createApp() {
   app.use('/api/service-history', customerServiceHistoryRoutes);
   app.use('/api/customer-invoices', customerInvoiceRoutes);
   app.use('/api/customer-payments', customerPaymentRoutes);
+  app.use('/api/admin/payments', financePaymentRoutes);
+  app.use('/api/admin/billing', financeDashboardRoutes);
+  app.use('/api/admin/invoices', financeInvoiceRoutes);
+  app.use('/api/admin/reports', financeReportRoutes);
   app.use('/api/finance/payments', financePaymentRoutes);
   app.use('/api/finance/dashboard', financeDashboardRoutes);
   app.use('/api/finance/invoices', financeInvoiceRoutes);

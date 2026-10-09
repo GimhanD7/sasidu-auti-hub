@@ -95,6 +95,7 @@ export async function updateDraftInvoice(req, res) {
     invoice.discount = roundMoney(subtotal * discountRate / 100);
     invoice.tax = roundMoney((subtotal - invoice.discount) * taxRate / 100);
     invoice.totalAmount = roundMoney(subtotal - invoice.discount + invoice.tax);
+    if (req.body?.finalize === true && invoice.totalAmount <= 0) return res.status(400).json({ message: 'Add the correct parts or labour charges before issuing this invoice. The amount due must be greater than LKR 0.00.' });
     if (req.body?.finalize === true) invoice.paymentStatus = 'Pending';
     await invoice.save();
     res.set('Cache-Control', 'private, no-store').json({ message: req.body?.finalize === true ? 'Invoice finalized and issued to the customer.' : 'Draft invoice updated.', invoice: {
@@ -152,6 +153,7 @@ export async function saveJobInvoice(req, res) {
     const discount = roundMoney(subtotal * discountRate / 100);
     const tax = roundMoney((subtotal - discount) * taxRate / 100);
     const totalAmount = roundMoney(subtotal - discount + tax);
+    if (req.body?.finalize === true && totalAmount <= 0) return res.status(400).json({ message: 'Add the correct parts or labour charges before issuing this invoice. The amount due must be greater than LKR 0.00.' });
     const createdNew = !invoice;
     if (createdNew) {
       invoice = await Invoice.create({

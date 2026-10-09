@@ -25,7 +25,7 @@ export default function FinanceInvoices() {
   useEffect(() => {
     let active = true;
     api
-      .get('/finance/invoices/jobs')
+      .get('/admin/invoices/jobs')
       .then(({ data }) => {
         if (!active) return;
         const readyJobs = data.jobs || [];
@@ -73,7 +73,7 @@ export default function FinanceInvoices() {
     setError('');
     setNotice('');
     try {
-      const { data } = await api.post(`/finance/invoices/jobs/${job.id}/invoice`, {
+      const { data } = await api.post(`/admin/invoices/jobs/${job.id}/invoice`, {
         taxRate: Number(taxRate) || 0,
         discountRate: Number(discountRate) || 0,
         finalize,
@@ -132,7 +132,7 @@ export default function FinanceInvoices() {
       </nav>
       <header className="finance-invoices-heading">
         <div>
-          <p>FINANCE · BILLING</p>
+          <p>ADMIN · BILLING</p>
           <h1>Generate invoice</h1>
           <span>
             Review completed work, adjust tax and discount, then save or issue the invoice.

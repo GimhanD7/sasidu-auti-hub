@@ -65,6 +65,10 @@ const AdminLayout = () => {
       icon: 'M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2m12-13a4 4 0 11-8 0 4 4 0 018 0zm2 4h4m-2-2v4',
     },
   ];
+  navItems.push(...[
+    ['billing', 'Billing Overview'], ['invoices', 'Invoices'],
+    ['payments', 'Payments & Verification'], ['reports', 'Revenue Reports'],
+  ].map(([page, label]) => ({ path: '/admin/' + page, label, icon: 'M9 12h6m-6 4h6M5 3h14v18H5z' })));
   navItems.push({
     path: '/admin/account',
     label: 'Profile',
@@ -74,7 +78,7 @@ const AdminLayout = () => {
   return (
     <div className="layout-container admin-theme min-h-screen bg-app-black text-zinc-100">
       <aside className="sidebar bg-app-surface text-zinc-100">
-        <div className="sidebar-brand">
+        <Link className="sidebar-brand" to="/home" aria-label="Go to home">
           <div className="brand-icon">
             <svg
               width="24"
@@ -90,7 +94,7 @@ const AdminLayout = () => {
             </svg>
           </div>
           <span className="brand-text">Admin Panel</span>
-        </div>
+        </Link>
 
         <nav className="sidebar-nav">
           {navItems.map((item) => (

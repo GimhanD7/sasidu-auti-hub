@@ -3,7 +3,7 @@ import { listFinancePaymentHistory, listFinancePayments, listOutstandingInvoices
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
-router.use(requireAuth, requireRole('Finance', 'Admin'));
+router.use(requireAuth, requireRole('Admin'));
 router.get('/', listFinancePayments);
 router.get('/history', listFinancePaymentHistory);
 router.get('/outstanding', listOutstandingInvoices);

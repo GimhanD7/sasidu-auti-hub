@@ -24,7 +24,7 @@ export default function FinanceOutstandingPayments() {
   useEffect(() => {
     const controller = new AbortController();
     api
-      .get('/finance/payments/outstanding', { signal: controller.signal })
+      .get('/admin/payments/outstanding', { signal: controller.signal })
       .then(({ data: outstanding }) => {
         if (!controller.signal.aborted) {
           setData(outstanding);
@@ -43,7 +43,7 @@ export default function FinanceOutstandingPayments() {
     setError('');
     setNotice('');
     try {
-      const { data: result } = await api.post(`/finance/payments/${invoice.id}/reminder`);
+      const { data: result } = await api.post(`/admin/payments/${invoice.id}/reminder`);
       setNotice(result.message);
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to send the payment reminder.');
@@ -59,7 +59,7 @@ export default function FinanceOutstandingPayments() {
     setNotice('');
     const method = methodsByInvoice[invoice.id] || 'Cash';
     try {
-      const { data: result } = await api.post('/finance/payments/record', {
+      const { data: result } = await api.post('/admin/payments/record', {
         invoiceId: invoice.id,
         amount: invoice.amountDue,
         method,
@@ -226,7 +226,7 @@ export default function FinanceOutstandingPayments() {
     <main className="finance-outstanding-payments">
       <header className="finance-outstanding-heading">
         <div>
-          <p>FINANCE · COLLECTIONS</p>
+          <p>ADMIN · COLLECTIONS</p>
           <h1>Outstanding payments</h1>
           <span>Track balances, remind customers, and record manually received payments.</span>
         </div>

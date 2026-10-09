@@ -1,12 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Auth/Login';
+import Home from './pages/Home';
 import Signup from './pages/Auth/Signup';
 import CustomerLayout from './components/Layout/CustomerLayout';
 import CustomerDashboard from './pages/Customer/CustomerDashboard';
 import CustomerVehicles from './pages/Customer/CustomerVehicles';
 import CustomerVehicleProfile from './pages/Customer/CustomerVehicleProfile';
 import CustomerAppointments from './pages/Customer/CustomerAppointments';
-import BookAppointment from './pages/Customer/BookAppointment';
 import CustomerRepairTracking from './pages/Customer/CustomerRepairTracking';
 import CustomerRepairApprovals from './pages/Customer/CustomerRepairApprovals';
 import ServiceMessages from './pages/Shared/ServiceMessages';
@@ -30,7 +30,6 @@ import TechnicianSecurity from './pages/Technician/TechnicianSecurity';
 import TechnicianJobs from './pages/Technician/TechnicianJobs';
 import TechnicianJobHistory from './pages/Technician/TechnicianJobHistory';
 import TechnicianJobDetails from './pages/Technician/TechnicianJobDetails';
-import FinanceLayout from './components/Layout/FinanceLayout';
 import FinanceDashboard from './pages/Finance/FinanceDashboard';
 import FinanceInvoices from './pages/Finance/FinanceInvoices';
 import FinanceRevenueReports from './pages/Finance/FinanceRevenueReports';
@@ -49,7 +48,8 @@ function App() {
         <Toast />
         <Routes>
           {/* Auth Routes */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin/login" element={<Login adminOnly />} />
           <Route path="/technician/login" element={<Login technicianOnly />} />
@@ -67,7 +67,7 @@ function App() {
                 <Route path=":vehicleId" element={<CustomerVehicleProfile />} />
               </Route>
               <Route path="appointments" element={<CustomerAppointments />} />
-              <Route path="appointments/book" element={<BookAppointment />} />
+              <Route path="appointments/book" element={<Navigate to="/customer/appointments" replace />} />
               <Route path="repair-tracking" element={<CustomerRepairTracking />} />
               <Route path="repair-approvals" element={<CustomerRepairApprovals />} />
               <Route path="messages" element={<ServiceMessages />} />
@@ -85,6 +85,10 @@ function App() {
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="appointments" element={<AdminAppointments />} />
+              <Route path="billing" element={<FinanceDashboard />} />
+              <Route path="invoices" element={<FinanceInvoices />} />
+              <Route path="payments" element={<FinancePaymentReview />} />
+              <Route path="reports" element={<FinanceRevenueReports />} />
               <Route path="kanban" element={<AdminKanban />} />
               <Route path="messages" element={<ServiceMessages />} />
               <Route path="customers" element={<AdminCustomers />} />
@@ -113,16 +117,13 @@ function App() {
             </Route>
           </Route>
 
-          {/* Finance Portal Routes */}
-          <Route element={<ProtectedRoute role="Finance" />}>
-            <Route path="/finance" element={<FinanceLayout />}>
-              <Route index element={<Navigate to="/finance/dashboard" replace />} />
-              <Route path="dashboard" element={<FinanceDashboard />} />
-              <Route path="invoices" element={<FinanceInvoices />} />
-              <Route path="payments" element={<FinancePaymentReview />} />
-              <Route path="reports" element={<FinanceRevenueReports />} />
-              <Route path="account" element={<Profile />} />
-            </Route>
+          <Route element={<ProtectedRoute role="Admin" />}>
+            <Route path="/finance" element={<Navigate to="/admin/billing" replace />} />
+            <Route path="/finance/dashboard" element={<Navigate to="/admin/billing" replace />} />
+            <Route path="/finance/invoices" element={<Navigate to="/admin/invoices" replace />} />
+            <Route path="/finance/payments" element={<Navigate to="/admin/payments" replace />} />
+            <Route path="/finance/reports" element={<Navigate to="/admin/reports" replace />} />
+            <Route path="/finance/account" element={<Navigate to="/admin/account" replace />} />
           </Route>
         </Routes>
       </Router>

@@ -50,7 +50,7 @@ const TechnicianLayout = () => {
   return (
     <div className="layout-container admin-theme technician-theme min-h-screen bg-app-black text-zinc-100">
       <aside className="sidebar bg-app-surface text-zinc-100">
-        <div className="sidebar-brand">
+        <Link className="sidebar-brand" to="/home" aria-label="Go to home">
           <div className="brand-icon" style={{ backgroundColor: '#e11d2e' }}>
             <svg
               width="24"
@@ -66,7 +66,7 @@ const TechnicianLayout = () => {
             </svg>
           </div>
           <span className="brand-text">Tech Workspace</span>
-        </div>
+        </Link>
 
         <nav className="sidebar-nav">
           {navItems.map((item) => (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
@@ -52,9 +52,7 @@ export default function CustomerPayments() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedInvoice = searchParams.get('invoice') || '';
   const [data, setData] = useState(null);
-  const selectedId = data?.invoices.some((invoice) => invoice.id === requestedInvoice)
-    ? requestedInvoice
-    : data?.invoices[0]?.id || requestedInvoice;
+  const selectedId = requestedInvoice || data?.invoices[0]?.id || '';
   const [method, setMethod] = useState('Bank Transfer');
   const [transactionReference, setTransactionReference] = useState('');
   const [busy, setBusy] = useState(false);
@@ -82,15 +80,6 @@ export default function CustomerPayments() {
       });
     return () => controller.abort();
   }, [retry]);
-
-  useEffect(() => {
-    if (!data) return;
-    const next = data.invoices.some((invoice) => invoice.id === requestedInvoice)
-      ? requestedInvoice
-      : data.invoices[0]?.id || '';
-    if (next && next !== requestedInvoice) setSearchParams({ invoice: next }, { replace: true });
-    if (!next && requestedInvoice) setSearchParams({}, { replace: true });
-  }, [data, requestedInvoice, setSearchParams]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -130,13 +119,14 @@ export default function CustomerPayments() {
           <p className="payments-eyebrow">ACCOUNT</p>
           <h1>Make a Payment</h1>
           <p>Select an outstanding invoice and submit payment details.</p>
+          <Link to="/customer/invoices">Back to invoices</Link>
         </div>
       </header>
       <div className="payment-notice">
         <strong>Payment verification</strong>
         <p>
           Bank transfer references and pay-at-workshop requests are recorded as pending until
-          Finance confirms receipt. This site does not collect card details or charge a card.
+          Admin confirms receipt. This site does not collect card details or charge a card.
         </p>
       </div>
       {error && (
@@ -152,7 +142,8 @@ export default function CustomerPayments() {
           Loading open invoices…
         </p>
       )}
-      {data && data.invoices.length === 0 && (
+      {data && requestedInvoice && !selectedInvoice && <section className="payment-empty" role="status"><h2>This invoice is not available for payment</h2><p>It may have no outstanding balance, already be paid, or no longer be available. Review the invoice or contact the workshop if charges are missing.</p><Link to="/customer/invoices">Back to invoices</Link></section>}
+      {data && !requestedInvoice && data.invoices.length === 0 && (
         <section className="payment-empty">
           <h2>No outstanding invoices</h2>
           <p>There are no invoices available for payment.</p>
@@ -248,7 +239,7 @@ export default function CustomerPayments() {
                     ) : (
                       <p className="payment-workshop-note">
                         This records your intention to pay at the workshop. Bring the invoice
-                        number; payment is confirmed by Finance after collection.
+                        number; payment is confirmed by Admin after collection.
                       </p>
                     )}
                     <button

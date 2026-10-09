@@ -60,7 +60,7 @@ const CustomerLayout = () => {
   return (
     <div className="layout-container customer-theme min-h-screen bg-app-black text-zinc-100">
       <aside className="sidebar bg-app-surface text-zinc-100">
-        <div className="sidebar-brand">
+        <Link className="sidebar-brand" to="/home" aria-label="Go to home">
           <div className="brand-icon">
             <svg
               width="24"
@@ -76,7 +76,7 @@ const CustomerLayout = () => {
             </svg>
           </div>
           <span className="brand-text">AutoServ Pro</span>
-        </div>
+        </Link>
 
         <nav className="sidebar-nav">
           {navItems.map((item) => (

@@ -8690,8 +8690,8 @@
     padding: 0.7rem 0.8rem;
   }
   .finance-invoice-table-head {
-    color: var(--text-secondary);
-    background: var(--bg-secondary, #f6f7f9);
+    color: #e4e4e7;
+    background: #27272a;
     font-size: 0.74rem;
     font-weight: 700;
   }
@@ -11934,20 +11934,20 @@
     border-color: var(--primary-red-hover);
     background: var(--primary-red-hover);
   }
-  .layout-container.finance-theme .finance-invoice-tabs button.active,
-  .layout-container.finance-theme .finance-payment-tabs button.active {
+  .layout-container .finance-invoice-tabs button.active,
+  .layout-container .finance-payment-tabs button.active {
     color: #ff6871;
     border-color: var(--primary-red);
   }
-  .layout-container.finance-theme .finance-invoices-heading p,
-  .layout-container.finance-theme .finance-invoice-preview-heading > div > span,
-  .layout-container.finance-theme .finance-invoice-parties small,
-  .layout-container.finance-theme .finance-payment-heading p,
-  .layout-container.finance-theme .finance-payment-receipt > div > span,
-  .layout-container.finance-theme .finance-dashboard-heading p {
+  .layout-container .finance-invoices-heading p,
+  .layout-container .finance-invoice-preview-heading > div > span,
+  .layout-container .finance-invoice-parties small,
+  .layout-container .finance-payment-heading p,
+  .layout-container .finance-payment-receipt > div > span,
+  .layout-container .finance-dashboard-heading p {
     color: #ff6871;
   }
-  .layout-container.finance-theme .finance-revenue-chart svg rect {
+  .layout-container .finance-revenue-chart svg rect {
     fill: var(--primary-red);
   }
   .layout-container.technician-theme .technician-card-section button,
@@ -12300,5 +12300,38 @@
   .layout-container button[class*='primary'],
   .layout-container button[type='submit'] {
     @apply border-brand-red bg-brand-red text-white;
+  }
+
+  /* Pair foreground and background colors so legacy light styles stay readable. */
+  @media screen {
+    .layout-container .content-area button.secondary,
+    .layout-container .content-area button[class*='secondary'],
+    .layout-container .content-area .btn-outline {
+      color: #f4f4f5;
+      background: #27272a;
+      border: 1px solid #71717a;
+    }
+
+    .layout-container .content-area button.secondary:hover:not(:disabled),
+    .layout-container .content-area button[class*='secondary']:hover:not(:disabled),
+    .layout-container .content-area .btn-outline:hover:not(:disabled) {
+      color: #fff;
+      background: #3f3f46;
+      border-color: #a1a1aa;
+    }
+
+    .layout-container .content-area button:disabled {
+      color: #b3b3bc;
+      background: #27272a;
+      border-color: #52525b;
+      opacity: 1;
+      cursor: not-allowed;
+    }
+
+    .layout-container .content-area table th {
+      color: #e4e4e7;
+      background: #27272a;
+      border-color: #52525b;
+    }
   }
 }

@@ -8,7 +8,7 @@ export async function requireAuth(req, res, next) {
   try {
     const session = await AuthSession.findOne({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() } });
     const user = session && await User.findById(session.user).select('-password -resetTokenHash -resetTokenExpiresAt');
-    if (!user || user.isActive === false || session.version !== (user.sessionVersion || 0)) return res.status(401).json({ message: 'Session expired. Please sign in again.' });
+    if (!user || !['user', 'admin', 'Customer', 'Admin', 'Technician'].includes(user.role) || user.isActive === false || session.version !== (user.sessionVersion || 0)) return res.status(401).json({ message: 'Session expired. Please sign in again.' });
     req.user = user;
     next();
   } catch {

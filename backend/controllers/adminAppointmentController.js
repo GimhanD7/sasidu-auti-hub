@@ -12,10 +12,6 @@ import { getActiveServiceTypeNames } from './adminServiceTypeController.js';
 
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const ACTIVE_STATUSES = ['Pending', 'Confirmed', 'Checked In', 'In Service'];
-const availableTimes = () => {
-  const configured = process.env.APPOINTMENT_SLOT_TIMES?.split(',').map(time => time.trim()).filter(time => TIME_PATTERN.test(time));
-  return [...new Set(configured?.length ? configured : ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'])].sort();
-};
 const businessDays = () => {
   const configured = process.env.APPOINTMENT_BUSINESS_DAYS?.split(',').map(Number).filter(day => Number.isInteger(day) && day >= 1 && day <= 7);
   return new Set(configured?.length ? configured : [1, 2, 3, 4, 5, 6, 7]);
@@ -46,7 +42,6 @@ export async function getAdminAppointmentOptions(req, res) {
       customers: customers.map(item => ({ id: String(item._id), name: item.name, email: item.email, mobile: item.mobile || '' })),
       vehicles: vehicles.map(item => ({ id: String(item._id), make: item.make, model: item.model, year: item.year || null, registrationNumber: item.registrationNumber })),
       serviceTypes,
-      times: availableTimes(),
     });
   } catch {
     res.status(503).json({ message: 'Unable to load customer and booking options.' });
@@ -64,7 +59,7 @@ export async function createAdminAppointment(req, res) {
   if (!serviceTypeNames.includes(serviceType)) return res.status(400).json({ message: 'Choose a valid service type.' });
   if (typeof problemDescription !== 'string' || !problemDescription.trim() || problemDescription.trim().length > 1000) return res.status(400).json({ message: 'Enter a customer complaint of 1 to 1,000 characters.' });
   if (typeof customerNotes !== 'string' || customerNotes.trim().length > 1000 || typeof internalNotes !== 'string' || internalNotes.trim().length > 1000) return res.status(400).json({ message: 'Notes must be 1,000 characters or fewer.' });
-  if (typeof preferredDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate) || typeof preferredTime !== 'string' || !availableTimes().includes(preferredTime)) return res.status(400).json({ message: 'Choose a valid appointment date and time.' });
+  if (typeof preferredDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate) || typeof preferredTime !== 'string' || !TIME_PATTERN.test(preferredTime)) return res.status(400).json({ message: 'Choose a valid appointment date and time.' });
   const day = new Date(`${preferredDate}T00:00:00.000Z`);
   if (Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== preferredDate) return res.status(400).json({ message: 'Choose a valid appointment date.' });
   const today = new Date(); today.setUTCHours(0, 0, 0, 0);
@@ -205,7 +200,7 @@ export async function updateAdminAppointment(req, res) {
         const requestedTime = appointment.rescheduleRequest.preferredTime;
         const requestedKey = requestedDay?.toISOString().slice(0, 10);
         const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-        if (!requestedKey || !availableTimes().includes(requestedTime) || requestedDay < today || requestedDay.getTime() > today.getTime() + 30 * 86400000 || !businessDays().has(requestedDay.getUTCDay() || 7) || new Date(`${requestedKey}T${requestedTime}:00.000Z`) <= new Date()) return res.status(409).json({ message: 'The requested time is no longer a valid future workshop slot.' });
+        if (!requestedKey || !TIME_PATTERN.test(requestedTime) || requestedDay < today || requestedDay.getTime() > today.getTime() + 30 * 86400000 || !businessDays().has(requestedDay.getUTCDay() || 7) || new Date(`${requestedKey}T${requestedTime}:00.000Z`) <= new Date()) return res.status(409).json({ message: 'The requested time is no longer a valid future workshop slot.' });
         const conflict = await Appointment.exists({ _id: { $ne: appointment._id }, preferredDate: { $gte: requestedDay, $lt: new Date(requestedDay.getTime() + 86400000) }, preferredTime: requestedTime, status: { $in: ACTIVE_STATUSES } });
         if (conflict) return res.status(409).json({ message: 'The requested time has just been booked. Reject the request or choose another time.' });
         appointment.preferredDate = requestedDay;
@@ -225,7 +220,7 @@ export async function updateAdminAppointment(req, res) {
     const hasTime = body.preferredTime !== undefined;
     if (hasDate !== hasTime) return res.status(400).json({ message: 'Choose both a new date and time when rescheduling.' });
     if (hasDate) {
-      if (typeof body.preferredDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.preferredDate) || typeof body.preferredTime !== 'string' || !availableTimes().includes(body.preferredTime)) return res.status(400).json({ message: 'Choose a valid appointment date and time.' });
+      if (typeof body.preferredDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.preferredDate) || typeof body.preferredTime !== 'string' || !TIME_PATTERN.test(body.preferredTime)) return res.status(400).json({ message: 'Choose a valid appointment date and time.' });
       const day = new Date(`${body.preferredDate}T00:00:00.000Z`);
       if (Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== body.preferredDate) return res.status(400).json({ message: 'Choose a valid appointment date.' });
       const today = new Date(); today.setUTCHours(0, 0, 0, 0);
