@@ -1,3 +1,4 @@
+import { serviceStatus, invoiceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 const dateText = (value) =>
@@ -497,7 +498,7 @@ function CustomerProfile({ data }) {
                     <td>{item.technician}</td>
                     <td>
                       <span className={`customer-status ${statusClass(item.status)}`}>
-                        {item.status}
+                        {serviceStatus(item.status)}
                       </span>
                     </td>
                   </tr>
@@ -520,7 +521,7 @@ function CustomerProfile({ data }) {
             {currentJobs.map((job) => (
               <article key={job.id}>
                 <strong>
-                  {job.reference} · {job.status}
+                  {job.reference} · {serviceStatus(job.status)}
                 </strong>
                 <span>
                   {job.serviceType} · {job.vehicle}
@@ -546,7 +547,7 @@ function CustomerProfile({ data }) {
             {serviceHistory.map((job) => (
               <article key={job.id}>
                 <strong>
-                  {job.reference} · {job.status}
+                  {job.reference} · {serviceStatus(job.status)}
                 </strong>
                 <span>
                   {job.serviceType} · {job.vehicle}
@@ -590,7 +591,7 @@ function CustomerProfile({ data }) {
                     <td>{amount(invoice.amountDue)}</td>
                     <td>
                       <span className={`customer-status ${statusClass(invoice.paymentStatus)}`}>
-                        {invoice.paymentStatus}
+                        {invoiceStatus(invoice.paymentStatus)}
                       </span>
                     </td>
                   </tr>

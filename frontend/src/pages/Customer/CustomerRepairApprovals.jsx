@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -38,7 +39,7 @@ function ApprovalCard({ item, onDecide, busy }) {
           </p>
           <h2>{item.problem || 'Additional repair requested'}</h2>
         </div>
-        <span className={`approval-status status-${item.status.toLowerCase()}`}>{item.status}</span>
+        <span className={`approval-status status-${item.status.toLowerCase()}`}>{serviceStatus(item.status)}</span>
       </header>
       <p className="approval-explanation">
         {item.technicianExplanation || 'The workshop has not added an explanation.'}
@@ -155,7 +156,7 @@ function ApprovalCard({ item, onDecide, busy }) {
       ) : (
         <div className="approval-decision-summary">
           <span>
-            {item.status} · {dateTime(item.decisionAt)}
+            {serviceStatus(item.status)} · {dateTime(item.decisionAt)}
           </span>
           {item.customerComment && <p>“{item.customerComment}”</p>}
         </div>

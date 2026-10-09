@@ -9,6 +9,7 @@ import Notification from '../models/Notification.js';
 import JobPhoto from '../models/JobPhoto.js';
 import Invoice from '../models/Invoice.js';
 import Vehicle from '../models/Vehicle.js';
+import Appointment from '../models/Appointment.js';
 import Payment from '../models/Payment.js';
 import { invoiceEmail } from '../services/invoiceEmail.js';
 import { passwordResetEmail } from '../services/passwordResetEmail.js';
@@ -184,7 +185,9 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     dashboardJobs[1].timeline = [];
     dashboardJobs[1].$locals = {};
     dashboardJobs[1].save = async function save() { return this; };
-    t.mock.method(ServiceJob, 'find', query => ({ select() { return this; }, populate() { return this; }, sort() { return this; }, skip() { return this; }, limit() { return this; }, lean: async () => dashboardJobs.filter(job => (!query.status || job.status === query.status) && (!query.priority || job.priority === query.priority)) }));
+    t.mock.method(Appointment, 'find', () => ({ sort() { return this; }, populate() { return this; }, lean: async () => [] }));
+    t.mock.method(Appointment, 'updateOne', async () => ({ modifiedCount: 1 }));
+    t.mock.method(ServiceJob, 'find', query => ({ select() { return this; }, populate() { return this; }, sort() { return this; }, skip() { return this; }, limit() { return this; }, lean: async () => dashboardJobs.filter(job => (!query.status || (query.status.$in ? query.status.$in.includes(job.status) : job.status === query.status)) && (!query.priority || job.priority === query.priority)) }));
     t.mock.method(ServiceJob, 'findOne', query => {
       const found = dashboardJobs.find(job => String(job._id) === String(query._id)) || null;
       const pending = Promise.resolve(found);
@@ -192,7 +195,7 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
       pending.lean = async () => found;
       return pending;
     });
-    t.mock.method(ServiceJob, 'countDocuments', async query => query.timeline ? 1 : query.status === 'Inspecting' ? 1 : query.status === 'In Progress' ? 1 : query.status === 'Waiting for Approval' ? 0 : query.status === 'Ready' ? 1 : query.priority ? 2 : Object.keys(query).length === 1 && query.technician ? dashboardJobs.length : 0);
+    t.mock.method(ServiceJob, 'countDocuments', async query => query.timeline ? 1 : query.status?.$in && !query.priority ? dashboardJobs.filter(job => query.status.$in.includes(job.status)).length : query.status === 'Inspecting' ? 1 : query.status === 'In Progress' ? 1 : query.status === 'Waiting for Approval' ? 0 : query.status === 'Ready' ? 1 : query.priority ? 2 : Object.keys(query).length === 1 && query.technician ? dashboardJobs.length : 0);
     t.mock.method(ServiceJob, 'aggregate', async pipeline => pipeline.some(stage => stage.$lookup?.from === 'users') ? [{ _id: technician._id, technicianName: technician.name, jobsCompleted: 2, labourMinutes: 120, revenue: 6500, averageCompletionHours: 6.5 }] : [{ name: 'Brake pad set', partNumber: 'BP-01', unitPrice: 125, lastUsedAt: new Date() }]);
     t.mock.method(Vehicle, 'find', () => ({ select() { return this; }, limit() { return this; }, lean: async () => [] }));
     const dashboardNotifications = [{ _id: 'notice-1', type: 'ServiceJobAssigned', title: 'New job assigned', message: 'JOB-ACTIVE is ready.', link: '/technician/jobs', isRead: false, createdAt: new Date() }];
@@ -363,8 +366,8 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal((await request('/api/auth/technician/parts?search=brake', { cookie: customerCurrentLogin.cookie })).response.status, 403);
     const myJobs = await request('/api/auth/technician/jobs?status=In%20Progress&sort=recent&page=1', { cookie: technicianLogin.cookie });
     assert.equal(myJobs.response.status, 200);
-    assert.equal(myJobs.data.total, 1);
-    assert.equal(myJobs.data.jobs.length, 1);
+    assert.equal(myJobs.data.total, 2);
+    assert.equal(myJobs.data.jobs.length, 2);
     assert.equal(myJobs.data.jobs[0].serviceType, 'Brake repair');
     const history = await request('/api/auth/technician/jobs/history?search=JOB-READY', { cookie: technicianLogin.cookie });
     assert.equal(history.response.status, 200);

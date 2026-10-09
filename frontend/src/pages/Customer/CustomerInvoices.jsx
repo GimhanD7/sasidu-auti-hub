@@ -1,3 +1,4 @@
+import { invoiceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -37,7 +38,7 @@ function InvoiceCard({ invoice, printTarget, onPrint }) {
         <span
           className={`invoice-status status-${invoice.paymentStatus.toLowerCase().replaceAll(' ', '-')}`}
         >
-          {invoice.paymentStatus}
+          {invoiceStatus(invoice.paymentStatus)}
         </span>
       </header>
       <div className="invoice-meta">

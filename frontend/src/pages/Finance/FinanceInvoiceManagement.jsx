@@ -1,3 +1,4 @@
+import { invoiceStatus } from '../../lib/serviceStatus';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { downloadFinanceCsv } from '../../lib/financeExport';
@@ -211,7 +212,7 @@ export default function FinanceInvoiceManagement() {
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option>All statuses</option>
             {statuses.map((status) => (
-              <option key={status}>{status}</option>
+              <option key={status} value={status}>{invoiceStatus(status)}</option>
             ))}
           </select>
         </label>
@@ -271,7 +272,7 @@ export default function FinanceInvoiceManagement() {
                           <span
                             className={`finance-invoice-state ${item.paymentStatus.toLowerCase().replaceAll(' ', '-')}`}
                           >
-                            {item.paymentStatus}
+                            {invoiceStatus(item.paymentStatus)}
                           </span>
                         </td>
                       </tr>
@@ -296,7 +297,7 @@ export default function FinanceInvoiceManagement() {
                 <span
                   className={`finance-invoice-state ${invoice.paymentStatus.toLowerCase().replaceAll(' ', '-')}`}
                 >
-                  {invoice.paymentStatus}
+                  {invoiceStatus(invoice.paymentStatus)}
                 </span>
               </div>
               <div className="finance-invoice-parties">
@@ -460,7 +461,7 @@ export default function FinanceInvoiceManagement() {
                 </dl>
               </div>
               <footer className="finance-invoice-actions">
-                <span>All amounts in LKR · Payment status: {invoice.paymentStatus}</span>
+                <span>All amounts in LKR · Payment status: {invoiceStatus(invoice.paymentStatus)}</span>
                 <button
                   type="button"
                   className="secondary"
@@ -504,7 +505,7 @@ export default function FinanceInvoiceManagement() {
                 <p>VEHICLE SERVICE · INVOICE</p>
                 <h1>{invoice.invoiceNumber}</h1>
                 <p>
-                  Issued {date(invoice.issuedAt)} · Status: {invoice.paymentStatus}
+                  Issued {date(invoice.issuedAt)} · Status: {invoiceStatus(invoice.paymentStatus)}
                 </p>
                 <hr />
                 <h2>Bill to</h2>

@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 const dateText = (value) =>
@@ -217,7 +218,7 @@ export default function AdminAllocations() {
                     </td>
                     <td>{job.serviceType}</td>
                     <td>
-                      {job.status}
+                      {serviceStatus(job.status)}
                       <small className={`allocation-priority ${job.priority.toLowerCase()}`}>
                         {job.priority} priority
                       </small>

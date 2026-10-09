@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -376,7 +377,7 @@ export default function CustomerAppointments() {
                       <span
                         className={`appointment-status status-${appointment.status.toLowerCase().replaceAll(' ', '-')}`}
                       >
-                        {appointment.status}
+                        {serviceStatus(appointment.status)}
                       </span>
                     </div>
                     <div className="appointment-record-summary">
@@ -630,7 +631,7 @@ export default function CustomerAppointments() {
                       <span
                         className={`appointment-status status-${appointment.status.toLowerCase().replaceAll(' ', '-')}`}
                       >
-                        {appointment.status}
+                        {serviceStatus(appointment.status)}
                       </span>
                     </div>
                     <div className="appointment-record-summary">

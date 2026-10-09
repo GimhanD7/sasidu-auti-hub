@@ -4,7 +4,7 @@ import Appointment from '../models/Appointment.js';
 import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
 
-const JOB_STATUSES = ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test', 'Ready'];
+const JOB_STATUSES = ['In Progress', 'Ready'];
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -25,7 +25,7 @@ export async function listAdminJobBoard(req, res) {
   if ((dateFrom && !start) || (dateTo && !end) || (start && end && start > end)) return res.status(400).json({ message: 'Choose a valid date range.' });
   const filter = {};
   if (customer) filter.customer = customer;
-  if (status) filter.status = status;
+  if (status) filter.status = status === 'In Progress' ? { $in: ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test'] } : status;
   if (priority) filter.priority = priority;
   if (technician === 'unassigned') filter.$or = [{ technician: { $exists: false } }, { technician: null }];
   else if (technician) filter.technician = technician;
@@ -52,7 +52,7 @@ export async function listAdminJobBoard(req, res) {
       User.find({ role: 'Technician', isActive: { $ne: false } }).select('name availabilityStatus').sort({ name: 1 }).lean(),
     ]);
     res.set('Cache-Control', 'private, no-store').json({
-      jobs: jobs.map(job => ({ id: String(job._id), serviceNumber: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`, status: job.status, priority: job.priority || 'Normal', customer: job.customer?.name || 'Customer unavailable', vehicle: job.vehicle ? `${job.vehicle.year ? `${job.vehicle.year} ` : ''}${job.vehicle.make} ${job.vehicle.model}` : 'Vehicle unavailable', registrationNumber: job.vehicle?.registrationNumber || '', serviceType: job.appointment?.serviceType || 'Service repair', technicianId: job.technician ? String(job.technician._id) : '', technician: job.technician?.name || 'Unassigned', specialization: job.technician?.technicianSpecialization || '', availabilityStatus: job.technician?.availabilityStatus || 'Available', customerComplaint: job.customerComplaint || '', createdAt: job.createdAt, expectedCompletionTime: job.expectedCompletionTime || null })),
+      jobs: jobs.map(job => ({ id: String(job._id), serviceNumber: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`, status: job.status === 'Ready' ? 'Ready' : 'In Progress', priority: job.priority || 'Normal', customer: job.customer?.name || 'Customer unavailable', vehicle: job.vehicle ? `${job.vehicle.year ? `${job.vehicle.year} ` : ''}${job.vehicle.make} ${job.vehicle.model}` : 'Vehicle unavailable', registrationNumber: job.vehicle?.registrationNumber || '', serviceType: job.appointment?.serviceType || 'Service repair', technicianId: job.technician ? String(job.technician._id) : '', technician: job.technician?.name || 'Unassigned', specialization: job.technician?.technicianSpecialization || '', availabilityStatus: job.technician?.availabilityStatus || 'Available', customerComplaint: job.customerComplaint || '', createdAt: job.createdAt, expectedCompletionTime: job.expectedCompletionTime || null })),
       technicians: technicians.map(person => ({ id: String(person._id), name: person.name, availabilityStatus: person.availabilityStatus || 'Available' })),
       total: jobs.length,
       statuses: JOB_STATUSES,

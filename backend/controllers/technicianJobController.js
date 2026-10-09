@@ -68,7 +68,7 @@ export async function listTechnicianJobs(req, res) {
   if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50) return res.status(400).json({ message: 'Choose a valid page and page size (1–50).' });
 
   const filter = { technician: req.user._id };
-  if (status) filter.status = status;
+  if (status) filter.status = status === 'In Progress' ? { $in: ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test'] } : status;
   if (priority) filter.priority = priority;
   const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
   try {

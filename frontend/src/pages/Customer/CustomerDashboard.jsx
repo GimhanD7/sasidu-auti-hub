@@ -1,9 +1,10 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import Icon from '../../components/Icon';
 import { useAuth } from '../../auth/useAuth';
-const WORKFLOW = ['Inspecting', 'In Progress', 'Final Test', 'Ready'];
+const WORKFLOW = ['In Progress', 'Completed'];
 const number = (value) => new Intl.NumberFormat().format(value ?? 0);
 const vehicleLabel = (vehicle) =>
   vehicle
@@ -40,7 +41,7 @@ function SummaryCard({ label, value, icon, color }) {
 
 function RepairProgress({ status }) {
   const index =
-    status === 'Waiting for Approval' ? WORKFLOW.indexOf('In Progress') : WORKFLOW.indexOf(status);
+    WORKFLOW.indexOf(serviceStatus(status));
   return (
     <div className="repair-progress" aria-label={`Repair status: ${status}`}>
       {WORKFLOW.map((step, stepIndex) => (
@@ -127,9 +128,9 @@ function DashboardContent({ data }) {
                           <p>Service job {String(job.id).slice(-6).toUpperCase()}</p>
                         </div>
                       </div>
-                      <span className="badge badge-warning">{job.status}</span>
+                      <span className="badge badge-warning">{serviceStatus(job.status)}</span>
                     </div>
-                    <RepairProgress status={job.status} />
+                    <RepairProgress status={serviceStatus(job.status)} />
                     <p className="repair-eta">
                       {job.expectedCompletionTime ? (
                         <>

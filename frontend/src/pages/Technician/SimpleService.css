@@ -1,0 +1,9 @@
+.simple-service { display: grid; gap: 1.25rem; }
+.simple-service .section-card { display: grid; gap: .8rem; }
+.simple-service fieldset { border: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
+.simple-service label { display: grid; gap: .4rem; flex: 1; min-width: 160px; }
+.simple-service input, .simple-service textarea { width: 100%; padding: .7rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input); color: var(--text-primary); font: inherit; }
+.simple-service button { padding: .65rem .9rem; border: 1px solid var(--border-color); border-radius: 8px; background: #2563eb; color: white; cursor: pointer; }
+.simple-service button:disabled { opacity: .5; cursor: not-allowed; }
+.simple-service li { margin-bottom: .6rem; }
+.simple-service .service-notice { padding: 1rem; background: #dcfce7; color: #166534; border-radius: 8px; }

@@ -1,8 +1,9 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import Icon from '../../components/Icon';
-const STAGES = ['Inspecting', 'In Progress', 'Final Test', 'Ready'];
+const STAGES = ['In Progress', 'Completed'];
 const dateTime = (value) => {
   if (!value) return 'Not available';
   const date = new Date(value);
@@ -16,7 +17,7 @@ const vehicleLabel = (vehicle) =>
     : 'Vehicle details unavailable';
 
 function Progress({ status }) {
-  const index = status === 'Waiting for Approval' ? 1 : STAGES.indexOf(status);
+  const index = STAGES.indexOf(serviceStatus(status));
   return (
     <ol className="tracking-stages" aria-label={`Repair progress: ${status}`}>
       {STAGES.map((stage, i) => (
@@ -45,10 +46,10 @@ function JobCard({ job }) {
           <p className="tracking-service-type">{job.serviceType}</p>
         </div>
         <span className={`tracking-status ${job.status === 'Ready' ? 'is-ready' : ''}`}>
-          {job.status}
+          {serviceStatus(job.status)}
         </span>
       </header>
-      <Progress status={job.status} />
+      <Progress status={serviceStatus(job.status)} />
       {job.status === 'Waiting for Approval' && (
         <div className="tracking-notice">
           <strong>Waiting for approval</strong>

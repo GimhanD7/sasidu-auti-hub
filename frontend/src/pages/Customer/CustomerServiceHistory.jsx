@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -43,7 +44,7 @@ function downloadRecord(record) {
     `Vehicle: ${vehicle}`,
     `Service type: ${record.serviceType}`,
     `Service date: ${dateTime(record.serviceDate)}`,
-    `Status: ${record.status}`,
+    `Status: ${serviceStatus(record.status)}`,
     `Technician: ${record.technician || 'Not recorded'}`,
     `Mileage: ${record.mileageAtService == null ? 'Not recorded' : `${new Intl.NumberFormat().format(record.mileageAtService)} km`}`,
     '',
@@ -95,7 +96,7 @@ function ServiceRecord({ record }) {
           <h2>{record.serviceType}</h2>
           <p>{vehicleLabel(record.vehicle)}</p>
         </div>
-        <span className="history-status">{record.status}</span>
+        <span className="history-status">{serviceStatus(record.status)}</span>
       </header>
       <dl className="history-details">
         <div>

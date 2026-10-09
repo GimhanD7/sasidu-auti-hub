@@ -16,7 +16,7 @@ const serviceJobSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test', 'Ready'],
-    default: 'Inspecting'
+    default: 'In Progress'
   },
   customerComplaint: { type: String, trim: true, maxlength: 1000 },
   inspection: {
@@ -139,7 +139,7 @@ const serviceJobSchema = new mongoose.Schema({
 serviceJobSchema.pre('save', function captureCustomerMilestones() {
   const milestones = {
     'Final Test': { type: 'FinalTest', title: 'Final testing started', message: 'Your vehicle has moved to final testing.' },
-    Ready: { type: 'VehicleReady', title: 'Vehicle ready', message: 'Your vehicle is ready for collection.' },
+    Ready: { type: 'VehicleReady', title: 'Service completed', message: 'Your vehicle service is completed. The workshop will issue your invoice.' },
   };
   this.$locals.customerMilestones = [];
   if (!this.$locals.suppressCustomerStatusNotifications && this.isModified('status')) {
@@ -148,7 +148,6 @@ serviceJobSchema.pre('save', function captureCustomerMilestones() {
       { type: 'FinalTestFailed', title: 'Additional work needed after final test', message: statusUpdate || 'The workshop found an issue during final testing and is returning your vehicle to repair.' },
     );
     else if (this.status === 'In Progress') this.$locals.customerMilestones.push(
-      { type: 'InspectionCompleted', title: 'Inspection completed', message: `The workshop has completed the inspection of your vehicle.${statusUpdate ? ` ${statusUpdate}` : ''}` },
       { type: 'RepairStarted', title: 'Repair started', message: `Work on your vehicle has started.${statusUpdate ? ` ${statusUpdate}` : ''}` },
     );
     else if (milestones[this.status]) this.$locals.customerMilestones.push({ ...milestones[this.status], message: `${milestones[this.status].message}${statusUpdate ? ` ${statusUpdate}` : ''}` });

@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -179,7 +180,7 @@ export default function CustomerVehicleProfile() {
               <article className="profile-repair-card" key={job.id}>
                 <div className="profile-record-top">
                   <strong>{job.serviceType}</strong>
-                  <span className="profile-status-pill">{job.status}</span>
+                  <span className="profile-status-pill">{serviceStatus(job.status)}</span>
                 </div>
                 <dl className="profile-compact-grid">
                   <div>
@@ -224,7 +225,7 @@ export default function CustomerVehicleProfile() {
                       <td>{item.serviceType}</td>
                       <td>{dateLabel(item.preferredDate)}</td>
                       <td>{item.preferredTime}</td>
-                      <td>{item.status}</td>
+                      <td>{serviceStatus(item.status)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -249,7 +250,7 @@ export default function CustomerVehicleProfile() {
                   <div>
                     <h3>{record.serviceType}</h3>
                     <p>
-                      {dateLabel(record.serviceDate)} · {record.status}
+                      {dateLabel(record.serviceDate)} · {serviceStatus(record.status)}
                     </p>
                   </div>
                   <span className="profile-priority-pill">{record.priority || 'Normal'}</span>

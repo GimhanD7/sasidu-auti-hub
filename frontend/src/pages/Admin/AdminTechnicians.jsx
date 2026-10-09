@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 const week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -263,7 +264,7 @@ export default function AdminTechnicians() {
                             <span
                               className={`technician-status ${job.status.toLowerCase().replaceAll(' ', '-')}`}
                             >
-                              {job.status}
+                              {serviceStatus(job.status)}
                             </span>
                           </td>
                           <td>{dateText(job.updatedAt)}</td>
@@ -308,7 +309,7 @@ export default function AdminTechnicians() {
                             <br />
                             <small>{item.vehicle}</small>
                           </td>
-                          <td>{item.status}</td>
+                          <td>{serviceStatus(item.status)}</td>
                         </tr>
                       ))}
                     </tbody>

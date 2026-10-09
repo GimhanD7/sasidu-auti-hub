@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -123,9 +124,9 @@ export default function TechnicianJobs() {
           Status
           <select value={status} onChange={(event) => resetPage(setStatus, event.target.value)}>
             <option value="">All statuses</option>
-            {['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test', 'Ready'].map(
+            {['In Progress', 'Ready'].map(
               (value) => (
-                <option key={value}>{value}</option>
+                <option key={value} value={value}>{serviceStatus(value)}</option>
               ),
             )}
           </select>
@@ -135,7 +136,7 @@ export default function TechnicianJobs() {
           <select value={priority} onChange={(event) => resetPage(setPriority, event.target.value)}>
             <option value="">All priorities</option>
             {['Urgent', 'High', 'Normal', 'Low'].map((value) => (
-              <option key={value}>{value}</option>
+              <option key={value} value={value}>{serviceStatus(value)}</option>
             ))}
           </select>
         </label>
@@ -179,7 +180,7 @@ export default function TechnicianJobs() {
                     <span>
                       {dateTime(appointment.preferredDate)} · {appointment.preferredTime}
                     </span>
-                    <span className="badge badge-warning">{appointment.status}</span>
+                    <span className="badge badge-warning">{serviceStatus(appointment.status)}</span>
                     {appointment.jobId && (
                       <Link to={`/technician/jobs/${appointment.jobId}`}>Open service job →</Link>
                     )}
@@ -192,7 +193,7 @@ export default function TechnicianJobs() {
                         >
                           {startingAppointmentId === appointment.id
                             ? 'Starting…'
-                            : 'Start service workflow'}
+                            : 'Start service'}
                         </button>
                       )}
                     {!appointment.jobId && appointment.status === 'Pending' && (
@@ -231,7 +232,7 @@ export default function TechnicianJobs() {
                   <Link to={`/technician/jobs/${job.id}`} className="technician-job-number">
                     {job.serviceNumber}
                   </Link>
-                  <span className="badge badge-warning">{job.status}</span>
+                  <span className="badge badge-warning">{serviceStatus(job.status)}</span>
                   <span className={`technician-priority ${job.priority.toLowerCase()}`}>
                     {job.priority}
                   </span>

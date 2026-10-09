@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -25,12 +26,6 @@ const indicators = [
     key: 'inProgress',
     label: 'In Progress',
     color: '#f59e0b',
-    icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-  },
-  {
-    key: 'waitingForApproval',
-    label: 'Waiting for Approval',
-    color: '#a855f7',
     icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
   },
   {
@@ -78,7 +73,7 @@ function JobList({ jobs, empty, showPriority = false }) {
               <span
                 className={`badge ${job.status === 'Waiting for Approval' ? 'badge-warning' : 'technician-status-badge'}`}
               >
-                {job.status}
+                {serviceStatus(job.status)}
               </span>
               {showPriority && (
                 <span className={`technician-priority ${job.priority.toLowerCase()}`}>
@@ -109,7 +104,7 @@ function NotificationList({ notifications }) {
   if (!notifications?.length)
     return (
       <div className="dashboard-empty">
-        <p>You’re all caught up. New job and approval updates will appear here.</p>
+        <p>You’re all caught up. New service updates will appear here.</p>
       </div>
     );
   return (
@@ -225,7 +220,7 @@ function DashboardContent({ data, fullName }) {
                       <span>
                         {dateTime(appointment.preferredDate)} · {appointment.preferredTime}
                       </span>
-                      <span className="badge badge-warning">{appointment.status}</span>
+                      <span className="badge badge-warning">{serviceStatus(appointment.status)}</span>
                       {appointment.jobId && (
                         <Link to={`/technician/jobs/${appointment.jobId}`}>Open job →</Link>
                       )}

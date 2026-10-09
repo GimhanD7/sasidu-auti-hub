@@ -1,12 +1,7 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-const defaultStatuses = [
-  'Inspecting',
-  'In Progress',
-  'Waiting for Approval',
-  'Final Test',
-  'Ready',
-];
+const defaultStatuses = ['In Progress', 'Ready'];
 const priorities = ['Low', 'Normal', 'High', 'Urgent'];
 const dateTime = (value) =>
   value
@@ -103,7 +98,7 @@ export default function AdminKanban() {
           <select value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
             {statuses.map((item) => (
-              <option key={item}>{item}</option>
+              <option key={item} value={item}>{serviceStatus(item)}</option>
             ))}
           </select>
         </label>
@@ -124,7 +119,7 @@ export default function AdminKanban() {
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
             <option value="">All priorities</option>
             {priorities.map((item) => (
-              <option key={item}>{item}</option>
+              <option key={item} value={item}>{serviceStatus(item)}</option>
             ))}
           </select>
         </label>
@@ -177,7 +172,7 @@ export default function AdminKanban() {
               aria-label={`${column} jobs`}
             >
               <header className="column-header">
-                <h2>{column}</h2>
+                <h2>{serviceStatus(column)}</h2>
                 <span className="column-count">{items.length}</span>
               </header>
               <div className="column-body">

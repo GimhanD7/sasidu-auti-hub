@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import Icon from '../../components/Icon';
@@ -99,8 +100,8 @@ export default function AdminDashboard() {
 
       <section className="admin-stage-summary" aria-label="Workshop job stages">
         <h2>Job stages</h2>
-        {['Inspecting', 'In Progress', 'Final Test', 'Ready'].map((stage, index) => {
-          const value = [summary.inspecting, summary.inProgress, summary.finalTest, summary.ready][
+        {['In Progress', 'Completed'].map((stage, index) => {
+          const value = [(summary.inspecting || 0) + (summary.inProgress || 0) + (summary.finalTest || 0) + (summary.waitingForApproval || 0), summary.ready][
             index
           ];
           return (
@@ -145,7 +146,7 @@ export default function AdminDashboard() {
                       <td>{dateTime(item.preferredDate, item.preferredTime)}</td>
                       <td>
                         <span className={`admin-status ${statusClass(item.status)}`}>
-                          {item.status}
+                          {serviceStatus(item.status)}
                         </span>
                       </td>
                     </tr>
@@ -200,7 +201,7 @@ export default function AdminDashboard() {
                     </small>
                   </div>
                   <div>
-                    <span className={`admin-status ${statusClass(job.status)}`}>{job.status}</span>
+                    <span className={`admin-status ${statusClass(job.status)}`}>{serviceStatus(job.status)}</span>
                     <small>Tech: {job.technician}</small>
                   </div>
                 </article>
@@ -211,9 +212,9 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <section className="section-card">
+        {jobsAwaitingApproval.length > 0 && <section className="section-card">
           <div className="section-header">
-            <h2>Jobs awaiting approval</h2>
+            <h2>Existing repair requests</h2>
             <span>{jobsAwaitingApproval.length} shown</span>
           </div>
           {jobsAwaitingApproval.length ? (
@@ -237,7 +238,7 @@ export default function AdminDashboard() {
           ) : (
             <p className="dashboard-empty">No jobs are waiting for approval.</p>
           )}
-        </section>
+        </section>}
 
         <section className="section-card admin-activity-card">
           <div className="section-header">
@@ -255,7 +256,7 @@ export default function AdminDashboard() {
                       {item.reference} · {item.vehicle}
                     </strong>
                     <small>
-                      {item.kind === 'job' ? 'Job' : 'Appointment'} updated to {item.status}
+                      {item.kind === 'job' ? 'Job' : 'Appointment'} updated to {serviceStatus(item.status)}
                     </small>
                   </span>
                   <time dateTime={item.updatedAt}>

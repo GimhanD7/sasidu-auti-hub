@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import ServiceJob from '../models/ServiceJob.js';
 import JobPhoto from '../models/JobPhoto.js';
 import Invoice from '../models/Invoice.js';
+import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 
@@ -34,6 +35,7 @@ export async function updateTechnicianJobCard(req, res) {
   try {
     const job = await findAssignedJob(req.params.jobId, req.user._id);
     if (!job) return res.status(404).json({ message: 'Assigned service job not found.' });
+    if (job.status === 'Ready') return res.status(409).json({ message: 'This service is completed and cannot be changed.' });
     const now = new Date();
     let message;
 
@@ -169,11 +171,10 @@ export async function updateTechnicianJobCard(req, res) {
         message = 'Final test failed. The job returned to In Progress for further repair.';
       }
     } else if (action === 'completeJob') {
-      if (job.status !== 'Final Test' || job.finalTest?.result !== 'Passed' || !job.finalTest?.completedAt) return res.status(409).json({ message: 'A completed, passing final test is required before completing this job.' });
+      if (!['In Progress', 'Inspecting', 'Final Test'].includes(job.status)) return res.status(409).json({ message: 'Start the service before completing it.' });
       if (job.tasks.some(task => !['Complete', 'Cancelled'].includes(task.status))) return res.status(409).json({ message: 'Complete or cancel all repair tasks before completing this job.' });
       if (job.additionalRepairs.some(repair => repair.status === 'Pending')) return res.status(409).json({ message: 'Resolve all pending customer approvals before completing this job.' });
       if (job.activeLabourTimer?.startedAt) return res.status(409).json({ message: 'Stop the active labour timer before completing this job.' });
-      if (req.body.tasksVerified !== true || req.body.partsVerified !== true || req.body.labourVerified !== true) return res.status(400).json({ message: 'Confirm that tasks, parts, and labour have been verified.' });
       const reportNotes = text(req.body.reportNotes, 3000, 'Final technician report', { required: true });
       const parts = (job.replacedParts || []).map(part => ({ name: part.name || 'Part', partNumber: part.partNumber || '', quantity: Number(part.quantity) || 0, unitPrice: Number(part.unitCost) || 0, total: Math.round((Number(part.quantity) || 0) * (Number(part.unitCost) || 0) * 100) / 100 }));
       const labourItems = (job.labourEntries || []).map(entry => ({ description: `${entry.labourType || 'Repair'} · ${entry.description || 'Labour'}`, hours: Math.round((Number(entry.minutes) || 0) / 60 * 100) / 100, rate: Number(entry.ratePerHour) || 0, total: Math.round(((Number(entry.minutes) || 0) / 60) * (Number(entry.ratePerHour) || 0) * 100) / 100 }));
@@ -202,6 +203,7 @@ export async function updateTechnicianJobCard(req, res) {
       job.status = 'Ready';
       job.timeline.push({ status: 'Ready', timestamp: now, actor: req.user._id, notes: reportNotes });
       await job.save();
+      if (job.appointment) await Appointment.updateOne({ _id: job.appointment }, { $set: { status: 'Completed' }, $unset: { bookingSlotKey: '' }, $push: { history: { action: 'Service completed', details: 'Technician completed the service and prepared billing.', actor: req.user._id, timestamp: now } } });
       try {
         const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
         if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'ServiceJobCompleted', title: 'Service job completed', message: `${job.serviceNumber || 'A service job'} is ready. Draft invoice ${invoice.invoiceNumber} is available for billing review.`, link: '/admin/kanban', dedupeKey: `service-job-complete:${job._id}:${admin._id}` })), { ordered: false });

@@ -1,3 +1,4 @@
+import { serviceStatus } from '../../lib/serviceStatus';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -24,7 +25,7 @@ const monthLabel = (date) =>
     date,
   );
 const statusClass = (status) => status.toLowerCase().replaceAll(' ', '-');
-const STATUSES = ['Pending', 'Confirmed', 'Checked In', 'In Service', 'Completed', 'Cancelled'];
+const STATUSES = ['Pending', 'Confirmed', 'In Service', 'Completed', 'Cancelled'];
 
 function visibleRange(date, view) {
   if (view === 'day') return { start: date, end: addDays(date, 1) };
@@ -175,7 +176,7 @@ export default function AdminAppointments() {
             Time conflict: another active booking uses this slot
           </span>
         )}
-        <span className={`calendar-status ${statusClass(item.status)}`}>{item.status}</span>
+        <span className={`calendar-status ${statusClass(item.status)}`}>{serviceStatus(item.status)}</span>
         <button
           type="button"
           className="calendar-manage-button"
@@ -327,7 +328,7 @@ export default function AdminAppointments() {
           >
             <option value="">All statuses</option>
             {STATUSES.map((status) => (
-              <option key={status}>{status}</option>
+              <option key={status} value={status}>{serviceStatus(status)}</option>
             ))}
           </select>
         </label>
@@ -1157,7 +1158,7 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
         )}
         {record.serviceJob && (
           <p className="appointment-success">
-            Service job {record.serviceJob.serviceNumber} · {record.serviceJob.status}
+            Service job {record.serviceJob.serviceNumber} · {serviceStatus(record.serviceJob.status)}
           </p>
         )}
         {record.history?.length > 0 && (
@@ -1188,8 +1189,8 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
               value={record.status}
               onChange={(event) => update('status', event.target.value)}
             >
-              {STATUSES.map((status) => (
-                <option key={status}>{status}</option>
+              {[...new Set([...STATUSES.filter(status => ['Pending', 'Confirmed', 'Cancelled'].includes(status)), record.status])].map((status) => (
+                <option key={status} value={status}>{serviceStatus(status)}</option>
               ))}
             </select>
           </label>
@@ -1309,10 +1310,10 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
           <button
             type="button"
             className="appointment-refresh"
-            onClick={() => save({ status: 'Checked In' })}
-            disabled={saving || record.status === 'Cancelled' || record.status === 'Completed'}
+            onClick={() => save({ status: 'Confirmed' })}
+            disabled={saving || !record.technicianId || !['Pending', 'Confirmed'].includes(record.status)}
           >
-            Mark arrived
+            Confirm and assign
           </button>
           <span />
           {!record.serviceJob && (
@@ -1322,7 +1323,7 @@ function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved,
               onClick={convertToJob}
               disabled={saving || !['Confirmed', 'Checked In'].includes(record.status)}
             >
-              Convert to job
+              Start service
             </button>
           )}
           <button

@@ -6575,7 +6575,7 @@
   .tracking-stages {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     margin: 1.75rem 0;
   }
   .tracking-stages li {

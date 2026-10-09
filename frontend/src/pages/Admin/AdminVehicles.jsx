@@ -1,3 +1,4 @@
+import { serviceStatus, invoiceStatus } from '../../lib/serviceStatus';
 import VehicleImageInput from '../../components/VehicleImageInput';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -494,7 +495,7 @@ function VehicleProfile({ data }) {
             {currentJobs.map((job) => (
               <article key={job.id}>
                 <strong>
-                  {job.reference} · {job.status}
+                  {job.reference} · {serviceStatus(job.status)}
                 </strong>
                 <span>
                   {job.serviceType} · {job.technician}
@@ -520,7 +521,7 @@ function VehicleProfile({ data }) {
             {previousJobs.map((job) => (
               <article key={job.id}>
                 <strong>
-                  {job.reference} · {job.status}
+                  {job.reference} · {serviceStatus(job.status)}
                 </strong>
                 <span>
                   {job.serviceType} · {job.technician}
@@ -567,7 +568,7 @@ function VehicleProfile({ data }) {
                     <td>{item.technician}</td>
                     <td>
                       <span className={`vehicle-status ${statusClass(item.status)}`}>
-                        {item.status}
+                        {serviceStatus(item.status)}
                       </span>
                     </td>
                   </tr>
@@ -607,7 +608,7 @@ function VehicleProfile({ data }) {
                     <td>{amount(invoice.amountDue)}</td>
                     <td>
                       <span className={`vehicle-status ${statusClass(invoice.paymentStatus)}`}>
-                        {invoice.paymentStatus}
+                        {invoiceStatus(invoice.paymentStatus)}
                       </span>
                     </td>
                   </tr>

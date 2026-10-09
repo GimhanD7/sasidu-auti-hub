@@ -101,7 +101,7 @@ export default function TechnicianJobHistory() {
                   <Link to={`/technician/jobs/${job.id}`} className="technician-job-number">
                     {job.serviceNumber}
                   </Link>
-                  <span className="technician-completed-badge">Ready</span>
+                  <span className="technician-completed-badge">Completed</span>
                   <span>Completed {dateTime(job.completedAt)}</span>
                 </div>
                 <h2>{vehicleName(job.vehicle)}</h2>
