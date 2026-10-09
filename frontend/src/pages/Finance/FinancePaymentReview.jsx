@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import FinancePaymentHistory from './FinancePaymentHistory';
-import FinanceOutstandingPayments from './FinanceOutstandingPayments';
+
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency: 'LKR',
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
+
 const dateTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -16,33 +17,22 @@ const dateTime = (value) => {
 };
 
 export default function FinancePaymentReview() {
-  const [mode, setMode] = useState('process');
+  const [mode, setMode] = useState('verify');
   const [payments, setPayments] = useState(null);
-  const [payableInvoices, setPayableInvoices] = useState([]);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
-  const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState('Cash');
-  const [transactionReference, setTransactionReference] = useState('');
-  const [receipt, setReceipt] = useState(null);
-  const [printingReceipt, setPrintingReceipt] = useState(false);
-  const [recording, setRecording] = useState(false);
   const [reasons, setReasons] = useState({});
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [retry, setRetry] = useState(0);
+  const [previewSlip, setPreviewSlip] = useState(null);
+
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
-      api.get('/admin/payments', { signal: controller.signal }),
-      api.get('/admin/payments/payable-invoices', { signal: controller.signal }),
-    ])
-      .then(([{ data: paymentData }, { data: invoiceData }]) => {
+    api
+      .get('/admin/payments', { signal: controller.signal })
+      .then(({ data }) => {
         if (!controller.signal.aborted) {
-          setPayments(paymentData);
-          setPayableInvoices(invoiceData.invoices || []);
-          setSelectedInvoiceId((current) => current || invoiceData.invoices?.[0]?.id || '');
-          setAmount((current) => current || String(invoiceData.invoices?.[0]?.amountDue || ''));
+          setPayments(data);
           setError('');
         }
       })
@@ -52,11 +42,6 @@ export default function FinancePaymentReview() {
       });
     return () => controller.abort();
   }, [retry]);
-  useEffect(() => {
-    const afterPrint = () => setPrintingReceipt(false);
-    window.addEventListener('afterprint', afterPrint);
-    return () => window.removeEventListener('afterprint', afterPrint);
-  }, []);
 
   const review = async (payment, decision) => {
     setBusyId(payment.id);
@@ -81,348 +66,351 @@ export default function FinancePaymentReview() {
             : item,
         ),
       );
-      setNotice(`${payment.receiptNumber} marked ${decision.toLowerCase()}.`);
+      setNotice(`${payment.receiptNumber || 'Payment'} marked as ${decision.toLowerCase()}.`);
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to review this payment.');
     } finally {
       setBusyId('');
     }
   };
-  const pendingCount =
-    payments?.filter((payment) => payment.status === 'Pending Verification').length || 0;
-  const selectedInvoice = payableInvoices.find((invoice) => invoice.id === selectedInvoiceId);
-  const recordPayment = async (event) => {
-    event.preventDefault();
-    setRecording(true);
-    setError('');
-    setNotice('');
-    try {
-      const { data } = await api.post('/admin/payments/record', {
-        invoiceId: selectedInvoiceId,
-        amount: Number(amount),
-        method,
-        transactionReference,
-      });
-      const payment = {
-        ...data.payment,
-        invoice: {
-          id: data.payment.invoiceId,
-          invoiceNumber: data.payment.invoiceNumber,
-          paymentStatus: data.invoice.paymentStatus,
-        },
-        customer: selectedInvoice?.customer || null,
-        failureReason: '',
-      };
-      setPayments((current) => [payment, ...(current || [])]);
-      setReceipt({
-        ...data.payment,
-        customer: selectedInvoice?.customer?.name || 'Customer',
-        emailSent: data.receiptEmailSent,
-      });
-      setNotice(
-        `${data.message}${data.receiptEmailSent ? ' Receipt emailed to the customer.' : ' A printable receipt is ready below.'}`,
-      );
-      if (data.invoice.amountDue <= 0) {
-        const nextInvoice = payableInvoices.find((item) => item.id !== selectedInvoiceId);
-        setPayableInvoices((current) => current.filter((item) => item.id !== selectedInvoiceId));
-        setSelectedInvoiceId(nextInvoice?.id || '');
-        setAmount(nextInvoice ? String(nextInvoice.amountDue) : '');
-      } else {
-        setPayableInvoices((current) =>
-          current.map((item) =>
-            item.id === selectedInvoiceId
-              ? {
-                  ...item,
-                  amountPaid: data.invoice.amountPaid,
-                  amountDue: data.invoice.amountDue,
-                  paymentStatus: data.invoice.paymentStatus,
-                }
-              : item,
-          ),
-        );
-        setAmount(String(data.invoice.amountDue));
-      }
-      setTransactionReference('');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to record this payment.');
-    } finally {
-      setRecording(false);
-    }
-  };
 
-  if (mode !== 'process')
+  const pendingPayments = payments?.filter((p) => p.status === 'Pending Verification') || [];
+  const reviewedPayments = payments?.filter((p) => p.status !== 'Pending Verification') || [];
+
+  if (mode !== 'verify') {
     return (
       <div className="finance-payment-review">
         <nav className="finance-payment-tabs" aria-label="Payment pages">
-          <button type="button" onClick={() => setMode('process')}>
-            Process payments
+          <button type="button" onClick={() => setMode('verify')}>
+            Verify payments ({pendingPayments.length})
           </button>
           <button
             type="button"
-            className={mode === 'history' ? 'active' : ''}
-            aria-current={mode === 'history' ? 'page' : undefined}
+            className="active"
+            aria-current="page"
             onClick={() => setMode('history')}
           >
             Payment history
           </button>
-          <button
-            type="button"
-            className={mode === 'outstanding' ? 'active' : ''}
-            aria-current={mode === 'outstanding' ? 'page' : undefined}
-            onClick={() => setMode('outstanding')}
-          >
-            Outstanding payments
-          </button>
         </nav>
-        {mode === 'history' ? <FinancePaymentHistory /> : <FinanceOutstandingPayments />}
+        <FinancePaymentHistory />
       </div>
     );
+  }
+
   return (
-    <main className={`finance-payment-review ${printingReceipt ? 'printing-receipt' : ''}`}>
+    <main className="finance-payment-review">
       <header className="finance-payment-heading">
         <div>
-          <p>ADMIN</p>
-          <h1>Payment Review</h1>
-          <span>Verify submitted bank transfers and pay-at-workshop records.</span>
+          <p>ADMIN · BILLING</p>
+          <h1>Payment Verification</h1>
+          <span>Review and verify customer payment submissions.</span>
         </div>
-        <strong>{pendingCount} pending</strong>
+        <strong>{pendingPayments.length} pending verification</strong>
       </header>
+
       <nav className="finance-payment-tabs" aria-label="Payment pages">
         <button type="button" className="active" aria-current="page">
-          Process payments
+          Verify payments ({pendingPayments.length})
         </button>
         <button type="button" onClick={() => setMode('history')}>
           Payment history
         </button>
-        <button type="button" onClick={() => setMode('outstanding')}>
-          Outstanding payments
-        </button>
       </nav>
+
       {error && (
-        <div className="finance-payment-error" role="alert">
+        <div className="finance-payment-error" role="alert" style={{ margin: '1rem 0' }}>
           <span>{error}</span>
-          <button type="button" onClick={() => setRetry((value) => value + 1)}>
+          <button type="button" onClick={() => setRetry((v) => v + 1)}>
             Try again
           </button>
         </div>
       )}
+
       {notice && (
-        <div className="finance-payment-success" role="status">
+        <div className="finance-payment-success" role="status" style={{ margin: '1rem 0' }}>
           {notice}
         </div>
       )}
-      <section className="finance-record-payment">
-        <div>
-          <h2>Record payment</h2>
-          <p>Select an issued invoice and enter the payment details.</p>
-        </div>
-        {payableInvoices.length ? (
-          <form onSubmit={recordPayment}>
-            <label>
-              Invoice
-              <select
-                required
-                value={selectedInvoiceId}
-                onChange={(event) => {
-                  const next = payableInvoices.find((item) => item.id === event.target.value);
-                  setSelectedInvoiceId(event.target.value);
-                  setAmount(next ? String(next.amountDue) : '');
-                  setReceipt(null);
-                }}
-              >
-                <option value="">Select an invoice</option>
-                {payableInvoices.map((invoice) => (
-                  <option key={invoice.id} value={invoice.id}>
-                    {invoice.invoiceNumber} · {invoice.customer?.name || 'Customer'} · Due{' '}
-                    {money(invoice.amountDue)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedInvoice && (
-              <div className="finance-record-balance">
-                <span>Outstanding balance</span>
-                <strong>{money(selectedInvoice.amountDue)}</strong>
-                <small>
-                  {selectedInvoice.serviceNumber}
-                  {selectedInvoice.vehicle ? ` · ${selectedInvoice.vehicle}` : ''}
-                </small>
-              </div>
-            )}
-            <label>
-              Amount received
-              <input
-                type="number"
-                min="0.01"
-                max={selectedInvoice?.amountDue}
-                step="0.01"
-                required
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-              />
-            </label>
-            <label>
-              Payment method
-              <select value={method} onChange={(event) => setMethod(event.target.value)}>
-                <option>Cash</option>
-                <option>Card</option>
-                <option>Online</option>
-                <option>Bank Transfer</option>
-                <option>Pay at Workshop</option>
-              </select>
-            </label>
-            <label>
-              Transaction reference
-              {['Card', 'Online', 'Bank Transfer'].includes(method) ? ' (required)' : ' (optional)'}
-              <input
-                value={transactionReference}
-                onChange={(event) => setTransactionReference(event.target.value)}
-                maxLength={100}
-                minLength={['Card', 'Online', 'Bank Transfer'].includes(method) ? 3 : undefined}
-                required={['Card', 'Online', 'Bank Transfer'].includes(method)}
-                placeholder={
-                  method === 'Cash' || method === 'Pay at Workshop'
-                    ? 'Generated automatically if left blank'
-                    : 'Enter receipt, transfer or transaction ID'
-                }
-              />
-            </label>
-            <button type="submit" disabled={recording || !selectedInvoice}>
-              {recording ? 'Recording…' : 'Process payment'}
-            </button>
-          </form>
-        ) : (
-          <p className="finance-record-empty">No issued invoices have a balance due.</p>
-        )}
-      </section>
-      {receipt && (
-        <section className="finance-payment-receipt" role="status">
-          <div>
-            <span>PAYMENT RECEIPT</span>
-            <h2>{receipt.receiptNumber}</h2>
-            <p>
-              {receipt.invoiceNumber} · {receipt.customer}
-            </p>
-            <strong>
-              {money(receipt.amount)} · {receipt.method}
-            </strong>
-            <small>
-              Reference {receipt.transactionReference} · {dateTime(receipt.reviewedAt)} · Completed
-            </small>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setPrintingReceipt(true);
-              window.setTimeout(() => window.print(), 120);
-            }}
-          >
-            Print / Download PDF
-          </button>
-          <article className="finance-payment-print-receipt">
-            <p>AUTOSERV PRO · PAYMENT RECEIPT</p>
-            <h1>{receipt.receiptNumber}</h1>
-            <p>Customer: {receipt.customer}</p>
-            <p>Invoice: {receipt.invoiceNumber}</p>
-            <p>Amount received: {money(receipt.amount)}</p>
-            <p>Method: {receipt.method}</p>
-            <p>Transaction reference: {receipt.transactionReference}</p>
-            <p>Status: Completed</p>
-            <p>Payment date: {dateTime(receipt.reviewedAt)}</p>
-          </article>
-        </section>
-      )}
+
       {payments === null && !error && (
         <p className="finance-payment-loading" role="status">
           Loading payment records…
         </p>
       )}
-      {payments?.length === 0 && (
-        <section className="finance-payment-empty">
-          No payment submissions have been recorded.
+
+      {payments !== null && pendingPayments.length === 0 && (
+        <section className="section-card" style={{ textAlign: 'center', padding: '3rem 1rem', margin: '1rem 0' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✓</div>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>No pending payments to verify</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.35rem', fontSize: '0.88rem' }}>
+            Customer bank transfers and payment submissions will appear in this table when submitted.
+          </p>
         </section>
       )}
-      <div className="finance-payment-list">
-        {payments?.map((payment) => (
-          <article className="finance-payment-card" key={payment.id}>
-            <header>
-              <div>
-                <h2>{payment.receiptNumber}</h2>
-                <p>
-                  {payment.invoice?.invoiceNumber || 'Invoice unavailable'} ·{' '}
-                  {payment.invoice?.paymentStatus || ''}
-                </p>
-              </div>
-              <span
-                className={`finance-payment-status ${payment.status.toLowerCase().replaceAll(' ', '-')}`}
-              >
-                {payment.status}
+
+      {pendingPayments.length > 0 && (
+        <div className="section-card" style={{ padding: '0.75rem', overflowX: 'auto', margin: '1rem 0' }}>
+          <table className="finance-payment-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-color)', textTransform: 'uppercase', fontSize: '0.72rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left' }}>Receipt / Ref</th>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left' }}>Customer</th>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left' }}>Invoice</th>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left' }}>Amount & Method</th>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left' }}>Submitted</th>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left' }}>Payment Slip</th>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left' }}>Rejection Reason (if rejecting)</th>
+                <th style={{ padding: '0.75rem 0.6rem', textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingPayments.map((payment) => (
+                <tr key={payment.id} style={{ borderBottom: '1px solid var(--border-color)', verticalAlign: 'middle' }}>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
+                    <strong style={{ display: 'block', color: 'var(--text-primary)' }}>{payment.receiptNumber || 'Pending'}</strong>
+                    <small style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>{payment.transactionReference || 'No Ref'}</small>
+                  </td>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
+                    <strong style={{ display: 'block', color: 'var(--text-primary)' }}>{payment.customer?.name || 'Unknown'}</strong>
+                    <small style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>{payment.customer?.email || ''}</small>
+                  </td>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
+                    <strong style={{ display: 'block', color: 'var(--text-primary)' }}>{payment.invoice?.invoiceNumber || '—'}</strong>
+                    <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', borderRadius: '4px', background: '#3f3f46', color: '#e4e4e7' }}>
+                      {payment.invoice?.paymentStatus || 'Issued'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
+                    <strong style={{ display: 'block', color: '#22c55e' }}>{money(payment.amount)}</strong>
+                    <small style={{ color: 'var(--text-secondary)', fontSize: '0.74rem' }}>{payment.method}</small>
+                  </td>
+                  <td style={{ padding: '0.75rem 0.6rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                    {dateTime(payment.createdAt)}
+                  </td>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
+                    {payment.paymentSlip?.data ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {payment.paymentSlip.contentType?.startsWith('image/') ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewSlip({
+                                url: `data:${payment.paymentSlip.contentType};base64,${payment.paymentSlip.data}`,
+                                fileName: payment.paymentSlip.fileName || 'Payment Slip',
+                              })
+                            }
+                            style={{
+                              background: '#27272a',
+                              border: '1px solid #52525b',
+                              color: '#60a5fa',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                            }}
+                          >
+                            👁 View Slip
+                          </button>
+                        ) : null}
+                        <a
+                          href={`data:${payment.paymentSlip.contentType};base64,${payment.paymentSlip.data}`}
+                          download={payment.paymentSlip.fileName || 'payment-slip'}
+                          style={{ color: '#a1a1aa', fontSize: '0.72rem', textDecoration: 'underline' }}
+                        >
+                          ⬇ Download ({payment.paymentSlip.fileSize ? `${(payment.paymentSlip.fileSize / 1024).toFixed(0)} KB` : 'file'})
+                        </a>
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>No slip</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '0.75rem 0.6rem', minWidth: '180px' }}>
+                    <input
+                      type="text"
+                      value={reasons[payment.id] || ''}
+                      onChange={(e) => setReasons((curr) => ({ ...curr, [payment.id]: e.target.value }))}
+                      placeholder="Reason if rejecting..."
+                      maxLength={300}
+                      style={{
+                        width: '100%',
+                        padding: '0.35rem 0.5rem',
+                        fontSize: '0.78rem',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                  </td>
+                  <td style={{ padding: '0.75rem 0.6rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        disabled={busyId === payment.id}
+                        onClick={() => review(payment, 'Failed')}
+                        style={{
+                          background: '#dc2626',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.4rem 0.75rem',
+                          borderRadius: '5px',
+                          fontWeight: '600',
+                          fontSize: '0.78rem',
+                          cursor: busyId === payment.id ? 'not-allowed' : 'pointer',
+                          opacity: busyId === payment.id ? 0.6 : 1,
+                        }}
+                      >
+                        {busyId === payment.id ? 'Saving…' : 'Reject'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === payment.id}
+                        onClick={() => review(payment, 'Completed')}
+                        style={{
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.4rem 0.85rem',
+                          borderRadius: '5px',
+                          fontWeight: '700',
+                          fontSize: '0.78rem',
+                          cursor: busyId === payment.id ? 'not-allowed' : 'pointer',
+                          opacity: busyId === payment.id ? 0.6 : 1,
+                        }}
+                      >
+                        {busyId === payment.id ? 'Saving…' : 'Confirm'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {reviewedPayments.length > 0 && (
+        <section style={{ marginTop: '2rem' }}>
+          <h3 style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+            Recently Processed in this Session ({reviewedPayments.length})
+          </h3>
+          <div className="section-card" style={{ padding: '0.75rem', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Receipt</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Customer</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Invoice</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Amount</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Status</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewedPayments.map((payment) => (
+                  <tr key={payment.id} style={{ borderBottom: '1px solid var(--border-color)', opacity: 0.8 }}>
+                    <td style={{ padding: '0.55rem' }}>{payment.receiptNumber || '—'}</td>
+                    <td style={{ padding: '0.55rem' }}>{payment.customer?.name || '—'}</td>
+                    <td style={{ padding: '0.55rem' }}>{payment.invoice?.invoiceNumber || '—'}</td>
+                    <td style={{ padding: '0.55rem', fontWeight: '600' }}>{money(payment.amount)}</td>
+                    <td style={{ padding: '0.55rem' }}>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          fontWeight: '700',
+                          background: payment.status === 'Completed' ? '#14532d' : '#7f1d1d',
+                          color: payment.status === 'Completed' ? '#86efac' : '#fca5a5',
+                        }}
+                      >
+                        {payment.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.55rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {payment.failureReason || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Payment Slip Modal */}
+      {previewSlip && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={() => setPreviewSlip(null)}
+        >
+          <div
+            style={{
+              backgroundColor: '#18181b',
+              border: '1px solid #3f3f46',
+              borderRadius: '10px',
+              maxWidth: '650px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '0.75rem 1rem',
+                borderBottom: '1px solid #3f3f46',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ fontWeight: '600', fontSize: '0.9rem', color: '#f4f4f5' }}>
+                📷 {previewSlip.fileName}
               </span>
-            </header>
-            <dl>
-              <div>
-                <dt>Customer</dt>
-                <dd>
-                  {payment.customer?.name || 'Unknown'}
-                  {payment.customer?.email ? ` · ${payment.customer.email}` : ''}
-                </dd>
-              </div>
-              <div>
-                <dt>Amount</dt>
-                <dd>{money(payment.amount)}</dd>
-              </div>
-              <div>
-                <dt>Method</dt>
-                <dd>{payment.method}</dd>
-              </div>
-              <div>
-                <dt>Transaction reference</dt>
-                <dd>{payment.transactionReference}</dd>
-              </div>
-              <div>
-                <dt>Submitted</dt>
-                <dd>{dateTime(payment.createdAt)}</dd>
-              </div>
-            </dl>
-            {payment.status === 'Pending Verification' && (
-              <div className="finance-payment-actions">
-                <label>
-                  Reason if not verified
-                  <textarea
-                    value={reasons[payment.id] || ''}
-                    onChange={(event) =>
-                      setReasons((current) => ({ ...current, [payment.id]: event.target.value }))
-                    }
-                    maxLength={500}
-                    rows={2}
-                  />
-                </label>
-                <div>
-                  <button
-                    type="button"
-                    disabled={busyId === payment.id}
-                    className="finance-payment-fail"
-                    onClick={() => review(payment, 'Failed')}
-                  >
-                    {busyId === payment.id ? 'Saving…' : 'Reject'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busyId === payment.id}
-                    className="finance-payment-complete"
-                    onClick={() => review(payment, 'Completed')}
-                  >
-                    {busyId === payment.id ? 'Saving…' : 'Confirm payment'}
-                  </button>
-                </div>
-              </div>
-            )}
-            {payment.failureReason && (
-              <p className="finance-payment-reason">Review note: {payment.failureReason}</p>
-            )}
-          </article>
-        ))}
-      </div>
+              <button
+                type="button"
+                onClick={() => setPreviewSlip(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#a1a1aa',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer',
+                  padding: '0.2rem 0.5rem',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: '1rem', overflowY: 'auto', textAlign: 'center', backgroundColor: '#09090b' }}>
+              <img
+                src={previewSlip.url}
+                alt={previewSlip.fileName}
+                style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '6px' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

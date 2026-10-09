@@ -3,17 +3,12 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import customerVehicleRoutes from './routes/customerVehicleRoutes.js';
 import customerAppointmentRoutes from './routes/customerAppointmentRoutes.js';
-import customerRepairTrackingRoutes from './routes/customerRepairTrackingRoutes.js';
-import customerRepairApprovalRoutes from './routes/customerRepairApprovalRoutes.js';
-import serviceMessageRoutes from './routes/serviceMessageRoutes.js';
-import customerNotificationRoutes from './routes/customerNotificationRoutes.js';
-import customerServiceHistoryRoutes from './routes/customerServiceHistoryRoutes.js';
+
 import customerInvoiceRoutes from './routes/customerInvoiceRoutes.js';
 import customerPaymentRoutes from './routes/customerPaymentRoutes.js';
 import financePaymentRoutes from './routes/financePaymentRoutes.js';
-import financeDashboardRoutes from './routes/financeDashboardRoutes.js';
+
 import financeInvoiceRoutes from './routes/financeInvoiceRoutes.js';
-import financeReportRoutes from './routes/financeReportRoutes.js';
 import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
 
 export function createApp() {
@@ -38,21 +33,12 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/vehicles', customerVehicleRoutes);
   app.use('/api/appointments', customerAppointmentRoutes);
-  app.use('/api/repair-tracking', customerRepairTrackingRoutes);
-  app.use('/api/repair-approvals', customerRepairApprovalRoutes);
-  app.use('/api/service-messages', serviceMessageRoutes);
-  app.use('/api/customer-notifications', customerNotificationRoutes);
-  app.use('/api/service-history', customerServiceHistoryRoutes);
+
   app.use('/api/customer-invoices', customerInvoiceRoutes);
   app.use('/api/customer-payments', customerPaymentRoutes);
   app.use('/api/admin/payments', financePaymentRoutes);
-  app.use('/api/admin/billing', financeDashboardRoutes);
   app.use('/api/admin/invoices', financeInvoiceRoutes);
-  app.use('/api/admin/reports', financeReportRoutes);
-  app.use('/api/finance/payments', financePaymentRoutes);
-  app.use('/api/finance/dashboard', financeDashboardRoutes);
   app.use('/api/finance/invoices', financeInvoiceRoutes);
-  app.use('/api/finance/reports', financeReportRoutes);
   app.use('/api/admin', adminDashboardRoutes);
   app.get('/', (req, res) => res.send('Vehicle Service & Repair Tracking System API is running...'));
   app.use((error, req, res, next) => {

@@ -5,7 +5,7 @@ import { authRateLimit } from '../middleware/authRateLimit.js';
 import { getCustomerDashboard } from '../controllers/customerDashboardController.js';
 import { requireRole } from '../middleware/auth.js';
 import { getTechnicianDashboard } from '../controllers/technicianDashboardController.js';
-import { listTechnicianJobs, listTechnicianJobHistory, getTechnicianJob, searchTechnicianParts } from '../controllers/technicianJobController.js';
+import { listTechnicianJobs, getTechnicianJob, searchTechnicianParts } from '../controllers/technicianJobController.js';
 import { updateTechnicianJobCard, uploadTechnicianJobPhoto, getTechnicianJobPhoto } from '../controllers/technicianJobCardController.js';
 import { convertAdminAppointmentToJob } from '../controllers/adminAppointmentController.js';
 
@@ -22,7 +22,6 @@ router.get('/customer-dashboard', requireAuth, requireRole('Customer'), getCusto
 router.get('/technician-dashboard', requireAuth, requireRole('Technician'), getTechnicianDashboard);
 router.get('/technician/jobs', requireAuth, requireRole('Technician'), listTechnicianJobs);
 router.post('/technician/appointments/:appointmentId/start', requireAuth, requireRole('Technician'), convertAdminAppointmentToJob);
-router.get('/technician/jobs/history', requireAuth, requireRole('Technician'), listTechnicianJobHistory);
 router.get('/technician/parts', requireAuth, requireRole('Technician'), searchTechnicianParts);
 router.patch('/technician/jobs/:jobId/card', requireAuth, requireRole('Technician'), updateTechnicianJobCard);
 router.post('/technician/jobs/:jobId/photos', requireAuth, requireRole('Technician'), uploadTechnicianJobPhoto);

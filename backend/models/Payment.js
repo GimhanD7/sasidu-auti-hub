@@ -9,6 +9,12 @@ const paymentSchema = new mongoose.Schema({
   receiptNumber: { type: String, unique: true, sparse: true },
   status: { type: String, enum: ['Pending Verification', 'Completed', 'Failed'], default: 'Pending Verification', index: true },
   failureReason: { type: String, trim: true, maxlength: 500 },
+  paymentSlip: {
+    data: { type: String },
+    contentType: { type: String, trim: true, maxlength: 100 },
+    fileName: { type: String, trim: true, maxlength: 255 },
+    fileSize: { type: Number },
+  },
   reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   reviewedAt: Date,
 }, { timestamps: true });

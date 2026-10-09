@@ -109,8 +109,7 @@ function DashboardContent({ data }) {
         <div className="grid-col-2">
           <section className="section-card" aria-labelledby="active-repairs-heading">
             <div className="section-header">
-              <h2 id="active-repairs-heading">Active Repair Tracking</h2>
-              <Link to="/customer/repair-tracking">View tracking</Link>
+              <h2 id="active-repairs-heading">Active Repairs</h2>
             </div>
             {data.activeJobs.length ? (
               <div className="dashboard-record-list">
@@ -122,9 +121,7 @@ function DashboardContent({ data }) {
                           <Icon name="car" />
                         </div>
                         <div>
-                          <h4>
-                            <Link to="/customer/repair-tracking">{vehicleLabel(job.vehicle)}</Link>
-                          </h4>
+                          <h4>{vehicleLabel(job.vehicle)}</h4>
                           <p>Service job {String(job.id).slice(-6).toUpperCase()}</p>
                         </div>
                       </div>
@@ -216,7 +213,6 @@ function DashboardContent({ data }) {
             <div className="section-header">
               <h2 id="notifications-heading">Notifications</h2>
               <span aria-label={`${unreadCount} unread`}>{number(unreadCount)} unread</span>
-              <Link to="/customer/notifications">View all</Link>
             </div>
             {data.notifications.length ? (
               <div className="notification-list">
@@ -245,12 +241,6 @@ function DashboardContent({ data }) {
               <div className="dashboard-empty">
                 <p>You’re all caught up. New notifications will appear here.</p>
               </div>
-            )}
-            {data.unreadMessages > 0 && (
-              <p className="dashboard-message-count">
-                {number(data.unreadMessages)} unread{' '}
-                {data.unreadMessages === 1 ? 'message' : 'messages'} related to your service jobs.
-              </p>
             )}
           </section>
 

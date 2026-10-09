@@ -31,33 +31,6 @@ function jobSummary(job) {
   };
 }
 
-export async function listTechnicianJobHistory(req, res) {
-  const page = Number(req.query.page || 1);
-  const limit = Number(req.query.limit || 20);
-  if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50) return res.status(400).json({ message: 'Choose a valid page and page size (1–50).' });
-  const filter = { technician: req.user._id, status: 'Ready' };
-  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
-  try {
-    if (search) {
-      const expression = escapeRegex(search);
-      const vehicles = await Vehicle.find({ registrationNumber: { $regex: expression, $options: 'i' } }).select('_id').limit(100).lean();
-      filter.$or = [
-        { serviceNumber: { $regex: expression, $options: 'i' } },
-        { customerComplaint: { $regex: expression, $options: 'i' } },
-        ...(vehicles.length ? [{ vehicle: { $in: vehicles.map(vehicle => vehicle._id) } }] : []),
-      ];
-    }
-    const [jobs, total] = await Promise.all([
-      ServiceJob.find(filter).sort({ updatedAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit)
-        .populate({ path: 'customer', select: 'name' })
-        .populate({ path: 'vehicle', select: 'make model year registrationNumber' })
-        .populate({ path: 'appointment', select: 'serviceType preferredDate preferredTime' }).lean(),
-      ServiceJob.countDocuments(filter),
-    ]);
-    res.set('Cache-Control', 'private, no-store').json({ jobs: jobs.map(jobSummary), total, page, limit, pages: Math.ceil(total / limit) });
-  } catch { res.status(503).json({ message: 'Unable to load your completed job history.' }); }
-}
-
 export async function listTechnicianJobs(req, res) {
   const { status, priority, sort = 'recent' } = req.query;
   if (status && !STATUSES.includes(status)) return res.status(400).json({ message: 'Choose a valid job status.' });
@@ -188,7 +161,7 @@ export async function getTechnicianJob(req, res) {
       labourMinutes: (job.labourEntries || []).reduce((sum, entry) => sum + (Number(entry.minutes) || 0), 0),
       labourCost: Math.round((job.labourEntries || []).reduce((sum, entry) => sum + ((Number(entry.minutes) || 0) / 60) * (Number(entry.ratePerHour) || 0), 0) * 100) / 100,
       photos: photos.map(photo => ({ id: String(photo._id), filename: photo.filename, contentType: photo.contentType, category: photo.category || 'Job', evidenceType: photo.evidenceType || 'General', description: photo.description || '', createdAt: photo.createdAt })),
-      additionalRepairs: (job.additionalRepairs || []).map(repair => ({ id: String(repair._id), description: repair.description, technicianExplanation: repair.technicianExplanation || '', parts: (repair.parts || []).map(part => ({ name: part.name, quantity: part.quantity, unitCost: part.unitCost, totalCost: part.totalCost })), labourCost: repair.labourCost ?? null, estimatedCost: repair.estimatedCost, photos: repair.photos || [], status: repair.status || 'Pending', relatedTask: String(repair.relatedTask || ''), customerComment: repair.customerComment || '', decisionAt: repair.decisionAt || null, requestedAt: repair.requestedAt })),
+      additionalRepairs: [],
       timeline: (job.timeline || []).map(event => ({ status: event.status, timestamp: event.timestamp, notes: event.notes || '' })),
     } });
   } catch { res.status(503).json({ message: 'Unable to load this service job. Please try again.' }); }

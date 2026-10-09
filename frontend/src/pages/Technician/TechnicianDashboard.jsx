@@ -237,9 +237,7 @@ function DashboardContent({ data, fullName }) {
           <section className="section-card" aria-labelledby="completed-jobs-heading">
             <div className="section-header">
               <h2 id="completed-jobs-heading">Completed Jobs</h2>
-              <Link to="/technician/history">
-                View history · {number(data.summary?.completed)} total
-              </Link>
+              <span>{number(data.summary?.completed)} total</span>
             </div>
             <JobList jobs={data.completedJobs} empty="Completed jobs will appear here." />
           </section>

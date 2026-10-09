@@ -211,12 +211,6 @@ export default function TechnicianJobDetails() {
         </section>
       )}
 
-      {!completed && job.additionalRepairs?.some(repair => repair.status === 'Pending') && (
-        <section className="section-card">
-          <p>This existing service has an outstanding customer approval. Ask the customer to resolve it from their earlier notification before completing the service.</p>
-        </section>
-      )}
-
       <section className="section-card completion-card">
         <h2>{completed ? 'Service completed' : 'Complete service'}</h2>
         {completed ? (

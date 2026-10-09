@@ -193,14 +193,14 @@ export async function updateTechnicianJobCard(req, res) {
     } else if (action === 'completeJob') {
       if (!['In Progress', 'Inspecting', 'Final Test'].includes(job.status)) return res.status(409).json({ message: 'Start the service before completing it.' });
       if (job.tasks.some(task => !['Complete', 'Cancelled'].includes(task.status))) return res.status(409).json({ message: 'Complete or cancel all repair tasks before completing this job.' });
-      if (job.additionalRepairs.some(repair => repair.status === 'Pending')) return res.status(409).json({ message: 'Resolve all pending customer approvals before completing this job.' });
+
       if (job.activeLabourTimer?.startedAt) return res.status(409).json({ message: 'Stop the active labour timer before completing this job.' });
       const reportNotes = text(req.body.reportNotes, 3000, 'Final technician report', { required: true });
       const parts = (job.replacedParts || []).map(part => ({ name: part.name || 'Part', partNumber: part.partNumber || '', quantity: Number(part.quantity) || 0, unitPrice: Number(part.unitCost) || 0, total: Math.round((Number(part.quantity) || 0) * (Number(part.unitCost) || 0) * 100) / 100 }));
       const labourItems = (job.labourEntries || []).map(entry => ({ description: `${entry.labourType || 'Repair'} · ${entry.description || 'Labour'}`, hours: Math.round((Number(entry.minutes) || 0) / 60 * 100) / 100, rate: Number(entry.ratePerHour) || 0, total: Math.round(((Number(entry.minutes) || 0) / 60) * (Number(entry.ratePerHour) || 0) * 100) / 100 }));
       const partsCost = Math.round(parts.reduce((sum, part) => sum + part.total, 0) * 100) / 100;
       const labourCost = Math.round(labourItems.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
-      const additionalRepairsCost = Math.round(job.additionalRepairs.filter(repair => repair.status === 'Approved').reduce((sum, repair) => sum + (Number(repair.estimatedCost) || 0), 0) * 100) / 100;
+      const additionalRepairsCost = 0;
       const totalAmount = Math.round((partsCost + labourCost + additionalRepairsCost) * 100) / 100;
       let invoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
       if (invoice) {
@@ -241,37 +241,7 @@ export async function updateTechnicianJobCard(req, res) {
         if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'ServiceJobCompleted', title: 'Service job completed', message: `${job.serviceNumber || 'A service job'} is ready. Draft invoice ${invoice.invoiceNumber} is available for billing review.`, link: '/admin/kanban', dedupeKey: `service-job-complete:${job._id}:${admin._id}` })), { ordered: false });
       } catch { /* Job completion and its draft billing record remain authoritative if admin notification delivery fails. */ }
       return res.json({ message: `Job completed, customer notified, and draft invoice ${invoice.invoiceNumber} sent to billing.`, status: job.status, invoice: { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus, totalAmount: invoice.totalAmount } });
-    } else if (action === 'approvalRequest') {
-      const description = text(req.body.description, 2000, 'Additional repair description', { required: true });
-      const technicianExplanation = text(req.body.explanation || '', 3000, 'Repair explanation');
-      const labourCost = Number(req.body.labourCost ?? 0);
-      const parts = req.body.parts ?? [];
-      const photoIds = req.body.photoIds ?? [];
-      const relatedTaskId = req.body.relatedTaskId || '';
-      if (!Array.isArray(parts) || parts.length > 20) return res.status(400).json({ message: 'Add no more than 20 additional repair parts.' });
-      if (!Array.isArray(photoIds) || photoIds.length > 3 || photoIds.some(id => !mongoose.isValidObjectId(id))) return res.status(400).json({ message: 'Attach up to three valid supporting images.' });
-      const normalizedParts = parts.map(part => {
-        const name = text(part?.name, 200, 'Part name', { required: true });
-        const quantity = Number(part.quantity);
-        const unitCost = Number(part.unitCost);
-        if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10000 || !Number.isFinite(unitCost) || unitCost < 0 || unitCost > 100000000) throw new Error('Part quantity must be valid and unit price must be nonnegative.');
-        return { name, quantity, unitCost, totalCost: Math.round(quantity * unitCost * 100) / 100 };
-      });
-      const partsCost = normalizedParts.reduce((sum, part) => sum + part.totalCost, 0);
-      if (!Number.isFinite(labourCost) || labourCost < 0 || labourCost > 100000000) return res.status(400).json({ message: 'Enter a valid estimated labour cost.' });
-      const estimatedCost = Math.round((partsCost + labourCost) * 100) / 100;
-      if (!Number.isFinite(estimatedCost) || estimatedCost > 100000000) return res.status(400).json({ message: 'The estimated additional cost must not exceed 100,000,000.' });
-      if (job.status === 'Waiting for Approval' || job.additionalRepairs.some(repair => repair.status === 'Pending')) return res.status(409).json({ message: 'This job already has a pending customer approval request.' });
-      if (!['Inspecting', 'In Progress'].includes(job.status)) return res.status(409).json({ message: 'Customer approval can only be requested while inspecting or repairing the vehicle.' });
-      if (photoIds.length) {
-        const photos = await JobPhoto.find({ _id: { $in: photoIds }, job: job._id, category: 'RepairEvidence' }).select('_id').lean();
-        if (photos.length !== new Set(photoIds.map(String)).size) return res.status(400).json({ message: 'Supporting images must be uploaded to this job first.' });
-      }
-      if (relatedTaskId && (!mongoose.isValidObjectId(relatedTaskId) || !job.tasks?.id?.(relatedTaskId))) return res.status(400).json({ message: 'Choose a task that belongs to this job.' });
-      job.additionalRepairs.push({ description, technicianExplanation, parts: normalizedParts, estimatedCost, labourCost, photos: photoIds.map(String), relatedTask: relatedTaskId || undefined, status: 'Pending', requestedAt: now, requestedBy: req.user._id });
-      job.status = 'Waiting for Approval';
-      job.timeline.push({ status: 'Waiting for Approval', timestamp: now, actor: req.user._id, notes: `Customer approval requested: ${description}` });
-      message = 'Customer approval requested.';
+
     } else if (action === 'status') {
       const nextStatus = req.body.status;
       if (job.status === 'Waiting for Approval' || !NEXT_STATUS[job.status]?.includes(nextStatus)) return res.status(409).json({ message: 'This job cannot move to that status yet.' });

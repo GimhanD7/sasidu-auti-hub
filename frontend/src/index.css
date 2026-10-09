@@ -9564,6 +9564,42 @@
     color: #fca5a5;
     font-size: 0.82rem;
   }
+  .finance-payment-slip {
+    grid-column: 1 / -1;
+  }
+  .finance-payment-slip dd {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .finance-slip-filename {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+  .finance-slip-preview {
+    max-width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 7px;
+    border: 1px solid var(--border-color);
+  }
+  .finance-slip-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    color: #c4b5fd;
+    background: #7c3aed22;
+    border: 1px solid #7c3aed55;
+    border-radius: 7px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    width: fit-content;
+  }
+  .finance-slip-download:hover {
+    background: #7c3aed44;
+  }
   .finance-payment-empty,
   .finance-payment-loading {
     text-align: center;

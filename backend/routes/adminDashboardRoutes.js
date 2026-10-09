@@ -1,5 +1,4 @@
 import express from 'express';
-import { listAdminUsers, updateAdminUserRole } from '../controllers/adminUserController.js';
 import { getAdminDashboard, listAdminAppointments } from '../controllers/adminDashboardController.js';
 import { getAdminAppointmentOptions, createAdminAppointment, getAdminAppointment, updateAdminAppointment, convertAdminAppointmentToJob } from '../controllers/adminAppointmentController.js';
 import { listAdminCustomers, getAdminCustomer, createAdminCustomer, updateAdminCustomer, setAdminCustomerStatus } from '../controllers/adminCustomerController.js';
@@ -7,14 +6,11 @@ import { listAdminVehicles, getAdminVehicle, createAdminVehicle, updateAdminVehi
 import { listAdminServiceTypes, createAdminServiceType, updateAdminServiceType, activateAdminServiceType, deactivateAdminServiceType, deleteAdminServiceType } from '../controllers/adminServiceTypeController.js';
 import { listAdminTechnicians, createAdminTechnician, getAdminTechnician, updateAdminTechnician, updateAdminTechnicianAvailability } from '../controllers/adminTechnicianController.js';
 import { listAdminAllocations, updateAdminJobTechnician } from '../controllers/adminAllocationController.js';
-import { listAdminJobBoard } from '../controllers/adminJobBoardController.js';
 import { createAdminAccount, resetAdminAccountPassword } from '../controllers/adminAccountController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 router.use(requireAuth, requireRole('Admin'));
-router.get('/users', listAdminUsers);
-router.patch('/users/:userId/role', updateAdminUserRole);
 router.get('/dashboard', getAdminDashboard);
 router.get('/appointments', listAdminAppointments);
 router.get('/appointment-options', getAdminAppointmentOptions);
@@ -43,7 +39,6 @@ router.get('/technicians/:technicianId', getAdminTechnician);
 router.patch('/technicians/:technicianId', updateAdminTechnician);
 router.patch('/technicians/:technicianId/availability', updateAdminTechnicianAvailability);
 router.get('/allocations', listAdminAllocations);
-router.get('/jobs', listAdminJobBoard);
 router.patch('/jobs/:jobId/technician', updateAdminJobTechnician);
 router.post('/accounts', createAdminAccount);
 router.patch('/accounts/:accountId/password', resetAdminAccountPassword);

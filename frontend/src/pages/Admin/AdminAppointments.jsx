@@ -1,588 +1,448 @@
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
-const DAY_MS = 24 * 60 * 60 * 1000;
-const dateKey = (date) => date.toISOString().slice(0, 10);
-const addDays = (date, count) => new Date(date.getTime() + count * DAY_MS);
-const startOfWeek = (date) => addDays(date, -((date.getUTCDay() + 6) % 7));
-const dayLabel = (date) =>
-  new Intl.DateTimeFormat(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  }).format(date);
-const fullDate = (date) =>
-  new Intl.DateTimeFormat(undefined, { dateStyle: 'full', timeZone: 'UTC' }).format(date);
-const dateTime = (value) =>
-  value
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
-        new Date(value),
-      )
-    : '';
-const monthLabel = (date) =>
-  new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
-    date,
-  );
-const statusClass = (status) => status.toLowerCase().replaceAll(' ', '-');
+
+const formatDate = (value) => {
+  if (!value) return '';
+  const day = typeof value === 'string' ? value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] : null;
+  const date = day ? new Date(`${day}T12:00:00Z`) : new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' }).format(date);
+};
+
 const STATUSES = ['Pending', 'Confirmed', 'In Service', 'Completed', 'Cancelled'];
 
-function visibleRange(date, view) {
-  if (view === 'day') return { start: date, end: addDays(date, 1) };
-  if (view === 'week') {
-    const start = startOfWeek(date);
-    return { start, end: addDays(start, 7) };
+function getStatusBadgeClass(status) {
+  switch (status) {
+    case 'Confirmed':
+      return 'badge-success';
+    case 'In Service':
+      return 'badge-primary';
+    case 'Completed':
+      return 'badge-success';
+    case 'Cancelled':
+      return 'badge-danger';
+    case 'Pending':
+    default:
+      return 'badge-warning';
   }
-  const first = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-  const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
-  const start = startOfWeek(first);
-  const end = addDays(startOfWeek(last), 7);
-  return { start, end };
 }
 
 export default function AdminAppointments() {
-  const [view, setView] = useState('week');
-  const [selectedDate, setSelectedDate] = useState(
-    () => new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`),
-  );
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [technicianFilter, setTechnicianFilter] = useState('');
-  const [search, setSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
   const [records, setRecords] = useState([]);
   const [technicians, setTechnicians] = useState([]);
-  const [availability, setAvailability] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [bookingMessage, setBookingMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Modals
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const [managedAppointmentId, setManagedAppointmentId] = useState('');
 
-  const range = useMemo(() => visibleRange(selectedDate, view), [selectedDate, view]);
   const loadAppointments = useCallback(async () => {
     try {
-      const params = { start: range.start.toISOString(), end: range.end.toISOString() };
+      setLoading(true);
+      const params = {};
       if (statusFilter) params.status = statusFilter;
       if (technicianFilter) params.technician = technicianFilter;
+      if (dateFilter) {
+        const nextDay = new Date(new Date(`${dateFilter}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000);
+        params.start = `${dateFilter}T00:00:00.000Z`;
+        params.end = nextDay.toISOString();
+      }
       const { data } = await api.get('/admin/appointments', { params });
-      setRecords(data.appointments);
-      setTechnicians(data.technicians);
-      setAvailability(data.availability || []);
+      setRecords(data.appointments || []);
+      setTechnicians(data.technicians || []);
       setError('');
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message || 'Unable to load appointments. Please try again.',
-      );
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to load appointments.');
     } finally {
       setLoading(false);
     }
-  }, [range, statusFilter, technicianFilter]);
+  }, [statusFilter, technicianFilter, dateFilter]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const params = { start: range.start.toISOString(), end: range.end.toISOString() };
-    if (statusFilter) params.status = statusFilter;
-    if (technicianFilter) params.technician = technicianFilter;
-    api
-      .get('/admin/appointments', { params, signal: controller.signal })
-      .then(({ data }) => {
-        setRecords(data.appointments);
-        setTechnicians(data.technicians);
-        setAvailability(data.availability || []);
-        setError('');
-      })
-      .catch((requestError) => {
-        if (!controller.signal.aborted)
-          setError(
-            requestError.response?.data?.message ||
-              'Unable to load appointments. Please try again.',
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [range, statusFilter, technicianFilter]);
+    loadAppointments();
+  }, [loadAppointments]);
 
+  // Filter records by search text
   const filteredRecords = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return records;
+    const q = search.trim().toLowerCase();
+    if (!q) return records;
     return records.filter((item) =>
       [
         item.reference,
+        item.appointmentNumber,
         item.customer,
         item.email,
+        item.mobile,
         item.vehicle,
         item.registrationNumber,
         item.serviceType,
         item.technician,
         item.status,
-      ].some((value) => value?.toLowerCase().includes(query)),
+      ].some((val) => val?.toLowerCase().includes(q))
     );
   }, [records, search]);
 
-  const days = useMemo(() => {
-    if (view === 'day') return [selectedDate];
-    const count = view === 'week' ? 7 : Math.round((range.end - range.start) / DAY_MS);
-    return Array.from({ length: count }, (_, index) => addDays(range.start, index));
-  }, [range, selectedDate, view]);
-
-  function movePeriod(amount) {
-    if (view === 'day') setSelectedDate((current) => addDays(current, amount));
-    else if (view === 'week') setSelectedDate((current) => addDays(current, amount * 7));
-    else
-      setSelectedDate(
-        (current) =>
-          new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + amount, 1)),
-      );
-  }
-
-  function periodLabel() {
-    if (view === 'month') return monthLabel(selectedDate);
-    if (view === 'day') return fullDate(selectedDate);
-    return `${dayLabel(range.start)} – ${dayLabel(addDays(range.end, -1))}`;
-  }
-
-  function appointmentsForDay(day) {
-    const key = dateKey(day);
-    return filteredRecords
-      .filter((item) => dateKey(new Date(item.preferredDate)) === key)
-      .sort((a, b) => a.preferredTime.localeCompare(b.preferredTime));
-  }
-
-  function availabilityForDay(day) {
-    return availability.find((item) => item.date === dateKey(day));
-  }
-
-  async function saveManagedAppointment() {
-    setManagedAppointmentId('');
-    await loadAppointments();
-  }
-
-  function appointmentCard(item, compact = false) {
-    return (
-      <article className={`calendar-appointment ${compact ? 'compact' : ''}`} key={item.id}>
-        <strong>
-          {item.preferredTime} · {item.serviceType}
-        </strong>
-        <span>
-          {item.customer} · {item.vehicle}
-        </span>
-        <span>
-          {item.registrationNumber} · {item.reference}
-        </span>
-        <span>Tech: {item.technician}</span>
-        {item.overlap && (
-          <span className="calendar-overlap" role="alert">
-            Time conflict: another active booking uses this slot
-          </span>
-        )}
-        <span className={`calendar-status ${statusClass(item.status)}`}>{serviceStatus(item.status)}</span>
-        <button
-          type="button"
-          className="calendar-manage-button"
-          onClick={() => setManagedAppointmentId(item.id)}
-        >
-          Manage
-        </button>
-      </article>
-    );
-  }
-
   return (
-    <div className="admin-appointments">
-      <header className="appointment-page-header">
+    <div className="admin-appointments" style={{ padding: '1.25rem', maxWidth: '1300px', margin: '0 auto' }}>
+      {/* Header */}
+      <header className="appointment-page-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="page-title">Appointment Calendar</h1>
-          <p className="page-subtitle">
-            Browse and filter workshop bookings by date, status, technician, or customer details.
+          <h1 className="page-title" style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700 }}>Appointments</h1>
+          <p className="page-subtitle" style={{ margin: '0.25rem 0 0', color: 'var(--text-muted, #64748b)' }}>
+            View and manage workshop bookings and customer appointments.
           </p>
         </div>
-        <div className="appointment-header-actions">
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button
-            className="appointment-new-booking"
+            type="button"
+            className="btn-primary"
             onClick={() => {
-              setBookingMessage('');
-              setShowBookingForm(true);
+              setSuccessMessage('');
+              setShowBookingModal(true);
             }}
+            style={{ padding: '0.6rem 1.2rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '8px', cursor: 'pointer' }}
           >
-            + New booking
+            <span>+</span> New Appointment
           </button>
           <button
-            className="appointment-refresh"
-            onClick={() => {
-              setLoading(true);
-              loadAppointments();
-            }}
+            type="button"
+            onClick={loadAppointments}
             disabled={loading}
+            style={{ padding: '0.6rem 1rem', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', cursor: 'pointer' }}
           >
-            {loading ? 'Loading…' : 'Refresh'}
+            {loading ? 'Refreshing…' : '↻ Refresh'}
           </button>
         </div>
       </header>
 
-      {bookingMessage && (
-        <p className="appointment-success" role="status">
-          {bookingMessage}
-        </p>
+      {/* Success banner */}
+      {successMessage && (
+        <div style={{ background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>✓ {successMessage}</span>
+          <button type="button" onClick={() => setSuccessMessage('')} style={{ background: 'transparent', border: 'none', color: '#166534', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+        </div>
       )}
-      {showBookingForm && (
-        <AdminAppointmentForm
-          onClose={() => setShowBookingForm(false)}
+
+      {/* Error alert */}
+      {error && (
+        <div style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          {error}
+        </div>
+      )}
+
+      {/* Filter Bar */}
+      <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', alignItems: 'center' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Search</label>
+            <input
+              type="search"
+              placeholder="Search customer, plate, service…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Date Filter</label>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                style={{ flex: 1, padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+              />
+              {dateFilter && (
+                <button
+                  type="button"
+                  onClick={() => setDateFilter('')}
+                  title="Clear Date"
+                  style={{ padding: '0 0.5rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+            >
+              <option value="">All Statuses</option>
+              {STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {serviceStatus(status)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '0.2rem' }}>Technician</label>
+            <select
+              value={technicianFilter}
+              onChange={(e) => setTechnicianFilter(e.target.value)}
+              style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid var(--border-color, #cbd5e1)', borderRadius: '8px', fontSize: '0.9rem' }}
+            >
+              <option value="">All Technicians</option>
+              {technicians.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Appointments List / Table */}
+      <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border-color, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.95rem' }}>
+            Appointments List ({filteredRecords.length})
+          </span>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-surface, #f8fafc)', borderBottom: '1px solid var(--border-color, #e2e8f0)', color: '#64748b' }}>
+                <th style={{ padding: '0.75rem 1rem' }}>Date & Time</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Customer</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Vehicle</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Service Type</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Technician</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Status</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    Loading appointments…
+                  </td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                    No appointments found matching your filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredRecords.map((appt) => (
+                  <tr key={appt.id} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
+                    <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
+                      <strong>{formatDate(appt.preferredDate)}</strong>
+                      <div style={{ color: '#64748b', fontSize: '0.8rem' }}>⏰ {appt.preferredTime}</div>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ fontWeight: 600 }}>{appt.customer}</div>
+                      <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{appt.email || appt.mobile}</div>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div>{appt.vehicle}</div>
+                      <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Plate: {appt.registrationNumber || 'N/A'}</div>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div>{appt.serviceType}</div>
+                      {appt.problemDescription && (
+                        <div style={{ color: '#64748b', fontSize: '0.75rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {appt.problemDescription}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      {appt.technician ? (
+                        <span style={{ fontWeight: 500 }}>👨‍🔧 {appt.technician}</span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>Unassigned</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <span className={`badge ${getStatusBadgeClass(appt.status)}`}>
+                        {serviceStatus(appt.status)}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        onClick={() => setManagedAppointmentId(appt.id)}
+                        className="btn-primary"
+                        style={{
+                          padding: '0.45rem 0.9rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Manage / Convert
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* New Booking Modal */}
+      {showBookingModal && (
+        <SimpleBookingModal
+          technicians={technicians}
+          onClose={() => setShowBookingModal(false)}
           onCreated={async (result) => {
-            const notices = [
-              result.notificationCreated
-                ? 'Customer notified in the app.'
-                : 'Appointment saved, but the in-app notification could not be saved.',
-            ];
-            if (result.accountSetupEmailSent)
-              notices.push('Account setup email sent to the new customer.');
-            else if (result.newCustomer)
-              notices.push('Configure SMTP to email the new customer an account setup link.');
-            setBookingMessage(
-              `${result.appointment.appointmentNumber} booked for ${result.appointment.customer} on ${result.appointment.preferredDate} at ${result.appointment.preferredTime}. ${notices.join(' ')}`,
+            setSuccessMessage(
+              `Appointment booked successfully for ${result.appointment?.customer || 'Customer'} on ${result.appointment?.preferredDate} at ${result.appointment?.preferredTime}!`
             );
-            setShowBookingForm(false);
+            setShowBookingModal(false);
             await loadAppointments();
           }}
         />
       )}
+
+      {/* Manage Appointment Modal */}
       {managedAppointmentId && (
-        <AdminAppointmentManager
+        <SimpleAppointmentManager
           appointmentId={managedAppointmentId}
           technicians={technicians}
           onClose={() => setManagedAppointmentId('')}
-          onSaved={saveManagedAppointment}
-          onConverted={async (result) => {
-            setBookingMessage(`Appointment converted to service job ${result.serviceNumber}.`);
+          onSaved={async (msg) => {
+            setSuccessMessage(msg || 'Appointment updated successfully.');
+            setManagedAppointmentId('');
+            await loadAppointments();
+          }}
+          onConverted={async (jobNum) => {
+            setSuccessMessage(`Appointment converted to Job ${jobNum}!`);
             setManagedAppointmentId('');
             await loadAppointments();
           }}
         />
       )}
-
-      <section className="appointment-controls" aria-label="Calendar controls">
-        <div className="appointment-period-controls">
-          <button
-            aria-label="Previous period"
-            onClick={() => {
-              setLoading(true);
-              movePeriod(-1);
-            }}
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => {
-              setLoading(true);
-              setSelectedDate(new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`));
-            }}
-          >
-            Today
-          </button>
-          <button
-            aria-label="Next period"
-            onClick={() => {
-              setLoading(true);
-              movePeriod(1);
-            }}
-          >
-            ›
-          </button>
-          <h2>{periodLabel()}</h2>
-        </div>
-        <div className="appointment-view-switch" role="group" aria-label="Calendar view">
-          {['day', 'week', 'month'].map((option) => (
-            <button
-              key={option}
-              className={view === option ? 'selected' : ''}
-              aria-pressed={view === option}
-              onClick={() => {
-                setLoading(true);
-                setView(option);
-              }}
-            >
-              {option[0].toUpperCase() + option.slice(1)}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="appointment-filters" aria-label="Search and filter appointments">
-        <label>
-          Search
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Customer, vehicle, plate, service…"
-          />
-        </label>
-        <label>
-          Status
-          <select
-            value={statusFilter}
-            onChange={(event) => {
-              setLoading(true);
-              setStatusFilter(event.target.value);
-            }}
-          >
-            <option value="">All statuses</option>
-            {STATUSES.map((status) => (
-              <option key={status} value={status}>{serviceStatus(status)}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Technician
-          <select
-            value={technicianFilter}
-            onChange={(event) => {
-              setLoading(true);
-              setTechnicianFilter(event.target.value);
-            }}
-          >
-            <option value="">All technicians</option>
-            {technicians.map((technician) => (
-              <option key={technician.id} value={technician.id}>
-                {technician.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
-
-      {error && (
-        <div className="appointment-error" role="alert">
-          <span>{error}</span>
-          <button
-            onClick={() => {
-              setLoading(true);
-              loadAppointments();
-            }}
-          >
-            Retry
-          </button>
-        </div>
-      )}
-      {loading && (
-        <p className="appointment-loading" role="status">
-          Loading appointments…
-        </p>
-      )}
-      {!loading && !error && filteredRecords.length === 0 && (
-        <p className="appointment-empty">No appointments match this period and filter selection.</p>
-      )}
-
-      {view === 'day' && (
-        <section className="appointment-day-view">
-          <h2>{fullDate(selectedDate)}</h2>
-          <p className="appointment-capacity">
-            {availabilityForDay(selectedDate)?.bookedCount || 0} booked ·{' '}
-            {availabilityForDay(selectedDate)?.overlapCount || 0} time conflicts
-          </p>
-          {appointmentsForDay(selectedDate).length ? (
-            appointmentsForDay(selectedDate).map((item) => appointmentCard(item))
-          ) : (
-            <p className="appointment-empty">No appointments for this day.</p>
-          )}
-          <h3>Booked times</h3>
-          {availabilityForDay(selectedDate)?.closed ? (
-            <p className="calendar-no-bookings">Workshop closed</p>
-          ) : (
-            <div className="appointment-slot-list">
-              {(availabilityForDay(selectedDate)?.slots || []).map((slot) => (
-                <span className={`appointment-slot ${statusClass(slot.status)}`} key={slot.time}>
-                  {slot.time} · {slot.status}
-                  {slot.count > 1 ? ` (${slot.count} bookings)` : ''}
-                </span>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-      {view === 'week' && (
-        <section className="appointment-week-grid" aria-label="Weekly appointments">
-          {days.map((day) => (
-            <div className="appointment-day-column" key={dateKey(day)}>
-              <header>
-                <strong>{dayLabel(day)}</strong>
-                <span>
-                  {appointmentsForDay(day).length} bookings
-                </span>
-                {availabilityForDay(day)?.overlapCount > 0 && (
-                  <em className="calendar-overlap">
-                    {availabilityForDay(day).overlapCount} slot conflict(s)
-                  </em>
-                )}
-              </header>
-              {appointmentsForDay(day).length ? (
-                appointmentsForDay(day).map((item) => appointmentCard(item, true))
-              ) : (
-                <p className="calendar-no-bookings">No bookings</p>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
-      {view === 'month' && (
-        <section className="appointment-month-grid" aria-label="Monthly appointments">
-          <div className="month-weekdays">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-              <strong key={day}>{day}</strong>
-            ))}
-          </div>
-          <div className="month-days">
-            {days.map((day) => (
-              <div
-                className={`month-day ${day.getUTCMonth() !== selectedDate.getUTCMonth() ? 'outside-month' : ''}`}
-                key={dateKey(day)}
-              >
-                <strong>{day.getUTCDate()}</strong>
-                {appointmentsForDay(day)
-                  .slice(0, 3)
-                  .map((item) => (
-                    <button
-                      type="button"
-                      className={`month-event ${statusClass(item.status)} ${item.overlap ? 'overlap' : ''}`}
-                      key={item.id}
-                      title={
-                        item.overlap ? 'Time conflict with another active booking' : item.reference
-                      }
-                      onClick={() => setManagedAppointmentId(item.id)}
-                    >
-                      <time>{item.preferredTime}</time> {item.customer} · {item.serviceType}
-                    </button>
-                  ))}
-                {appointmentsForDay(day).length > 3 && (
-                  <small>+{appointmentsForDay(day).length - 3} more</small>
-                )}
-                <small className="month-open-slots">{availabilityForDay(day)?.closed ? "Closed" : "Custom booking times"}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
 
-function AdminAppointmentForm({ onClose, onCreated }) {
-  const [dateLimits] = useState(() => {
-    const now = new Date();
-    return {
-      today: now.toISOString().slice(0, 10),
-      lastDate: new Date(now.getTime() + 30 * DAY_MS).toISOString().slice(0, 10),
-      currentYear: now.getUTCFullYear(),
-    };
-  });
-  const { today, lastDate, currentYear } = dateLimits;
-  const [customers, setCustomers] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [serviceTypes, setServiceTypes] = useState([]);
-  const [slots, setSlots] = useState([]);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [customerId, setCustomerId] = useState('');
-  const [vehicleId, setVehicleId] = useState('');
-  const [newCustomerMode, setNewCustomerMode] = useState(false);
-  const [newVehicleMode, setNewVehicleMode] = useState(true);
-  const [date, setDate] = useState(today);
-  const [time, setTime] = useState('');
-  const [serviceType, setServiceType] = useState('');
-  const [problemDescription, setProblemDescription] = useState('');
-  const [customerNotes, setCustomerNotes] = useState('');
-  const [internalNotes, setInternalNotes] = useState('');
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '', mobile: '' });
-  const [newVehicle, setNewVehicle] = useState({
-    make: '',
-    model: '',
-    year: '',
-    registrationNumber: '',
-  });
+/* =========================================================
+   SIMPLE NEW BOOKING MODAL
+   ========================================================= */
+function SimpleBookingModal({ technicians, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
-  const [optionsLoading, setOptionsLoading] = useState(true);
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [error, setError] = useState('');
+  const [options, setOptions] = useState({ customers: [], serviceTypes: [] });
+
+  // Form State
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [customerId, setCustomerId] = useState('');
+  const [customerVehicles, setCustomerVehicles] = useState([]);
+  const [vehicleId, setVehicleId] = useState('');
+  const [isNewVehicle, setIsNewVehicle] = useState(true);
+
+  // New Customer Fields
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
+  const [newCustomerMobile, setNewCustomerMobile] = useState('');
+
+  // New Vehicle Fields
+  const [vehicleMake, setVehicleMake] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [vehicleYear, setVehicleYear] = useState('');
+  const [vehicleReg, setVehicleReg] = useState('');
+
+  // Appointment Fields
+  const [serviceType, setServiceType] = useState('');
+  const [preferredDate, setPreferredDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [preferredTime, setPreferredTime] = useState('09:00');
+  const [problemDescription, setProblemDescription] = useState('');
+  const [internalNotes, setInternalNotes] = useState('');
 
   useEffect(() => {
     api
       .get('/admin/appointment-options')
       .then(({ data }) => {
-        setCustomers(data.customers);
-        setServiceTypes(data.serviceTypes);
-        setServiceType(data.serviceTypes[0] || '');
-        setOptionsLoading(false);
+        setOptions(data);
+        if (data.serviceTypes?.length) setServiceType(data.serviceTypes[0]);
       })
-      .catch((requestError) => {
-        setError(requestError.response?.data?.message || 'Unable to load booking options.');
-        setOptionsLoading(false);
-      });
+      .catch(() => setError('Unable to load appointment options.'));
   }, []);
 
-  useEffect(() => {
-    const query = customerSearch.trim();
-    const timer = setTimeout(() => {
-      api
-        .get('/admin/appointment-options', { params: query ? { search: query } : {} })
-        .then(({ data }) => setCustomers(data.customers))
-        .catch(() => {});
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [customerSearch]);
-
-  useEffect(() => {
-    const start = `${date}T00:00:00.000Z`;
-    const end = new Date(new Date(start).getTime() + DAY_MS).toISOString();
-    const controller = new AbortController();
-    api
-      .get('/admin/appointments', { params: { start, end }, signal: controller.signal })
-      .then(({ data }) => {
-        if (controller.signal.aborted) return;
-        const day = data.availability?.[0];
-        setSlots(day?.slots || []);
-
-      })
-      .catch(() => { if (!controller.signal.aborted) setSlots([]); })
-      .finally(() => {
-        if (!controller.signal.aborted) setAvailabilityLoading(false);
-      });
-    return () => controller.abort();
-  }, [date]);
-
-  async function chooseCustomer(nextId) {
-    setCustomerId(nextId);
+  async function handleCustomerChange(id) {
+    setCustomerId(id);
     setVehicleId('');
-    setVehicles([]);
-    if (!nextId) return;
+    if (!id) {
+      setCustomerVehicles([]);
+      setIsNewVehicle(true);
+      return;
+    }
     try {
-      const { data } = await api.get('/admin/appointment-options', {
-        params: { customerId: nextId },
-      });
-      setVehicles(data.vehicles);
-      setNewVehicleMode(data.vehicles.length === 0);
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to load this customer’s vehicles.');
+      const { data } = await api.get('/admin/appointment-options', { params: { customerId: id } });
+      setCustomerVehicles(data.vehicles || []);
+      if (data.vehicles?.length > 0) {
+        setVehicleId(data.vehicles[0]._id || data.vehicles[0].id);
+        setIsNewVehicle(false);
+      } else {
+        setIsNewVehicle(true);
+      }
+    } catch {
+      setIsNewVehicle(true);
     }
   }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function handleSubmit(e) {
+    e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
       const payload = {
-        ...(newCustomerMode ? { newCustomer } : { customerId }),
-        ...(newVehicleMode ? { newVehicle } : { vehicleId }),
         serviceType,
-        preferredDate: date,
-        preferredTime: time,
+        preferredDate,
+        preferredTime,
         problemDescription,
-        customerNotes,
         internalNotes,
       };
+
+      if (isNewCustomer) {
+        payload.newCustomer = {
+          name: newCustomerName,
+          email: newCustomerEmail,
+          mobile: newCustomerMobile,
+        };
+      } else {
+        payload.customerId = customerId;
+      }
+
+      if (isNewVehicle || isNewCustomer) {
+        payload.newVehicle = {
+          make: vehicleMake,
+          model: vehicleModel,
+          year: vehicleYear ? Number(vehicleYear) : undefined,
+          registrationNumber: vehicleReg,
+        };
+      } else {
+        payload.vehicleId = vehicleId;
+      }
+
       const { data } = await api.post('/admin/appointments', payload);
       await onCreated(data);
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to create this appointment.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to book appointment.');
     } finally {
       setLoading(false);
     }
@@ -590,680 +450,552 @@ function AdminAppointmentForm({ onClose, onCreated }) {
 
   return (
     <div
-      className="appointment-modal-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section
-        className="appointment-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="appointment-form-title"
+      <div
+        style={{
+          background: 'var(--bg-card, #1e293b)',
+          color: 'var(--text-primary, #f8fafc)',
+          border: '1px solid var(--border-color, #334155)',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '600px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          padding: '1.5rem',
+          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)',
+        }}
       >
-        <header>
-          <div>
-            <h2 id="appointment-form-title">Create appointment</h2>
-            <p>Book a service for a customer and vehicle.</p>
-          </div>
-          <button
-            type="button"
-            className="appointment-modal-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ×
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700 }}>+ Book New Appointment</h2>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', color: 'var(--text-primary, #fff)', cursor: 'pointer' }}>
+            ✕
           </button>
-        </header>
+        </div>
+
         {error && (
-          <p className="appointment-form-error" role="alert">
+          <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.6rem 0.8rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem' }}>
             {error}
-          </p>
+          </div>
         )}
-        {optionsLoading ? (
-          <p role="status">Loading customers and services…</p>
-        ) : (
-          <form onSubmit={submit}>
-            <div className="appointment-mode-toggle">
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Customer Selection */}
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Customer Details</label>
               <button
                 type="button"
-                className={!newCustomerMode ? 'selected' : ''}
-                onClick={() => setNewCustomerMode(false)}
+                onClick={() => setIsNewCustomer(!isNewCustomer)}
+                style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}
               >
-                Existing customer
-              </button>
-              <button
-                type="button"
-                className={newCustomerMode ? 'selected' : ''}
-                onClick={() => {
-                  setNewCustomerMode(true);
-                  setNewVehicleMode(true);
-                }}
-              >
-                Add new customer
+                {isNewCustomer ? '← Choose Existing Customer' : '+ Add New Customer'}
               </button>
             </div>
-            {newCustomerMode ? (
-              <div className="appointment-form-grid">
-                <label>
-                  Customer name
+
+            {isNewCustomer ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                <div style={{ gridColumn: 'span 2' }}>
                   <input
                     required
-                    minLength="2"
-                    maxLength="100"
-                    value={newCustomer.name}
-                    onChange={(event) =>
-                      setNewCustomer({ ...newCustomer, name: event.target.value })
-                    }
+                    type="text"
+                    placeholder="Customer Name *"
+                    value={newCustomerName}
+                    onChange={(e) => setNewCustomerName(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
                   />
-                </label>
-                <label>
-                  Email
+                </div>
+                <div>
                   <input
                     required
                     type="email"
-                    maxLength="254"
-                    value={newCustomer.email}
-                    onChange={(event) =>
-                      setNewCustomer({ ...newCustomer, email: event.target.value })
-                    }
+                    placeholder="Email *"
+                    value={newCustomerEmail}
+                    onChange={(e) => setNewCustomerEmail(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
                   />
-                </label>
-                <label>
-                  Mobile number
+                </div>
+                <div>
                   <input
-                    required
                     type="tel"
-                    value={newCustomer.mobile}
-                    onChange={(event) =>
-                      setNewCustomer({ ...newCustomer, mobile: event.target.value })
-                    }
+                    placeholder="Mobile"
+                    value={newCustomerMobile}
+                    onChange={(e) => setNewCustomerMobile(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
                   />
-                </label>
+                </div>
               </div>
             ) : (
-              <div className="appointment-form-grid">
-                <label className="appointment-form-wide">
-                  Search customers
-                  <input
-                    type="search"
-                    placeholder="Name, email or mobile"
-                    value={customerSearch}
-                    onChange={(event) => setCustomerSearch(event.target.value)}
-                  />
-                </label>
-                <label className="appointment-form-wide">
-                  Customer
-                  <select
-                    required
-                    value={customerId}
-                    onChange={(event) => chooseCustomer(event.target.value)}
-                  >
-                    <option value="">Select a customer</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name} · {customer.email} · {customer.mobile}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            )}
-
-            <div className="appointment-mode-toggle">
-              <button
-                type="button"
-                className={!newVehicleMode ? 'selected' : ''}
-                disabled={newCustomerMode || vehicles.length === 0}
-                onClick={() => setNewVehicleMode(false)}
-              >
-                Existing vehicle
-              </button>
-              <button
-                type="button"
-                className={newVehicleMode ? 'selected' : ''}
-                onClick={() => setNewVehicleMode(true)}
-              >
-                Add vehicle
-              </button>
-            </div>
-            {!newVehicleMode && (
-              <label className="appointment-form-wide appointment-form-block">
-                Vehicle
+              <div>
                 <select
                   required
-                  value={vehicleId}
-                  onChange={(event) => setVehicleId(event.target.value)}
+                  value={customerId}
+                  onChange={(e) => handleCustomerChange(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
                 >
-                  <option value="">Select a vehicle</option>
-                  {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.registrationNumber} · {vehicle.year ? `${vehicle.year} ` : ''}
-                      {vehicle.make} {vehicle.model}
+                  <option value="">Select Existing Customer...</option>
+                  {(options.customers || []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.email})
                     </option>
                   ))}
                 </select>
-              </label>
-            )}
-            {newVehicleMode && (
-              <div className="appointment-form-grid">
-                <label>
-                  Make
-                  <input
-                    required
-                    maxLength="80"
-                    value={newVehicle.make}
-                    onChange={(event) => setNewVehicle({ ...newVehicle, make: event.target.value })}
-                  />
-                </label>
-                <label>
-                  Model
-                  <input
-                    required
-                    maxLength="80"
-                    value={newVehicle.model}
-                    onChange={(event) =>
-                      setNewVehicle({ ...newVehicle, model: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  Registration number
-                  <input
-                    required
-                    maxLength="32"
-                    value={newVehicle.registrationNumber}
-                    onChange={(event) =>
-                      setNewVehicle({ ...newVehicle, registrationNumber: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  Year
-                  <input
-                    type="number"
-                    min="1886"
-                    max={currentYear + 1}
-                    value={newVehicle.year}
-                    onChange={(event) => setNewVehicle({ ...newVehicle, year: event.target.value })}
-                  />
-                </label>
               </div>
             )}
+          </div>
 
-            <div className="appointment-form-grid">
-              <label>
-                Service
+          {/* Vehicle Selection */}
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Vehicle Information</label>
+              {!isNewCustomer && customerVehicles.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsNewVehicle(!isNewVehicle)}
+                  style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}
+                >
+                  {isNewVehicle ? '← Choose Existing Vehicle' : '+ Add New Vehicle'}
+                </button>
+              )}
+            </div>
+
+            {isNewVehicle || isNewCustomer ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                <div>
+                  <input
+                    required
+                    type="text"
+                    placeholder="Make (e.g. Toyota) *"
+                    value={vehicleMake}
+                    onChange={(e) => setVehicleMake(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  />
+                </div>
+                <div>
+                  <input
+                    required
+                    type="text"
+                    placeholder="Model (e.g. Corolla) *"
+                    value={vehicleModel}
+                    onChange={(e) => setVehicleModel(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  />
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    placeholder="Year (e.g. 2022)"
+                    value={vehicleYear}
+                    onChange={(e) => setVehicleYear(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  />
+                </div>
+                <div>
+                  <input
+                    required
+                    type="text"
+                    placeholder="Plate / Reg Number *"
+                    value={vehicleReg}
+                    onChange={(e) => setVehicleReg(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
                 <select
                   required
-                  value={serviceType}
-                  onChange={(event) => setServiceType(event.target.value)}
+                  value={vehicleId}
+                  onChange={(e) => setVehicleId(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
                 >
-                  {serviceTypes.map((service) => (
-                    <option key={service}>{service}</option>
+                  {customerVehicles.map((v) => (
+                    <option key={v._id || v.id} value={v._id || v.id}>
+                      {v.make} {v.model} ({v.registrationNumber})
+                    </option>
                   ))}
                 </select>
-              </label>
-              <label>
-                Date
-                <input
-                  required
-                  type="date"
-                  min={today}
-                  max={lastDate}
-                  value={date}
-                  onChange={(event) => {
-                    setAvailabilityLoading(true);
-                    setDate(event.target.value);
-                  }}
-                />
-              </label>
-              <label>
-                Time
-                <input type="time" step="60" required value={time} onChange={event => setTime(event.target.value)} disabled={availabilityLoading} />
-              </label>
-            </div>
-            {!availabilityLoading && (
-              <p className="appointment-availability-message" role="status">
-                {slots.length ? `Booked times: ${slots.map(slot => slot.time).join(', ')}. ` : ''}
-                Enter a custom time. Availability is checked when you confirm.
-              </p>
+              </div>
             )}
-            <label className="appointment-form-block">
-              Customer complaint
-              <textarea
+          </div>
+
+          {/* Service & Date/Time */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Service Type</label>
+              <select
                 required
-                minLength="1"
-                maxLength="1000"
-                rows="3"
-                value={problemDescription}
-                onChange={(event) => setProblemDescription(event.target.value)}
-              />
-            </label>
-            <label className="appointment-form-block">
-              Customer notes
-              <textarea
-                maxLength="1000"
-                rows="2"
-                value={customerNotes}
-                onChange={(event) => setCustomerNotes(event.target.value)}
-              />
-            </label>
-            <label className="appointment-form-block">
-              Internal notes (staff only)
-              <textarea
-                maxLength="1000"
-                rows="2"
-                value={internalNotes}
-                onChange={(event) => setInternalNotes(event.target.value)}
-              />
-            </label>
-            <footer>
-              <button
-                type="button"
-                className="appointment-refresh"
-                onClick={onClose}
-                disabled={loading}
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+                style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
               >
-                Cancel
-              </button>
-              <button
-                className="appointment-new-booking"
-                type="submit"
-                disabled={
-                  loading ||
-                  availabilityLoading ||
-                  !time ||
-                  (!newCustomerMode && !customerId) ||
-                  (!newVehicleMode && !vehicleId)
-                }
-              >
-                {loading ? 'Booking…' : 'Confirm booking'}
-              </button>
-            </footer>
-          </form>
-        )}
-      </section>
+                {(options.serviceTypes || []).map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Date</label>
+              <input
+                required
+                type="date"
+                value={preferredDate}
+                onChange={(e) => setPreferredDate(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Time</label>
+              <input
+                required
+                type="time"
+                value={preferredTime}
+                onChange={(e) => setPreferredTime(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              Problem Description / Customer Request
+            </label>
+            <textarea
+              rows="2"
+              placeholder="Describe customer's issues or requested service details..."
+              value={problemDescription}
+              onChange={(e) => setProblemDescription(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              Internal Notes (Staff Only)
+            </label>
+            <textarea
+              rows="2"
+              placeholder="Staff notes..."
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+            />
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ padding: '0.6rem 1.2rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+              style={{ padding: '0.6rem 1.5rem', fontWeight: 600, borderRadius: '6px', cursor: 'pointer' }}
+            >
+              {loading ? 'Booking…' : 'Confirm Booking'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
 
-function AdminAppointmentManager({ appointmentId, technicians, onClose, onSaved, onConverted }) {
-  const [record, setRecord] = useState(null);
-  const [serviceTypes, setServiceTypes] = useState([]);
-  const [today] = useState(() => new Date().toISOString().slice(0, 10));
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+/* =========================================================
+   SIMPLE APPOINTMENT MANAGER MODAL
+   ========================================================= */
+function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved, onConverted }) {
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [jobPriority, setJobPriority] = useState('Normal');
-  const [expectedCompletionTime, setExpectedCompletionTime] = useState('');
+  const [appt, setAppt] = useState(null);
+
+  // Editable fields
+  const [status, setStatus] = useState('');
+  const [technicianId, setTechnicianId] = useState('');
+  const [preferredDate, setPreferredDate] = useState('');
+  const [preferredTime, setPreferredTime] = useState('');
+  const [serviceType, setServiceType] = useState('');
+  const [internalNotes, setInternalNotes] = useState('');
 
   useEffect(() => {
-    let active = true;
-    Promise.all([
-      api.get(`/admin/appointments/${appointmentId}`),
-      api.get('/admin/appointment-options'),
-    ])
-      .then(([appointmentResponse, optionsResponse]) => {
-        if (!active) return;
-        setRecord({
-          ...appointmentResponse.data,
-          originalPreferredDate: appointmentResponse.data.preferredDate,
-          originalPreferredTime: appointmentResponse.data.preferredTime,
-        });
-        setServiceTypes(optionsResponse.data.serviceTypes);
+    api
+      .get(`/admin/appointments/${appointmentId}`)
+      .then(({ data }) => {
+        setAppt(data);
+        setStatus(data.status || 'Pending');
+        setTechnicianId(data.technicianId || '');
+        setPreferredDate(data.preferredDate || '');
+        setPreferredTime(data.preferredTime || '');
+        setServiceType(data.serviceType || '');
+        setInternalNotes(data.internalNotes || '');
+        setLoading(false);
       })
-      .catch((requestError) => {
-        if (active)
-          setError(requestError.response?.data?.message || 'Unable to load appointment details.');
+      .catch((err) => {
+        setError(err.response?.data?.message || 'Unable to load appointment.');
+        setLoading(false);
       });
-    return () => {
-      active = false;
-    };
   }, [appointmentId]);
 
-  const preferredDate = record?.preferredDate;
-  useEffect(() => {
-    if (!preferredDate) return undefined;
-    const start = `${preferredDate}T00:00:00.000Z`;
-    const end = new Date(new Date(start).getTime() + DAY_MS).toISOString();
-    const controller = new AbortController();
-    api
-      .get('/admin/appointments', { params: { start, end }, signal: controller.signal })
-      .then(({ data }) => {
-        if (!controller.signal.aborted) {
-          if (data.availability?.[0]?.closed) setError("The workshop is closed on this date.");
-
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setError('Unable to check this date. Please try again.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setAvailabilityLoading(false);
-      });
-    return () => controller.abort();
-  }, [preferredDate]);
-
-  function update(field, value) {
-    setRecord((current) => ({ ...current, [field]: value }));
-  }
-  async function save(changes = {}) {
+  async function handleSave() {
     setSaving(true);
     setError('');
     try {
-      const body = {
-        serviceType: record.serviceType,
-        problemDescription: record.problemDescription,
-        customerNotes: record.customerNotes,
-        internalNotes: record.internalNotes,
-        technicianId: record.technicianId,
-        status: record.status,
-        ...changes,
-      };
-      if (
-        record.preferredDate !== record.originalPreferredDate ||
-        record.preferredTime !== record.originalPreferredTime
-      ) {
-        body.preferredDate = record.preferredDate;
-        body.preferredTime = record.preferredTime;
-      }
-      await api.patch(`/admin/appointments/${appointmentId}`, body);
-      await onSaved();
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to save appointment changes.');
+      await api.patch(`/admin/appointments/${appointmentId}`, {
+        status,
+        technicianId: technicianId || null,
+        preferredDate,
+        preferredTime,
+        serviceType,
+        internalNotes,
+      });
+      onSaved('Appointment saved successfully.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to update appointment.');
     } finally {
       setSaving(false);
     }
   }
-  async function convertToJob() {
+
+  async function handleConvertToJob() {
     setSaving(true);
     setError('');
     try {
-      const appointmentChanges = {
-        serviceType: record.serviceType,
-        problemDescription: record.problemDescription,
-        customerNotes: record.customerNotes,
-        internalNotes: record.internalNotes,
-        technicianId: record.technicianId,
-        status: record.status,
-      };
-      if (
-        record.preferredDate !== record.originalPreferredDate ||
-        record.preferredTime !== record.originalPreferredTime
-      ) {
-        appointmentChanges.preferredDate = record.preferredDate;
-        appointmentChanges.preferredTime = record.preferredTime;
-      }
-      await api.patch(`/admin/appointments/${appointmentId}`, appointmentChanges);
+      // First save any edits
+      await api.patch(`/admin/appointments/${appointmentId}`, {
+        status: 'Confirmed',
+        technicianId: technicianId || null,
+        preferredDate,
+        preferredTime,
+        serviceType,
+        internalNotes,
+      });
+      // Convert to job
       const { data } = await api.post(`/admin/appointments/${appointmentId}/convert-to-job`, {
-        technicianId: record.technicianId,
-        priority: jobPriority,
-        expectedCompletionTime: expectedCompletionTime
-          ? new Date(expectedCompletionTime).toISOString()
-          : '',
-        customerComplaint: record.problemDescription,
+        technicianId: technicianId || undefined,
+        priority: 'Normal',
       });
-      await onConverted(data);
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to create a service job.');
+      onConverted(data.serviceNumber || 'Created');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to convert to service job.');
     } finally {
       setSaving(false);
     }
   }
 
-  async function resolveReschedule(decision) {
-    setSaving(true);
-    setError('');
-    try {
-      await api.patch(`/admin/appointments/${appointmentId}`, { rescheduleDecision: decision });
-      await onSaved();
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to resolve the reschedule request.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!record)
-    return (
-      <div className="appointment-modal-backdrop">
-        <section className="appointment-modal" role="dialog" aria-modal="true">
-          <button className="appointment-modal-close" onClick={onClose}>
-            ×
-          </button>
-          <p role={error ? 'alert' : 'status'}>{error || 'Loading appointment…'}</p>
-        </section>
-      </div>
-    );
   return (
-    <div className="appointment-modal-backdrop">
-      <section
-        className="appointment-modal appointment-manager"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="manage-appointment-title"
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        style={{
+          background: 'var(--bg-card, #1e293b)',
+          color: 'var(--text-primary, #f8fafc)',
+          border: '1px solid var(--border-color, #334155)',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '560px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          padding: '1.5rem',
+          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)',
+        }}
       >
-        <header>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <div>
-            <h2 id="manage-appointment-title">Manage {record.appointmentNumber}</h2>
-            <p>
-              {record.customer?.name} · {record.vehicle?.registrationNumber} ·{' '}
-              {record.vehicle?.make} {record.vehicle?.model}
-            </p>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>
+              {appt?.appointmentNumber || 'Appointment Details'}
+            </h2>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #94a3b8)' }}>Manage scheduling and status</span>
           </div>
-          <button
-            type="button"
-            className="appointment-modal-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ×
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', color: 'var(--text-primary, #fff)', cursor: 'pointer' }}>
+            ✕
           </button>
-        </header>
-        <div className="appointment-contact-details">
-          <span>{record.customer?.email}</span>
-          <span>{record.customer?.mobile}</span>
-          <span>VIN: {record.vehicle?.vinNumber || 'Not recorded'}</span>
         </div>
-        {record.rescheduleRequest && (
-          <div className="appointment-reschedule-request">
-            <p>
-              Customer requested {record.rescheduleRequest.preferredDate} at{' '}
-              {record.rescheduleRequest.preferredTime}
-              {record.rescheduleRequest.notes ? ` — ${record.rescheduleRequest.notes}` : ''}.
-            </p>
+
+        {error && (
+          <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.6rem 0.8rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem' }}>
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <p style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>Loading details…</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Customer & Vehicle Info Box */}
+            <div style={{ background: 'var(--bg-surface, #f8fafc)', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', fontSize: '0.9rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600 }}>Customer</span>
+                  <div style={{ fontWeight: 600 }}>{appt?.customer?.name || appt?.customer}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{appt?.customer?.email || appt?.customer?.mobile}</div>
+                </div>
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600 }}>Vehicle</span>
+                  <div style={{ fontWeight: 600 }}>{appt?.vehicle?.make} {appt?.vehicle?.model}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Plate: {appt?.vehicle?.registrationNumber || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Editable Fields */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                >
+                  {STATUSES.map((st) => (
+                    <option key={st} value={st}>
+                      {serviceStatus(st)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Assigned Technician</label>
+                <select
+                  value={technicianId}
+                  onChange={(e) => setTechnicianId(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                >
+                  <option value="">Unassigned</option>
+                  {technicians.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Date</label>
+                <input
+                  type="date"
+                  value={preferredDate}
+                  onChange={(e) => setPreferredDate(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Time</label>
+                <input
+                  type="time"
+                  value={preferredTime}
+                  onChange={(e) => setPreferredTime(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                />
+              </div>
+            </div>
+
             <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Service Type</label>
+              <input
+                type="text"
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+              />
+            </div>
+
+            {appt?.problemDescription && (
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>Customer Complaint:</span>
+                <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}>
+                  {appt.problemDescription}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Internal Notes</label>
+              <textarea
+                rows="2"
+                value={internalNotes}
+                onChange={(e) => setInternalNotes(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+              />
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
               <button
                 type="button"
-                className="appointment-new-booking"
-                onClick={() => resolveReschedule('Approved')}
-                disabled={saving}
+                onClick={handleConvertToJob}
+                disabled={saving || appt?.status === 'Cancelled'}
+                style={{
+                  padding: '0.55rem 1rem',
+                  background: '#0284c7',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                }}
               >
-                Approve requested time
+                ⚙ Convert to Job
               </button>
-              <button
-                type="button"
-                className="appointment-refresh"
-                onClick={() => resolveReschedule('Rejected')}
-                disabled={saving}
-              >
-                Reject and keep current time
-              </button>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  style={{ padding: '0.55rem 1rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-primary"
+                  style={{ padding: '0.55rem 1.2rem', fontWeight: 600, borderRadius: '6px', cursor: 'pointer' }}
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         )}
-        {record.serviceJob && (
-          <p className="appointment-success">
-            Service job {record.serviceJob.serviceNumber} · {serviceStatus(record.serviceJob.status)}
-          </p>
-        )}
-        {record.history?.length > 0 && (
-          <details className="appointment-history">
-            <summary>Appointment history ({record.history.length})</summary>
-            <ol>
-              {[...record.history].reverse().map((event, index) => (
-                <li key={`${event.timestamp}-${index}`}>
-                  <strong>{event.action}</strong>
-                  <span>{event.details}</span>
-                  <small>
-                    {dateTime(event.timestamp)} · {event.actor}
-                  </small>
-                </li>
-              ))}
-            </ol>
-          </details>
-        )}
-        {error && (
-          <p className="appointment-form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="appointment-form-grid">
-          <label>
-            Status
-            <select
-              value={record.status}
-              onChange={(event) => update('status', event.target.value)}
-            >
-              {[...new Set([...STATUSES.filter(status => ['Pending', 'Confirmed', 'Cancelled'].includes(status)), record.status])].map((status) => (
-                <option key={status} value={status}>{serviceStatus(status)}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Service
-            <select
-              value={record.serviceType}
-              onChange={(event) => update('serviceType', event.target.value)}
-            >
-              {!serviceTypes.includes(record.serviceType) && (
-                <option value={record.serviceType}>{record.serviceType} (inactive)</option>
-              )}
-              {serviceTypes.map((service) => (
-                <option key={service}>{service}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Date
-            <input
-              type="date"
-              value={record.preferredDate}
-              min={today}
-              onChange={(event) => {
-                setAvailabilityLoading(true);
-                update('preferredDate', event.target.value);
-              }}
-            />
-          </label>
-          <label>
-            Time
-            <input type="time" step="60" required value={record.preferredTime}
-              disabled={availabilityLoading} onChange={event => update('preferredTime', event.target.value)} />
-          </label>
-          <label className="appointment-form-wide">
-            Assign technician
-            <select
-              value={record.technicianId || ''}
-              onChange={(event) => update('technicianId', event.target.value)}
-            >
-              <option value="">Unassigned</option>
-              {technicians.map((person) => (
-                <option
-                  key={person.id}
-                  value={person.id}
-                  disabled={
-                    person.availabilityStatus !== 'Available' && record.technicianId !== person.id
-                  }
-                >
-                  {person.name}
-                  {person.availabilityStatus !== 'Available'
-                    ? ` · ${person.availabilityStatus}`
-                    : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label className="appointment-form-block">
-          Customer complaint
-          <textarea
-            rows="3"
-            maxLength="1000"
-            value={record.problemDescription}
-            onChange={(event) => update('problemDescription', event.target.value)}
-          />
-        </label>
-        {!record.serviceJob && (
-          <div className="appointment-form-grid job-creation-options">
-            <label>
-              Initial job priority
-              <select value={jobPriority} onChange={(event) => setJobPriority(event.target.value)}>
-                {['Low', 'Normal', 'High', 'Urgent'].map((priority) => (
-                  <option key={priority}>{priority}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Expected completion
-              <input
-                type="datetime-local"
-                value={expectedCompletionTime}
-                onChange={(event) => setExpectedCompletionTime(event.target.value)}
-              />
-            </label>
-          </div>
-        )}
-        <label className="appointment-form-block">
-          Customer notes
-          <textarea
-            rows="2"
-            maxLength="1000"
-            value={record.customerNotes}
-            onChange={(event) => update('customerNotes', event.target.value)}
-          />
-        </label>
-        <label className="appointment-form-block">
-          Internal notes (staff only)
-          <textarea
-            rows="2"
-            maxLength="1000"
-            value={record.internalNotes}
-            onChange={(event) => update('internalNotes', event.target.value)}
-          />
-        </label>
-        <footer className="appointment-manager-actions">
-          <button
-            type="button"
-            className="appointment-refresh"
-            onClick={() => save({ status: 'Confirmed' })}
-            disabled={saving || !record.technicianId || !['Pending', 'Confirmed'].includes(record.status)}
-          >
-            Confirm and assign
-          </button>
-          <span />
-          {!record.serviceJob && (
-            <button
-              type="button"
-              className="appointment-new-booking"
-              onClick={convertToJob}
-              disabled={saving || !['Confirmed', 'Checked In'].includes(record.status)}
-            >
-              Start service
-            </button>
-          )}
-          <button
-            type="button"
-            className="appointment-new-booking"
-            onClick={() => save()}
-            disabled={saving || availabilityLoading}
-          >
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-        </footer>
-      </section>
+      </div>
     </div>
   );
 }

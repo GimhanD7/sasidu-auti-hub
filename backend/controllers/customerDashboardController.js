@@ -3,7 +3,6 @@ import Appointment from '../models/Appointment.js';
 import ServiceJob from '../models/ServiceJob.js';
 import Invoice from '../models/Invoice.js';
 import Notification from '../models/Notification.js';
-import Message from '../models/Message.js';
 
 export async function getCustomerDashboard(req, res) {
   try {
@@ -13,7 +12,7 @@ export async function getCustomerDashboard(req, res) {
     const activeStatuses = ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test'];
     const upcomingStatuses = ['Pending', 'Confirmed'];
     const invoiceStatuses = ['Pending', 'Partially Paid', 'Overdue'];
-    const [vehicleCount, vehicles, jobs, upcomingAppointments, upcomingAppointmentCount, latestInvoice, outstandingInvoices, notifications, unreadNotificationCount, unreadMessageCount, activeRepairCount, activeJobIds] = await Promise.all([
+    const [vehicleCount, vehicles, jobs, upcomingAppointments, upcomingAppointmentCount, latestInvoice, outstandingInvoices, notifications, unreadNotificationCount, activeRepairCount] = await Promise.all([
       Vehicle.countDocuments({ customer: customerId }),
       Vehicle.find({ customer: customerId }).select('make model year registrationNumber').sort({ createdAt: -1 }).limit(5).lean(),
       ServiceJob.find({ customer: customerId, status: { $in: activeStatuses } })
@@ -32,14 +31,9 @@ export async function getCustomerDashboard(req, res) {
       Notification.find({ user: customerId }).select('type title message link isRead createdAt')
         .sort({ createdAt: -1 }).limit(5).lean(),
       Notification.countDocuments({ user: customerId, isRead: false }),
-      Message.countDocuments({ receiver: customerId, sender: { $ne: customerId }, isRead: false }),
       ServiceJob.countDocuments({ customer: customerId, status: { $in: activeStatuses } }),
-      ServiceJob.distinct('_id', { customer: customerId }),
     ]);
 
-    const unreadJobMessageCount = activeJobIds.length
-      ? await Message.countDocuments({ serviceJob: { $in: activeJobIds }, sender: { $ne: customerId }, isRead: false, receiver: { $exists: false } })
-      : 0;
     res.set('Cache-Control', 'private, no-store');
     res.json({
       customer: { fullName: req.user.name, email: req.user.email, mobile: req.user.mobile || '' },
@@ -67,7 +61,7 @@ export async function getCustomerDashboard(req, res) {
         link: item.link, isRead: item.isRead, createdAt: item.createdAt,
       })),
       unreadNotifications: unreadNotificationCount,
-      unreadMessages: unreadMessageCount + unreadJobMessageCount,
+      unreadMessages: 0,
     });
   } catch {
     res.status(503).json({ message: 'Unable to load your dashboard. Please try again.' });

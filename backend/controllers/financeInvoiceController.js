@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
 import ServiceJob from '../models/ServiceJob.js';
-import { invoiceEmail } from '../services/invoiceEmail.js';
+
 
 const roundMoney = value => Math.round((Number(value) || 0) * 100) / 100;
 const jobPopulate = [
@@ -119,21 +119,6 @@ export async function deleteDraftInvoice(req, res) {
     res.set('Cache-Control', 'private, no-store').json({ message: 'Draft invoice deleted.' });
   } catch {
     res.status(503).json({ message: 'Unable to delete this draft invoice. Please try again.' });
-  }
-}
-
-export async function sendFinanceInvoice(req, res) {
-  const { invoiceId } = req.params;
-  if (!mongoose.isValidObjectId(invoiceId)) return res.status(400).json({ message: 'Invalid invoice.' });
-  if (!invoiceEmail.isConfigured()) return res.status(503).json({ message: 'Invoice email is unavailable until SMTP is configured.' });
-  try {
-    const invoice = await Invoice.findById(invoiceId).populate({ path: 'customer', select: 'name email' });
-    if (!invoice || ['Draft', 'Cancelled'].includes(invoice.paymentStatus)) return res.status(404).json({ message: 'Issued invoice not found.' });
-    if (!invoice.customer?.email) return res.status(409).json({ message: 'This customer does not have an email address.' });
-    await invoiceEmail.send(invoice, invoice.customer);
-    res.set('Cache-Control', 'private, no-store').json({ message: `Invoice ${invoice.invoiceNumber} sent to ${invoice.customer.email}.` });
-  } catch {
-    res.status(503).json({ message: 'Unable to send this invoice. Check the mail configuration and try again.' });
   }
 }
 

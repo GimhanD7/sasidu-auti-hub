@@ -55,6 +55,8 @@ export default function CustomerPayments() {
   const selectedId = requestedInvoice || data?.invoices[0]?.id || '';
   const [method, setMethod] = useState('Bank Transfer');
   const [transactionReference, setTransactionReference] = useState('');
+  const [slipFile, setSlipFile] = useState(null); // { data, fileName, contentType, fileSize }
+  const [slipError, setSlipError] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
@@ -81,6 +83,44 @@ export default function CustomerPayments() {
     return () => controller.abort();
   }, [retry]);
 
+  const handleSlipChange = (event) => {
+    const file = event.target.files?.[0];
+    setSlipError('');
+    if (!file) return;
+
+    if (file.size > 7 * 1024 * 1024) {
+      setSlipError('Payment slip file must be under 7MB.');
+      event.target.value = '';
+      return;
+    }
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/pdf'];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|pdf)$/i)) {
+      setSlipError('Please upload an image (JPG, PNG, WebP) or PDF document.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSlipFile({
+        data: reader.result,
+        fileName: file.name,
+        contentType: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+        fileSize: file.size,
+      });
+    };
+    reader.onerror = () => {
+      setSlipError('Could not read the uploaded file.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeSlip = () => {
+    setSlipFile(null);
+    setSlipError('');
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     if (!selectedInvoice || busy) return;
@@ -92,15 +132,27 @@ export default function CustomerPayments() {
         invoiceId: selectedId,
         method,
         transactionReference,
+        paymentSlip: slipFile || undefined,
       });
       setResult(payment);
       setTransactionReference('');
+      setSlipFile(null);
       setRetry((value) => value + 1);
     } catch (err) {
       setError(err.response?.data?.message || 'Payment submission failed. Please try again.');
     } finally {
       setBusy(false);
     }
+  };
+
+  const downloadSlip = (slip) => {
+    if (!slip?.data) return;
+    const anchor = document.createElement('a');
+    anchor.href = slip.data;
+    anchor.download = slip.fileName || `payment-slip-${Date.now()}`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
   };
 
   const paymentInvoice = (payment) =>
@@ -221,21 +273,64 @@ export default function CustomerPayments() {
                       </label>
                     </fieldset>
                     {method === 'Bank Transfer' ? (
-                      <label className="payment-reference-label">
-                        Bank transaction reference
-                        <input
-                          value={transactionReference}
-                          onChange={(event) => setTransactionReference(event.target.value)}
-                          maxLength={100}
-                          minLength={3}
-                          required
-                          placeholder="Reference shown by your bank"
-                        />
-                        <small>
-                          Transfer the amount due using the workshop’s bank details, then submit
-                          your bank reference for verification.
-                        </small>
-                      </label>
+                      <div style={{ display: 'grid', gap: '1rem' }}>
+                        <label className="payment-reference-label">
+                          Bank transaction reference
+                          <input
+                            value={transactionReference}
+                            onChange={(event) => setTransactionReference(event.target.value)}
+                            maxLength={100}
+                            minLength={3}
+                            required
+                            placeholder="Reference shown by your bank"
+                          />
+                          <small>
+                            Transfer the amount due using the workshop’s bank details, then submit
+                            your bank reference for verification.
+                          </small>
+                        </label>
+
+                        <div className="payment-slip-upload-section" style={{ display: 'grid', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '10px', border: '1px dashed var(--border-color, #3f3f46)' }}>
+                          <label style={{ display: 'grid', gap: '0.4rem', fontWeight: '500' }}>
+                            Upload Payment Slip / Bank Receipt (PDF, JPG, PNG)
+                            <input
+                              type="file"
+                              accept=".pdf, .jpg, .jpeg, .png, .webp, image/*, application/pdf"
+                              onChange={handleSlipChange}
+                              style={{ padding: '0.5rem', border: '1px solid var(--border-color, #3f3f46)', borderRadius: '6px', background: 'var(--bg-input, #1c1c21)' }}
+                            />
+                            <small style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
+                              Attach an image or PDF of your payment deposit slip / online transaction receipt.
+                            </small>
+                          </label>
+
+                          {slipError && <p style={{ color: '#f87171', fontSize: '0.85rem', margin: 0 }}>{slipError}</p>}
+
+                          {slipFile && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.6rem 0.8rem', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', overflow: 'hidden' }}>
+                                {slipFile.contentType.startsWith('image/') ? (
+                                  <img src={slipFile.data} alt="Payment Slip Preview" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                                ) : (
+                                  <span style={{ padding: '0.3rem 0.6rem', background: '#dc2626', color: '#fff', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '700' }}>PDF</span>
+                                )}
+                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{slipFile.fileName}</strong>
+                                  <br />
+                                  <small style={{ color: '#93c5fd' }}>{Math.round((slipFile.fileSize || 0) / 1024)} KB · Ready to submit</small>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={removeSlip}
+                                style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', padding: '0.3rem 0.6rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       <p className="payment-workshop-note">
                         This records your intention to pay at the workshop. Bring the invoice
@@ -269,6 +364,11 @@ export default function CustomerPayments() {
               <strong>Reference:</strong> {result.receiptNumber} · <strong>Status:</strong>{' '}
               {result.status}
             </p>
+            {result.paymentSlip && (
+              <p style={{ color: '#4ade80', fontSize: '0.9rem' }}>
+                ✓ Attached slip: {result.paymentSlip.fileName}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -290,6 +390,11 @@ export default function CustomerPayments() {
                     {payment.invoiceNumber || paymentInvoice(payment).invoiceNumber || 'Invoice'} ·{' '}
                     {payment.method} · {dateTime(payment.createdAt)}
                   </p>
+                  {payment.paymentSlip && (
+                    <p style={{ color: '#60a5fa', fontSize: '0.85rem', margin: '0.2rem 0' }}>
+                      📎 Slip: {payment.paymentSlip.fileName || 'Attached document'}
+                    </p>
+                  )}
                   {payment.failureReason && (
                     <p className="payment-failure-note">{payment.failureReason}</p>
                   )}
@@ -300,6 +405,15 @@ export default function CustomerPayments() {
                   >
                     {payment.status}
                   </span>
+                  {payment.paymentSlip && (
+                    <button
+                      type="button"
+                      onClick={() => downloadSlip(payment.paymentSlip)}
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: '#e2e8f0', padding: '0.4rem 0.75rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}
+                    >
+                      View Slip
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => downloadReceipt(payment, paymentInvoice(payment))}

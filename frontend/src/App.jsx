@@ -7,32 +7,22 @@ import CustomerDashboard from './pages/Customer/CustomerDashboard';
 import CustomerVehicles from './pages/Customer/CustomerVehicles';
 import CustomerVehicleProfile from './pages/Customer/CustomerVehicleProfile';
 import CustomerAppointments from './pages/Customer/CustomerAppointments';
-import CustomerRepairTracking from './pages/Customer/CustomerRepairTracking';
-import CustomerRepairApprovals from './pages/Customer/CustomerRepairApprovals';
-import ServiceMessages from './pages/Shared/ServiceMessages';
-import CustomerNotifications from './pages/Customer/CustomerNotifications';
-import CustomerServiceHistory from './pages/Customer/CustomerServiceHistory';
+
 import CustomerInvoices from './pages/Customer/CustomerInvoices';
 import CustomerPayments from './pages/Customer/CustomerPayments';
 import AdminLayout from './components/Layout/AdminLayout';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminAppointments from './pages/Admin/AdminAppointments';
-import AdminUsers from './pages/Admin/AdminUsers';
 import AdminCustomers from './pages/Admin/AdminCustomers';
 import AdminVehicles from './pages/Admin/AdminVehicles';
-import AdminServiceTypes from './pages/Admin/AdminServiceTypes';
 import AdminTechnicians from './pages/Admin/AdminTechnicians';
 import AdminAllocations from './pages/Admin/AdminAllocations';
-import AdminKanban from './pages/Admin/AdminKanban';
 import TechnicianLayout from './components/Layout/TechnicianLayout';
 import TechnicianDashboard from './pages/Technician/TechnicianDashboard';
-import TechnicianSecurity from './pages/Technician/TechnicianSecurity';
 import TechnicianJobs from './pages/Technician/TechnicianJobs';
-import TechnicianJobHistory from './pages/Technician/TechnicianJobHistory';
 import TechnicianJobDetails from './pages/Technician/TechnicianJobDetails';
-import FinanceDashboard from './pages/Finance/FinanceDashboard';
+
 import FinanceInvoices from './pages/Finance/FinanceInvoices';
-import FinanceRevenueReports from './pages/Finance/FinanceRevenueReports';
 import FinancePaymentReview from './pages/Finance/FinancePaymentReview';
 import { AuthProvider } from './auth/AuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
@@ -68,14 +58,15 @@ function App() {
               </Route>
               <Route path="appointments" element={<CustomerAppointments />} />
               <Route path="appointments/book" element={<Navigate to="/customer/appointments" replace />} />
-              <Route path="repair-tracking" element={<CustomerRepairTracking />} />
-              <Route path="repair-approvals" element={<CustomerRepairApprovals />} />
-              <Route path="messages" element={<ServiceMessages />} />
-              <Route path="notifications" element={<CustomerNotifications />} />
-              <Route path="history" element={<CustomerServiceHistory />} />
+              <Route path="repair-approvals" element={<Navigate to="/customer/dashboard" replace />} />
               <Route path="invoices" element={<CustomerInvoices />} />
               <Route path="payments" element={<CustomerPayments />} />
               <Route path="account" element={<Profile />} />
+              {/* Removed pages redirect to dashboard */}
+              <Route path="repair-tracking" element={<Navigate to="/customer/dashboard" replace />} />
+              <Route path="messages" element={<Navigate to="/customer/dashboard" replace />} />
+              <Route path="notifications" element={<Navigate to="/customer/dashboard" replace />} />
+              <Route path="history" element={<Navigate to="/customer/dashboard" replace />} />
             </Route>
           </Route>
 
@@ -85,21 +76,22 @@ function App() {
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="appointments" element={<AdminAppointments />} />
-              <Route path="billing" element={<FinanceDashboard />} />
+              <Route path="billing" element={<Navigate to="/admin/invoices" replace />} />
               <Route path="invoices" element={<FinanceInvoices />} />
               <Route path="payments" element={<FinancePaymentReview />} />
-              <Route path="reports" element={<FinanceRevenueReports />} />
-              <Route path="kanban" element={<AdminKanban />} />
-              <Route path="messages" element={<ServiceMessages />} />
               <Route path="customers" element={<AdminCustomers />} />
-              <Route path="users" element={<AdminUsers />} />
               <Route path="vehicles" element={<AdminVehicles />} />
               <Route path="technicians" element={<AdminTechnicians />} />
               <Route path="allocations" element={<AdminAllocations />} />
-              <Route path="services" element={<AdminServiceTypes />} />
-              <Route path="accounts" element={<Navigate to="/admin/users" replace />} />
-              <Route path="service-types" element={<AdminServiceTypes />} />
               <Route path="account" element={<Profile />} />
+              {/* Removed pages redirect to dashboard */}
+              <Route path="kanban" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="messages" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="users" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="accounts" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="reports" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="services" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="service-types" element={<Navigate to="/admin/dashboard" replace />} />
             </Route>
           </Route>
 
@@ -108,21 +100,22 @@ function App() {
             <Route path="/technician" element={<TechnicianLayout />}>
               <Route index element={<Navigate to="/technician/dashboard" replace />} />
               <Route path="dashboard" element={<TechnicianDashboard />} />
-              <Route path="security" element={<TechnicianSecurity />} />
               <Route path="account" element={<Profile />} />
-              <Route path="messages" element={<ServiceMessages />} />
               <Route path="jobs" element={<TechnicianJobs />} />
-              <Route path="history" element={<TechnicianJobHistory />} />
               <Route path="jobs/:jobId" element={<TechnicianJobDetails />} />
+              {/* Removed pages redirect to dashboard */}
+              <Route path="history" element={<Navigate to="/technician/dashboard" replace />} />
+              <Route path="security" element={<Navigate to="/technician/dashboard" replace />} />
+              <Route path="messages" element={<Navigate to="/technician/dashboard" replace />} />
             </Route>
           </Route>
 
           <Route element={<ProtectedRoute role="Admin" />}>
-            <Route path="/finance" element={<Navigate to="/admin/billing" replace />} />
-            <Route path="/finance/dashboard" element={<Navigate to="/admin/billing" replace />} />
+            <Route path="/finance" element={<Navigate to="/admin/invoices" replace />} />
+            <Route path="/finance/dashboard" element={<Navigate to="/admin/invoices" replace />} />
             <Route path="/finance/invoices" element={<Navigate to="/admin/invoices" replace />} />
             <Route path="/finance/payments" element={<Navigate to="/admin/payments" replace />} />
-            <Route path="/finance/reports" element={<Navigate to="/admin/reports" replace />} />
+            <Route path="/finance/reports" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/finance/account" element={<Navigate to="/admin/account" replace />} />
           </Route>
         </Routes>

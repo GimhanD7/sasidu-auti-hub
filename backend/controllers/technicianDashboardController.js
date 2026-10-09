@@ -80,11 +80,15 @@ export async function getTechnicianDashboard(req, res) {
     const activeJob = jobs.find(job => job.status === 'In Progress') || null;
     const completedJobs = jobs.filter(job => job.status === 'Ready').slice(0, 5);
 
+    const appointmentIdSet = new Set(appointments.map(a => String(a._id)));
+    const standaloneAssignedJobs = assignedJobs.filter(j => !j.appointment || !appointmentIdSet.has(String(j.appointment._id || j.appointment)));
+    const totalAssignedCount = appointments.length + standaloneAssignedJobs.length;
+
     res.set('Cache-Control', 'private, no-store');
     res.json({
       technician: { fullName: req.user.name },
       summary: {
-        assigned: assignedCount,
+        assigned: totalAssignedCount || assignedJobs.length || appointments.length || assignedCount,
         inProgress: inProgressCount,
         waitingForApproval: waitingApprovalCount,
         completedToday: completedTodayCount,
