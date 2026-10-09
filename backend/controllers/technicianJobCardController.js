@@ -113,14 +113,34 @@ export async function updateTechnicianJobCard(req, res) {
       job.replacedParts.pull(req.body.partId);
       message = 'Part entry removed from this job.';
     } else if (action === 'labourAdd') {
-      const description = text(req.body.description || 'Repair labour', 200, 'Labour description');
+      const description = text(req.body.description || 'Service labour', 200, 'Labour description');
       const labourType = req.body.labourType || 'Repair';
-      const hours = Number(req.body.hours);
-      const ratePerHour = Number(req.body.ratePerHour ?? 0);
       if (!LABOUR_TYPES.includes(labourType)) return res.status(400).json({ message: 'Choose a valid labour type.' });
-      if (!Number.isFinite(hours) || hours <= 0 || hours > 24 || !Number.isFinite(ratePerHour) || ratePerHour < 0 || ratePerHour > 100000000) return res.status(400).json({ message: 'Enter valid labour time and hourly rate.' });
+
+      let hours = req.body.hours !== undefined && req.body.hours !== '' ? Number(req.body.hours) : null;
+      let ratePerHour = req.body.ratePerHour !== undefined && req.body.ratePerHour !== '' ? Number(req.body.ratePerHour) : null;
+      const directAmount = req.body.amount !== undefined && req.body.amount !== '' ? Number(req.body.amount) : null;
+
+      if (directAmount !== null) {
+        if (!Number.isFinite(directAmount) || directAmount < 0 || directAmount > 100000000) {
+          return res.status(400).json({ message: 'Enter a valid service charge amount.' });
+        }
+        hours = 1;
+        ratePerHour = directAmount;
+      } else {
+        if (!Number.isFinite(hours) || hours <= 0 || hours > 24 || !Number.isFinite(ratePerHour) || ratePerHour < 0 || ratePerHour > 100000000) {
+          return res.status(400).json({ message: 'Enter valid labour time and hourly rate, or a direct service amount.' });
+        }
+      }
+
       job.labourEntries.push({ description, labourType, minutes: Math.max(1, Math.round(hours * 60)), ratePerHour, technician: req.user._id, recordedAt: now });
-      message = 'Labour time recorded.';
+      message = 'Labour / service charge recorded.';
+    } else if (action === 'labourRemove') {
+      if (!mongoose.isValidObjectId(req.body.labourId)) return res.status(400).json({ message: 'Choose a valid labour entry.' });
+      const entry = job.labourEntries.id(req.body.labourId);
+      if (!entry) return res.status(404).json({ message: 'Labour entry not found.' });
+      job.labourEntries.pull(req.body.labourId);
+      message = 'Labour entry removed from this job.';
     } else if (action === 'labourTimerStart') {
       if (job.activeLabourTimer?.startedAt) return res.status(409).json({ message: 'A labour timer is already running for this job.' });
       const description = text(req.body.description || 'Repair labour', 200, 'Labour description');
@@ -182,21 +202,33 @@ export async function updateTechnicianJobCard(req, res) {
       const labourCost = Math.round(labourItems.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
       const additionalRepairsCost = Math.round(job.additionalRepairs.filter(repair => repair.status === 'Approved').reduce((sum, repair) => sum + (Number(repair.estimatedCost) || 0), 0) * 100) / 100;
       const totalAmount = Math.round((partsCost + labourCost + additionalRepairsCost) * 100) / 100;
-      const existingInvoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
-      const invoice = existingInvoice || await Invoice.create({
-        serviceJob: job._id,
-        customer: job.customer?._id || job.customer,
-        invoiceNumber: `INV-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`,
-        parts,
-        labourItems,
-        partsCost,
-        labourCost,
-        additionalRepairsCost,
-        tax: 0,
-        discount: 0,
-        totalAmount,
-        paymentStatus: 'Draft',
-      });
+      let invoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
+      if (invoice) {
+        invoice.parts = parts;
+        invoice.labourItems = labourItems;
+        invoice.partsCost = partsCost;
+        invoice.labourCost = labourCost;
+        invoice.additionalRepairsCost = additionalRepairsCost;
+        const discount = invoice.discount || 0;
+        const tax = invoice.tax || 0;
+        invoice.totalAmount = Math.max(0, Math.round((partsCost + labourCost + additionalRepairsCost - discount + tax) * 100) / 100);
+        await invoice.save();
+      } else {
+        invoice = await Invoice.create({
+          serviceJob: job._id,
+          customer: job.customer?._id || job.customer,
+          invoiceNumber: `INV-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`,
+          parts,
+          labourItems,
+          partsCost,
+          labourCost,
+          additionalRepairsCost,
+          tax: 0,
+          discount: 0,
+          totalAmount,
+          paymentStatus: 'Draft',
+        });
+      }
       job.finalReport = { notes: reportNotes, tasksVerified: true, partsVerified: true, labourVerified: true, technician: req.user._id, completedAt: now };
       job.billingInvoice = invoice._id;
       job.$locals.statusTransitionFrom = job.status;

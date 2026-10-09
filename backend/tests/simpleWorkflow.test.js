@@ -61,3 +61,61 @@ test('confirmed appointment starts directly, completes without testing, and is p
   const retry = response(); await submitCustomerPayment({ user: customer, body: { ...paymentBody, transactionReference: 'BANK-002' } }, retry); assert.equal(retry.code, 201);
   const paid = response(); await reviewFinancePayment({ params: { paymentId: payments[1]._id }, user: { _id: id(7) }, body: { decision: 'Completed' } }, paid); assert.equal(paid.code, 200); assert.equal(invoice.paymentStatus, 'Paid'); assert.equal(invoice.amountPaid, 2000);
 });
+
+test('technician can add direct service charge without parts and complete job with accurate balance', async t => {
+  const technician = { _id: id(21), role: 'Technician', name: 'Technician 2' };
+  const customer = { _id: id(22) };
+  let job = {
+    _id: id(23),
+    serviceNumber: 'JOB-DIRECT',
+    technician: technician._id,
+    customer: customer._id,
+    status: 'In Progress',
+    tasks: [],
+    additionalRepairs: [],
+    replacedParts: [],
+    labourEntries: [],
+    repairNotes: [],
+    timeline: [],
+    $locals: {},
+    async save() {}
+  };
+  job.labourEntries.id = idVal => job.labourEntries.find(entry => entry._id === idVal);
+  job.labourEntries.pull = idVal => { job.labourEntries = job.labourEntries.filter(entry => entry._id !== idVal); };
+  let invoice = null;
+
+  t.mock.method(ServiceJob, 'findOne', async () => job);
+  t.mock.method(Invoice, 'findOne', async () => invoice);
+  t.mock.method(Invoice, 'create', async data => (invoice = { ...data, _id: id(24), amountPaid: 0, async save() {} }));
+  t.mock.method(Appointment, 'updateOne', async () => ({ modifiedCount: 1 }));
+  t.mock.method(User, 'find', () => ({ select() { return this; }, lean: async () => [] }));
+
+  // Add direct service charge amount (no parts)
+  const addServiceCharge = response();
+  await updateTechnicianJobCard({
+    params: { jobId: job._id },
+    user: technician,
+    body: { action: 'labourAdd', description: 'Periodic General Service', amount: 3500 }
+  }, addServiceCharge);
+
+  assert.equal(addServiceCharge.code, 200);
+  assert.equal(job.labourEntries.length, 1);
+  assert.equal(job.labourEntries[0].ratePerHour, 3500);
+  assert.equal(job.labourEntries[0].minutes, 60);
+
+  // Complete job and verify invoice total matches 3500 without adding any parts
+  const complete = response();
+  await updateTechnicianJobCard({
+    params: { jobId: job._id },
+    user: technician,
+    body: { action: 'completeJob', reportNotes: 'Periodic maintenance inspection and service done.' }
+  }, complete);
+
+  assert.equal(complete.code, 200);
+  assert.equal(job.status, 'Ready');
+  assert.ok(invoice);
+  assert.equal(invoice.partsCost, 0);
+  assert.equal(invoice.labourCost, 3500);
+  assert.equal(invoice.totalAmount, 3500);
+});
+
