@@ -1,3 +1,4 @@
+// Submit bank-transfer evidence or a pay-at-workshop request, then display verification status and payment receipts.
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -66,6 +67,7 @@ export default function CustomerPayments() {
     (payment) => payment.invoiceId === selectedId && payment.status === 'Pending Verification',
   );
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api
@@ -128,6 +130,7 @@ export default function CustomerPayments() {
     setError('');
     setResult(null);
     try {
+      // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data: payment } = await api.post('/customer-payments', {
         invoiceId: selectedId,
         method,

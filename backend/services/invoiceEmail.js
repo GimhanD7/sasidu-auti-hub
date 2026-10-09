@@ -1,3 +1,4 @@
+// SMTP helpers for invoice and payment emails. These methods send mail when called; saving a database record alone does not call them.
 import nodemailer from 'nodemailer';
 
 const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);

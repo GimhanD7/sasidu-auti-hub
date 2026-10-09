@@ -1,3 +1,4 @@
+// Manage vehicles owned by the signed-in customer. Related appointments or service history prevent permanent vehicle deletion.
 import { validVehicleImage } from '../utils/vehicleImage.js';
 import mongoose from 'mongoose';
 import Vehicle from '../models/Vehicle.js';
@@ -78,6 +79,7 @@ export async function getCustomerVehicle(req, res) {
   }
 }
 
+// Join this customer vehicle with repair jobs, recent appointments, and issued invoices for the profile screen.
 export async function getCustomerVehicleProfile(req, res) {
   if (!validId(req.params.vehicleId)) return res.status(400).json({ message: 'Invalid vehicle ID.' });
   try {
@@ -136,6 +138,7 @@ export async function getCustomerVehicleProfile(req, res) {
   }
 }
 
+// Validate the input and attach ownership from the authenticated account rather than accepting a customer ID from the browser.
 export async function createCustomerVehicle(req, res) {
   const { data, error } = validateVehicle(req.body);
   if (error) return res.status(400).json({ message: error });
@@ -143,6 +146,7 @@ export async function createCustomerVehicle(req, res) {
     if (await hasExistingRegistration(data.registrationNumber)) {
       return res.status(409).json({ message: 'That registration number is already registered.' });
     }
+    // Persist vehicle data as a new record in MongoDB; subsequent code uses the stored result.
     const vehicle = await Vehicle.create({ ...data, customer: req.user._id });
     res.status(201).json({ ...vehicle.toObject(), id: vehicle._id });
   } catch (err) {
@@ -152,6 +156,7 @@ export async function createCustomerVehicle(req, res) {
   }
 }
 
+// Restrict the lookup to the current owner and reject a registration number already used by another vehicle.
 export async function updateCustomerVehicle(req, res) {
   if (!validId(req.params.vehicleId)) return res.status(400).json({ message: 'Invalid vehicle ID.' });
   const { data, error } = validateVehicle(req.body);
@@ -163,6 +168,7 @@ export async function updateCustomerVehicle(req, res) {
       return res.status(409).json({ message: 'That registration number is already registered.' });
     }
     Object.assign(vehicle, data);
+    // Persist the changes made to vehicle above; document validation and registered save hooks run here.
     await vehicle.save();
     res.json({ ...vehicle.toObject(), id: vehicle._id });
   } catch (err) {
@@ -172,6 +178,7 @@ export async function updateCustomerVehicle(req, res) {
   }
 }
 
+// Reject deletion when any appointment or service job references this vehicle, preserving linked history.
 export async function deleteCustomerVehicle(req, res) {
   if (!validId(req.params.vehicleId)) return res.status(400).json({ message: 'Invalid vehicle ID.' });
   try {

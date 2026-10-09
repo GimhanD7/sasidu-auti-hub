@@ -1,3 +1,4 @@
+// Workshop booking management: validate customer, vehicle, service, and scheduling data; update bookings and convert appointments into service jobs.
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
@@ -117,6 +118,7 @@ export async function createAdminAppointment(req, res) {
 
     const appointmentObjectId = new mongoose.Types.ObjectId();
     const appointmentNumber = `APT-${preferredDate.replaceAll('-', '')}-${appointmentObjectId.toString().slice(-6).toUpperCase()}`;
+    // Persist appointment data as a new record in MongoDB; subsequent code uses the stored result.
     const appointment = await Appointment.create({
       _id: appointmentObjectId, appointmentNumber, bookingSlotKey: `${preferredDate}|${preferredTime}`,
       customer: customer._id, vehicle: vehicle._id, serviceType, preferredDate: day, preferredTime,
@@ -126,6 +128,7 @@ export async function createAdminAppointment(req, res) {
 
     let notificationCreated = false;
     try {
+      // Persist notification data as a new record in MongoDB; subsequent code uses the stored result.
       await Notification.create({ user: customer._id, type: 'AppointmentConfirmation', title: 'Appointment request received',
         message: `${appointmentNumber}: ${serviceType} for ${vehicle.make} ${vehicle.model} on ${preferredDate} at ${preferredTime}.`,
         link: '/customer/appointments', dedupeKey: `appointment-created:${appointment._id}` });
@@ -136,6 +139,7 @@ export async function createAdminAppointment(req, res) {
     if (createdCustomerId && passwordResetEmail.isConfigured()) {
       try {
         const token = newToken();
+        // Apply the specified user database changes only to records matching this filter.
         await User.updateOne({ _id: createdCustomerId }, { $set: { resetTokenHash: hashToken(token), resetTokenExpiresAt: new Date(Date.now() + 30 * 60 * 1000) } });
         await passwordResetEmail.send(customer.email, token);
         accountSetupEmailSent = true;
@@ -267,6 +271,7 @@ export async function updateAdminAppointment(req, res) {
     if (oldTechnician !== (appointment.assignedTechnician ? String(appointment.assignedTechnician) : '')) changes.push('Technician assignment changed');
     if (body.rescheduleDecision !== undefined) changes.push(`Customer reschedule request ${body.rescheduleDecision.toLowerCase()}`);
     if (changes.length) appointment.history.push({ action: 'Appointment updated', details: changes.join(' · ').slice(0, 1000), actor: req.user._id });
+    // Persist the changes made to appointment above; document validation and registered save hooks run here.
     await appointment.save();
 
     const newTechnician = appointment.assignedTechnician ? String(appointment.assignedTechnician) : '';
@@ -274,6 +279,7 @@ export async function updateAdminAppointment(req, res) {
     if (relatedJob && body.technicianId !== undefined) {
       if (newTechnician !== oldTechnician) relatedJob.technicianAssignments.push({ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: !newTechnician ? 'Removed' : oldTechnician ? 'Reassigned' : 'Assigned' });
       relatedJob.technician = appointment.assignedTechnician;
+      // Persist the changes made to relatedJob above; document validation and registered save hooks run here.
       await relatedJob.save();
     }
     if (relatedJob && oldTechnician && oldTechnician !== newTechnician) await Notification.create({ user: oldTechnician, type: 'ServiceJobUnassigned', title: 'Service job assignment changed', message: 'A service job assigned to you has been reassigned or removed.', link: '/technician/jobs' }).catch(() => {});
@@ -308,6 +314,7 @@ export async function convertAdminAppointmentToJob(req, res) {
         appointment.status = 'In Service';
         appointment.history.push({ action: 'Status changed', details: 'Status: existing service job linked; moved to In Service', actor: req.user._id });
         appointment.bookingSlotKey = undefined;
+        // Persist the changes made to appointment above; document validation and registered save hooks run here.
         await appointment.save();
       }
       return res.status(200).json({ id: String(job._id), serviceNumber: job.serviceNumber, status: job.status, alreadyCreated: true });
@@ -337,6 +344,7 @@ export async function convertAdminAppointmentToJob(req, res) {
     appointment.status = 'In Service';
     appointment.history.push({ action: 'Service job created', details: `Moved to In Service · ${job.serviceNumber}`, actor: req.user._id });
     appointment.bookingSlotKey = undefined;
+    // Persist the changes made to appointment above; document validation and registered save hooks run here.
     await appointment.save();
     if (appointment.assignedTechnician) await Notification.create({ user: appointment.assignedTechnician, type: 'ServiceJobAssigned', title: 'New service job assigned', message: `${job.serviceNumber} has been assigned to you.`, link: '/technician/jobs' }).catch(() => {});
     res.status(201).set('Cache-Control', 'private, no-store').json({ id: String(job._id), serviceNumber: job.serviceNumber, status: job.status, priority: job.priority, expectedCompletionTime: job.expectedCompletionTime || null, customerComplaint: job.customerComplaint, alreadyCreated: false });

@@ -1,3 +1,4 @@
+// Review submitted payments and browse payment history. Only completed payments contribute to the invoice payment total.
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
 import Payment from '../models/Payment.js';
@@ -25,6 +26,7 @@ export async function listFinancePayments(req, res) {
   }
 }
 
+// Apply search, payment-method, and date filters before counting and paging the matching payment records.
 export async function listFinancePaymentHistory(req, res) {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 25));
@@ -84,6 +86,7 @@ export async function listFinancePaymentHistory(req, res) {
 }
 
 
+// Claim a still-pending payment before applying a decision, then recalculate the invoice balance from completed payments.
 export async function reviewFinancePayment(req, res) {
   const { paymentId } = req.params;
   const { decision, failureReason = '' } = req.body || {};
@@ -97,6 +100,7 @@ export async function reviewFinancePayment(req, res) {
     if (!invoice) return res.status(409).json({ message: 'The invoice is no longer available for payment verification.' });
 
     const reviewedAt = new Date();
+    // Apply the specified payment database changes only to records matching this filter.
     const payment = await Payment.findOneAndUpdate({ _id: paymentId, status: 'Pending Verification' }, {
       $set: {
         status: decision,
@@ -115,9 +119,11 @@ export async function reviewFinancePayment(req, res) {
       ]);
       const paymentTotal = Math.round((rows[0]?.amount || 0) * 100) / 100;
       const previousPaymentTotal = Math.max(0, paymentTotal - pendingPayment.amount);
+      // Preserve amounts recorded before individual Payment records existed without counting those records twice.
       const legacyPaidBaseline = Math.max(0, Number(invoice.amountPaid || 0) - previousPaymentTotal);
       const amountPaid = Math.min(invoice.totalAmount, Math.round((legacyPaidBaseline + paymentTotal) * 100) / 100);
       invoiceStatus = amountPaid >= invoice.totalAmount ? 'Paid' : 'Partially Paid';
+      // Apply the specified invoice database changes only to records matching this filter.
       await Invoice.updateOne({ _id: invoice._id, customer: payment.customer, paymentStatus: { $ne: 'Cancelled' } }, {
         $set: { amountPaid, paymentStatus: invoiceStatus, paymentDate: payment.reviewedAt, paymentMethod: payment.method },
       });
@@ -133,6 +139,7 @@ export async function reviewFinancePayment(req, res) {
         dedupeKey: `payment:${payment._id}:${decision}:customer`,
         link: `/customer/payments?invoice=${invoice._id}`,
       }, ...admins.map(admin => ({ user: admin._id, type: 'PaymentReviewComplete', title: `Payment ${decision.toLowerCase()}`, message: `${payment.receiptNumber} for ${invoice.invoiceNumber} was marked ${decision.toLowerCase()}.`, dedupeKey: `payment:${payment._id}:${decision}:admin:${admin._id}`, link: '/admin/payments' }))];
+      // Persist notification records in MongoDB; subsequent code uses the stored result.
       await Notification.insertMany(notifications, { ordered: false });
     } catch { /* Payment review remains saved if notification storage is unavailable. */ }
 

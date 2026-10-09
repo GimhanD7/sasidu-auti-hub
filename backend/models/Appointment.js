@@ -1,3 +1,4 @@
+// Appointment storage: customer/vehicle references, booking slot, status, reschedule request, and history. Save hooks manage slots and customer notices.
 import mongoose from 'mongoose';
 import Notification from './Notification.js';
 
@@ -5,6 +6,7 @@ const appointmentSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
   appointmentNumber: { type: String, unique: true, sparse: true },
+  // One date/time key reserves a slot. Removing it on cancellation/completion makes that slot bookable again.
   bookingSlotKey: { type: String, unique: true, sparse: true },
   serviceType: { type: String, required: true },
   preferredDate: { type: Date, required: true },
@@ -35,6 +37,7 @@ const appointmentSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
+// Document saves refresh the slot key and reminder state. Direct updateOne calls must handle those fields themselves.
 appointmentSchema.pre('save', function releaseFinishedSlot() {
   this.$locals.sendConfirmationNotification = !this.isNew && this.isModified('status') && this.status === 'Confirmed';
   this.$locals.sendCheckedInNotification = !this.isNew && this.isModified('status') && this.status === 'Checked In';

@@ -1,3 +1,4 @@
+// Submit the current and new passwords; a successful change requires signing in again with the new password.
 import PasswordInput from '../../components/PasswordInput';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +27,7 @@ export default function ChangePassword({ embedded = false } = {}) {
     }
     setSaving(true);
     try {
+      // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data } = await api.post('/auth/change-password', {
         currentPassword,
         newPassword,

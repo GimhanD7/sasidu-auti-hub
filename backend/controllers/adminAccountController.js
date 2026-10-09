@@ -1,3 +1,4 @@
+// Administrator account creation and password resets. Passwords are hashed before storage; session invalidation forces affected users to sign in again.
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
@@ -22,6 +23,7 @@ export async function createAdminAccount(req, res) {
   if (password !== confirmPassword) return res.status(400).json({ message: 'Passwords do not match.' });
   try {
     if (await User.exists({ $or: [{ email }, ...(mobile ? [{ mobile }] : [])] })) return res.status(409).json({ message: 'An account already exists with this email or mobile.' });
+    // Persist user data as a new record in MongoDB; subsequent code uses the stored result.
     const user = await User.create({ name, email, ...(mobile ? { mobile } : {}), password: await bcrypt.hash(password, 10), role: 'Admin', createdBy: req.user._id, passwordChangedAt: new Date(), passwordChangedBy: req.user._id });
     return res.status(201).set('Cache-Control', 'private, no-store').json({ account: accountView(user) });
   } catch (error) {
@@ -47,6 +49,7 @@ export async function resetAdminAccountPassword(req, res) {
     account.resetTokenExpiresAt = undefined;
     account.passwordChangedAt = new Date();
     account.passwordChangedBy = req.user._id;
+    // Persist the changes made to account above; document validation and registered save hooks run here.
     await account.save();
     return res.set('Cache-Control', 'private, no-store').json({ message: `Password updated for ${account.name}. They must sign in again.` });
   } catch { return res.status(503).json({ message: 'Unable to update this account password.' }); }

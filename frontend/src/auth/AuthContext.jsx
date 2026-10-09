@@ -1,3 +1,4 @@
+// Keep the current server session in React state. Login/logout call the API; browser state is updated after those requests succeed.
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { AuthContext } from './useAuth';
@@ -9,6 +10,7 @@ export function AuthProvider({ children }) {
   const [sessionError, setSessionError] = useState('');
   const [retry, setRetry] = useState(0);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     // Remove credentials stored by the previous login implementation.
@@ -35,6 +37,7 @@ export function AuthProvider({ children }) {
   }, [retry]);
 
   useEffect(() => {
+    // A rejected session on any API request clears shared login state; unmounting removes this interceptor.
     const id = api.interceptors.response.use(
       (response) => response,
       (error) => {
@@ -52,6 +55,7 @@ export function AuthProvider({ children }) {
       : technicianOnly
         ? '/auth/technician/login'
         : '/auth/login';
+    // Send the submitted data to the server; the response below determines the success message and local state changes.
     const { data } = await api.post(endpoint, loginCredentials);
     setUser(data);
     setSignedOut(false);
@@ -59,6 +63,7 @@ export function AuthProvider({ children }) {
     return data;
   }
   async function logout() {
+    // Send the submitted data to the server; the response below determines the success message and local state changes.
     await api.post('/auth/logout');
     setSignedOut(true);
     setUser(null);

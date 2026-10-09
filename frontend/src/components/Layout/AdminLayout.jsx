@@ -1,3 +1,4 @@
+// Shared admin navigation and page shell; nested routes render inside the layout.
 import React from 'react';
 import LogoutButton from '../../auth/LogoutButton';
 import { useAuth } from '../../auth/useAuth';

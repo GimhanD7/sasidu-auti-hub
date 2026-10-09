@@ -1,3 +1,4 @@
+// Manage technician accounts, skills, work schedules, and availability through server-backed forms.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
@@ -40,6 +41,7 @@ export default function AdminTechnicians() {
     }
   }
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(
@@ -102,6 +104,7 @@ export default function AdminTechnicians() {
     setSaving(true);
     setError('');
     try {
+      // Use the edit/create choice to select the HTTP action; form values are persisted only when this request succeeds.
       const { data } = await api[editingId ? 'patch' : 'post'](
         editingId ? `/admin/technicians/${editingId}` : '/admin/technicians',
         form,
@@ -124,6 +127,7 @@ export default function AdminTechnicians() {
     setAvailabilitySaving(id);
     setError('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       await api.patch(`/admin/technicians/${id}/availability`, { availabilityStatus });
       setTechnicians((current) =>
         current.map((item) => (item.id === id ? { ...item, availabilityStatus } : item)),

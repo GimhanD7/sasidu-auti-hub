@@ -1,3 +1,4 @@
+// Support both requesting a reset email and submitting a new password with the token from a reset link.
 import PasswordInput from '../../components/PasswordInput';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -31,6 +32,7 @@ export default function PasswordReset({ reset = false }) {
     }
     setLoading(true);
     try {
+      // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data } = await api.post(
         reset ? '/auth/reset-password' : '/auth/forgot-password',
         reset ? { token, password, confirmPassword } : { email: email.trim().toLowerCase() },

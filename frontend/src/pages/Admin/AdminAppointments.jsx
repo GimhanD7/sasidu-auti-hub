@@ -1,3 +1,4 @@
+// Manage workshop appointments through booking and edit dialogs, including technician selection and conversion into a service job.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
@@ -372,6 +373,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
   const [problemDescription, setProblemDescription] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     api
       .get('/admin/appointment-options')
@@ -439,6 +441,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
         payload.vehicleId = vehicleId;
       }
 
+      // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data } = await api.post('/admin/appointments', payload);
       await onCreated(data);
     } catch (err) {
@@ -738,6 +741,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
   const [serviceType, setServiceType] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     api
       .get(`/admin/appointments/${appointmentId}`)
@@ -761,6 +765,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
     setSaving(true);
     setError('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       await api.patch(`/admin/appointments/${appointmentId}`, {
         status,
         technicianId: technicianId || null,

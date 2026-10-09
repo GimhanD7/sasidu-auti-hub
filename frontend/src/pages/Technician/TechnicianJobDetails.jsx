@@ -1,3 +1,4 @@
+// Record parts and labour on an assigned service job and submit completion; the server response controls whether editing remains available.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../lib/api';
@@ -15,6 +16,7 @@ export default function TechnicianJobDetails() {
   const [retry, setRetry] = useState(0);
   const [labourInputMode, setLabourInputMode] = useState('direct'); // 'direct' | 'hourly'
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api.get(`/auth/technician/jobs/${jobId}`, { signal: controller.signal })
@@ -27,6 +29,7 @@ export default function TechnicianJobDetails() {
     if (busy) return false;
     setBusy(true); setError(''); setNotice('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       const { data } = await api.patch(`/auth/technician/jobs/${jobId}/card`, { action, ...payload });
       setNotice(data.message);
       // Apply completion immediately so a failed refresh cannot leave the editor open.

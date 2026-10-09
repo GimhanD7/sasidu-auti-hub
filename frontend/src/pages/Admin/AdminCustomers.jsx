@@ -1,3 +1,4 @@
+// Search customer accounts, open related profile details, and submit account creation or editing forms.
 import { serviceStatus, invoiceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
@@ -26,6 +27,7 @@ export default function AdminCustomers() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [formMode, setFormMode] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(
@@ -55,6 +57,7 @@ export default function AdminCustomers() {
     };
   }, [search, page]);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     if (!selectedId) return undefined;
     const controller = new AbortController();
@@ -109,6 +112,7 @@ export default function AdminCustomers() {
     setStatusSaving(true);
     setError('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       const { data } = await api.patch(`/admin/customers/${selectedId}/status`, {
         isActive: !customerDetails.customer.isActive,
       });

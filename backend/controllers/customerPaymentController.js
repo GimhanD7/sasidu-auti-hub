@@ -1,3 +1,4 @@
+// Record payment submissions for staff verification. Submitting a reference or workshop payment request does not itself settle the invoice.
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
 import Notification from '../models/Notification.js';
@@ -53,6 +54,7 @@ export async function getCustomerPaymentOptions(req, res) {
   }
 }
 
+// Calculate the outstanding amount on the server and create a pending submission; staff verification is a separate action.
 export async function submitCustomerPayment(req, res) {
   const { invoiceId, method, transactionReference = '', paymentSlip } = req.body || {};
   if (!mongoose.isValidObjectId(invoiceId)) return res.status(400).json({ message: 'Choose a valid invoice.' });
@@ -89,6 +91,7 @@ export async function submitCustomerPayment(req, res) {
     const amountDue = Math.max(0, money(invoice.totalAmount - paidSoFar));
     if (amountDue <= 0) return res.status(409).json({ message: 'This invoice is already paid.' });
     const generatedReference = method === 'Pay at Workshop' ? `WORKSHOP-${new mongoose.Types.ObjectId().toString().slice(-8).toUpperCase()}` : transactionReference.trim();
+    // Persist payment data as a new record in MongoDB; subsequent code uses the stored result.
     const payment = await Payment.create({
       invoice: invoice._id,
       customer: req.user._id,

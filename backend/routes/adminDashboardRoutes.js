@@ -1,3 +1,4 @@
+// Wire HTTP paths to controller actions. Middleware order determines which session and role checks run before each handler.
 import express from 'express';
 import { getAdminDashboard, listAdminAppointments } from '../controllers/adminDashboardController.js';
 import { getAdminAppointmentOptions, createAdminAppointment, getAdminAppointment, updateAdminAppointment, convertAdminAppointmentToJob } from '../controllers/adminAppointmentController.js';

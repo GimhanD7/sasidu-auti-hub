@@ -1,3 +1,4 @@
+// Store user notifications with optional deduplication keys so repeated workflow events can avoid duplicate notices.
 import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({

@@ -1,3 +1,4 @@
+// Load server settings and connect to MongoDB before starting the API listener and appointment reminder checks.
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { createApp } from './app.js';

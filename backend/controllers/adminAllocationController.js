@@ -1,3 +1,4 @@
+// List technician workloads and change job assignments, keeping the linked appointment and assignment history in sync.
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
@@ -36,6 +37,7 @@ export async function listAdminAllocations(req, res) {
   } catch { res.status(503).json({ message: 'Unable to load technician allocation data.' }); }
 }
 
+// Record assignment history, update the linked appointment, and notify technicians whose assignments changed.
 export async function updateAdminJobTechnician(req, res) {
   const { jobId } = req.params;
   const technicianId = req.body?.technicianId;
@@ -58,11 +60,13 @@ export async function updateAdminJobTechnician(req, res) {
     const previousTechnicianId = job.technician;
     job.technician = nextTechnician?._id;
     job.technicianAssignments.push({ technician: nextTechnician?._id || previousTechnicianId, assignedBy: req.user._id, assignedAt: new Date(), action });
+    // Persist the changes made to job above; document validation and registered save hooks run here.
     await job.save();
     if (job.appointment) {
       const appointmentUpdate = nextTechnician?._id
         ? { $set: { assignedTechnician: nextTechnician._id } }
         : { $unset: { assignedTechnician: 1 } };
+      // Apply the specified appointment database changes only to records matching this filter.
       await Appointment.updateOne({ _id: job.appointment }, appointmentUpdate);
     }
     if (previousId && previousId !== nextId) await Notification.create({ user: previousId, type: 'ServiceJobUnassigned', title: 'Service job assignment changed', message: `${job.serviceNumber} is no longer assigned to you.`, link: '/technician/jobs' }).catch(() => {});

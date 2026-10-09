@@ -1,3 +1,4 @@
+// Trigger the shared logout action from a button and handle the surrounding sign-out UI.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';

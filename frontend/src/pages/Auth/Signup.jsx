@@ -1,3 +1,4 @@
+// Validate registration form input and send an account creation request; form changes remain local until submission.
 import { notify } from '../../lib/notify';
 import PasswordInput from '../../components/PasswordInput';
 import React, { useState } from 'react';

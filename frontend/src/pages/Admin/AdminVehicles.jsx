@@ -1,3 +1,4 @@
+// Search workshop vehicles, inspect related details, and submit vehicle create/edit forms for the selected customer.
 import { serviceStatus, invoiceStatus } from '../../lib/serviceStatus';
 import VehicleImageInput from '../../components/VehicleImageInput';
 import { useEffect, useState } from 'react';
@@ -27,6 +28,7 @@ export default function AdminVehicles() {
   const [notice, setNotice] = useState('');
   const [formMode, setFormMode] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(
@@ -56,6 +58,7 @@ export default function AdminVehicles() {
     };
   }, [search, page]);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     if (!selectedId) return undefined;
     const controller = new AbortController();
@@ -261,6 +264,7 @@ function VehicleForm({ mode, vehicle, customer, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(

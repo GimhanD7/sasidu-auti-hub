@@ -1,3 +1,4 @@
+// Manage service catalog forms, search, and active status. Creating, updating, deleting, or toggling a service calls the API before refreshing the list.
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 const blank = { name: '', defaultDurationMinutes: 60, estimatedCost: 0, requiredSkill: '' };
@@ -34,6 +35,7 @@ export default function AdminServiceTypes() {
       setLoading(false);
     }
   }
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     let cancelled = false;
     api
@@ -73,6 +75,7 @@ export default function AdminServiceTypes() {
     setSaving(true);
     setError('');
     try {
+      // Use the edit/create choice to select the HTTP action; form values are persisted only when this request succeeds.
       await api[editingId ? 'patch' : 'post'](
         editingId ? `/admin/service-types/${editingId}` : '/admin/service-types',
         form,
@@ -93,6 +96,7 @@ export default function AdminServiceTypes() {
     setSaving(true);
     setError('');
     try {
+      // Ask the server to remove this record; server-side checks decide whether deletion is allowed.
       const { data } = await api.delete(`/admin/service-types/${item.id}`);
       setNotice(data.message);
       await load();
@@ -106,6 +110,7 @@ export default function AdminServiceTypes() {
     setSaving(true);
     setError('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       await api.patch(`/admin/service-types/${item.id}/deactivate`);
       setNotice(`${item.name} was deactivated and is no longer bookable.`);
       await load();
@@ -119,6 +124,7 @@ export default function AdminServiceTypes() {
     setSaving(true);
     setError('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       await api.patch(`/admin/service-types/${item.id}/activate`);
       setNotice(`${item.name} is active and available for booking.`);
       await load();

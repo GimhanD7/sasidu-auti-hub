@@ -1,3 +1,4 @@
+// Shared HTTP client: use the configured API host, include the session cookie, and time out requests after 20 seconds.
 import axios from 'axios';
 
 export const api = axios.create({

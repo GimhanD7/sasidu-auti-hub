@@ -1,3 +1,4 @@
+// Review completed work and invoices, save or edit drafts, issue invoices, and delete drafts through billing API actions.
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { invoiceStatus } from '../../lib/serviceStatus';
@@ -26,6 +27,7 @@ export default function FinanceInvoices() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     let active = true;
     api
@@ -96,6 +98,7 @@ export default function FinanceInvoices() {
     setError('');
     setNotice('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       const { data } = await api.patch(`/admin/invoices/${invoice.id}`, {
         taxRate: Number(taxRate) || 0,
         discountRate: Number(discountRate) || 0,
@@ -130,6 +133,7 @@ export default function FinanceInvoices() {
     setError('');
     setNotice('');
     try {
+      // Ask the server to remove this record; server-side checks decide whether deletion is allowed.
       const { data } = await api.delete(`/admin/invoices/${invoice.id}`);
       const remaining = invoices.filter((item) => item.id !== invoice.id);
       setInvoices(remaining);

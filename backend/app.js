@@ -1,3 +1,4 @@
+// Build the Express API: allow the configured frontend, apply JSON size limits, mount routes, and translate uncaught errors into responses.
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
@@ -14,6 +15,7 @@ import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
 export function createApp() {
   const app = express();
   const frontendOrigin = new URL(process.env.FRONTEND_URL || 'http://localhost:5173').origin;
+  // Credentialed browser requests may come from the configured frontend origin.
   app.use(cors({ origin: frontendOrigin, credentials: true }));
   app.use((req, res, next) => {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin && req.headers.origin !== frontendOrigin) {
@@ -21,6 +23,7 @@ export function createApp() {
     }
     next();
   });
+  // Image-bearing routes get a larger JSON limit before the general 16 KB parser runs.
   app.use('/api/auth/technician/jobs', (req, res, next) => {
     if (req.method === 'POST' && /\/photos$/.test(req.path)) return express.json({ limit: '2mb' })(req, res, next);
     next();

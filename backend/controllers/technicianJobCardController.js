@@ -1,3 +1,4 @@
+// Apply job-card actions to an assigned job: inspection, tasks, parts, labour, testing, completion, and photo evidence.
 import mongoose from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import ServiceJob from '../models/ServiceJob.js';
@@ -24,11 +25,13 @@ const textList = (value, label) => {
   return value.map(item => text(item, 500, label, { required: true }));
 };
 
+// Scope the lookup to the requesting technician so job-card edits cannot target somebody else's assignment.
 async function findAssignedJob(jobId, technicianId) {
   if (!mongoose.isValidObjectId(jobId)) return null;
   return ServiceJob.findOne({ _id: jobId, technician: technicianId });
 }
 
+// Dispatch the requested action, enforce its workflow rules, and persist changes to the assigned job.
 export async function updateTechnicianJobCard(req, res) {
   const { action } = req.body || {};
   if (typeof action !== 'string') return res.status(400).json({ message: 'Choose a job card update.' });
@@ -191,6 +194,7 @@ export async function updateTechnicianJobCard(req, res) {
         message = 'Final test failed. The job returned to In Progress for further repair.';
       }
     } else if (action === 'completeJob') {
+      // Completion requires finished tasks, a stopped timer, and a report. It prepares billing before marking the job Ready.
       if (!['In Progress', 'Inspecting', 'Final Test'].includes(job.status)) return res.status(409).json({ message: 'Start the service before completing it.' });
       if (job.tasks.some(task => !['Complete', 'Cancelled'].includes(task.status))) return res.status(409).json({ message: 'Complete or cancel all repair tasks before completing this job.' });
 
@@ -200,6 +204,7 @@ export async function updateTechnicianJobCard(req, res) {
       const labourItems = (job.labourEntries || []).map(entry => ({ description: `${entry.labourType || 'Repair'} · ${entry.description || 'Labour'}`, hours: Math.round((Number(entry.minutes) || 0) / 60 * 100) / 100, rate: Number(entry.ratePerHour) || 0, total: Math.round(((Number(entry.minutes) || 0) / 60) * (Number(entry.ratePerHour) || 0) * 100) / 100 }));
       const partsCost = Math.round(parts.reduce((sum, part) => sum + part.total, 0) * 100) / 100;
       const labourCost = Math.round(labourItems.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
+      // This completion flow bills recorded parts and labour; it does not add a separate additional-repair charge.
       const additionalRepairsCost = 0;
       const totalAmount = Math.round((partsCost + labourCost + additionalRepairsCost) * 100) / 100;
       let invoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
@@ -212,6 +217,7 @@ export async function updateTechnicianJobCard(req, res) {
         const discount = invoice.discount || 0;
         const tax = invoice.tax || 0;
         invoice.totalAmount = Math.max(0, Math.round((partsCost + labourCost + additionalRepairsCost - discount + tax) * 100) / 100);
+        // Persist the changes made to invoice above; document validation and registered save hooks run here.
         await invoice.save();
       } else {
         invoice = await Invoice.create({
@@ -234,6 +240,7 @@ export async function updateTechnicianJobCard(req, res) {
       job.$locals.statusTransitionFrom = job.status;
       job.status = 'Ready';
       job.timeline.push({ status: 'Ready', timestamp: now, actor: req.user._id, notes: reportNotes });
+      // Persist the changes made to job above; document validation and registered save hooks run here.
       await job.save();
       if (job.appointment) await Appointment.updateOne({ _id: job.appointment }, { $set: { status: 'Completed' }, $unset: { bookingSlotKey: '' }, $push: { history: { action: 'Service completed', details: 'Technician completed the service and prepared billing.', actor: req.user._id, timestamp: now } } });
       try {
@@ -255,6 +262,7 @@ export async function updateTechnicianJobCard(req, res) {
       message = `Job status updated to ${nextStatus}.`;
     } else return res.status(400).json({ message: 'Choose a supported job card update.' });
 
+    // Persist the changes made to job above; document validation and registered save hooks run here.
     await job.save();
     return res.json({ message, status: job.status });
   } catch (error) {
@@ -263,6 +271,7 @@ export async function updateTechnicianJobCard(req, res) {
   }
 }
 
+// Check file bytes as well as the declared content type to reject data that is not the claimed image format.
 function photoSignatureMatches(buffer, contentType) {
   if (contentType === 'image/jpeg') return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
   if (contentType === 'image/png') return buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
@@ -270,6 +279,7 @@ function photoSignatureMatches(buffer, contentType) {
   return false;
 }
 
+// Validate image data, job ownership, photo count, and workflow stage before saving photo bytes.
 export async function uploadTechnicianJobPhoto(req, res) {
   const { filename, contentType, data } = req.body || {};
   const category = req.body?.category || 'Job';
@@ -295,11 +305,13 @@ export async function uploadTechnicianJobPhoto(req, res) {
     if (category === 'RepairEvidence' && evidenceType === 'Additional Repair' && !['Inspecting', 'In Progress'].includes(job.status)) return res.status(409).json({ message: 'Additional repair images can only be added while inspecting or repairing the vehicle.' });
     if (category === 'RepairEvidence' && evidenceType === 'After Repair' && !['In Progress', 'Final Test', 'Ready'].includes(job.status)) return res.status(409).json({ message: 'After-repair images can be added while repair or final testing is underway.' });
     if (category === 'RepairEvidence' && evidenceType !== 'Additional Repair' && evidenceType !== 'After Repair' && !['Inspecting', 'In Progress'].includes(job.status)) return res.status(409).json({ message: 'Before-repair and damaged-part images can only be added while inspecting or repairing the vehicle.' });
+    // Persist job photo data as a new record in MongoDB; subsequent code uses the stored result.
     const photo = await JobPhoto.create({ job: job._id, uploadedBy: req.user._id, filename: safeFilename, contentType, category, evidenceType, description, data: buffer });
     return res.status(201).json({ photo: { id: String(photo._id), filename: photo.filename, contentType: photo.contentType, category: photo.category, evidenceType: photo.evidenceType, description: photo.description, createdAt: photo.createdAt } });
   } catch { return res.status(503).json({ message: 'Unable to upload this job photo. Please try again.' }); }
 }
 
+// Check the assigned job before returning stored image bytes with their content type and private caching headers.
 export async function getTechnicianJobPhoto(req, res) {
   try {
     const job = await findAssignedJob(req.params.jobId, req.user._id);

@@ -1,3 +1,4 @@
+// Persist repair progress, assignments, parts, labour, reports, and history. Save hooks create customer notices for selected status milestones.
 import mongoose from 'mongoose';
 import Notification from './Notification.js';
 
@@ -117,6 +118,7 @@ const serviceJobSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
+// Remember which customer milestone the status change represents before the document is saved.
 serviceJobSchema.pre('save', function captureCustomerMilestones() {
   const milestones = {
     'Final Test': { type: 'FinalTest', title: 'Final testing started', message: 'Your vehicle has moved to final testing.' },
@@ -136,6 +138,7 @@ serviceJobSchema.pre('save', function captureCustomerMilestones() {
 
 });
 
+// Notifications are best effort after the job is stored; a notification failure must not undo repair progress.
 serviceJobSchema.post('save', async function notifyCustomerOfServiceMilestones(job) {
   const notifications = (job.$locals.customerMilestones || []).map(item => ({
     user: job.customer, ...item, link: item.type === 'InvoiceNotification' ? '/customer/invoices' : '/customer/repair-tracking',

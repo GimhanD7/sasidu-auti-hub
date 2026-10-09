@@ -1,3 +1,4 @@
+// Return invoices belonging to the signed-in customer, excluding drafts that have not been issued.
 import Invoice from '../models/Invoice.js';
 
 export async function listCustomerInvoices(req, res) {

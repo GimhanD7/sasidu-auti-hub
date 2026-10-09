@@ -1,3 +1,4 @@
+// Wait for session verification, show retryable connection errors, and redirect visitors who lack the required role.
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './useAuth';
 import { dashboardForRole } from './roles';

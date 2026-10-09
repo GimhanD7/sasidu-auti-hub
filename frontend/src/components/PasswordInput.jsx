@@ -1,3 +1,4 @@
+// Wrap a password field with a visibility toggle; changing visibility affects presentation only.
 import { useState } from 'react';
 export default function PasswordInput(props) {
   const [visible, setVisible] = useState(false);

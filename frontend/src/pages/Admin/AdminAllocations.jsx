@@ -1,3 +1,4 @@
+// Display active jobs and technician workloads; assignment changes are sent to the server and reflected in the allocation view.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
@@ -19,6 +20,7 @@ export default function AdminAllocations() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(
@@ -52,6 +54,7 @@ export default function AdminAllocations() {
     setError('');
     setNotice('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       const { data } = await api.patch(`/admin/jobs/${job.id}/technician`, { technicianId });
       setJobs((current) =>
         current.map((item) =>

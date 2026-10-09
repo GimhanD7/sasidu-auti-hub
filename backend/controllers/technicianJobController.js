@@ -1,3 +1,4 @@
+// Read assigned service jobs and part suggestions, shaping related database records into job list and detail responses.
 import mongoose from 'mongoose';
 import ServiceJob from '../models/ServiceJob.js';
 import Appointment from '../models/Appointment.js';

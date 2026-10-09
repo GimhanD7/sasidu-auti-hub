@@ -1,3 +1,4 @@
+// Assemble the signed-in customer dashboard from their vehicles, appointments, jobs, invoices, and notifications.
 import Vehicle from '../models/Vehicle.js';
 import Appointment from '../models/Appointment.js';
 import ServiceJob from '../models/ServiceJob.js';

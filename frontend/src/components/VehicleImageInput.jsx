@@ -1,3 +1,4 @@
+// Read and preview a JPG/PNG or accept an image URL. onChange updates the parent form; the vehicle save action persists it later.
 import { useRef, useState } from 'react';
 export default function VehicleImageInput({ value = '', onChange, disabled }) {
   const [error, setError] = useState('');

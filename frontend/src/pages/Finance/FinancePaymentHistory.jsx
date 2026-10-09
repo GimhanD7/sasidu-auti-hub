@@ -1,3 +1,4 @@
+// Browse payment history with filters and pagination, and export or print the displayed finance data.
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { downloadFinanceCsv } from '../../lib/financeExport';
@@ -23,6 +24,7 @@ export default function FinancePaymentHistory() {
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api

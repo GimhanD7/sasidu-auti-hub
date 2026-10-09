@@ -1,9 +1,11 @@
+// Check upcoming appointments every minute and store deduplicated reminders; failed checks are retried on a later interval.
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 
 const REMINDER_STATUSES = ['Pending', 'Confirmed'];
 const CHECK_INTERVAL_MS = 60 * 1000;
 
+// Translate the appointment wall-clock time in the workshop timezone into an absolute instant for reminder comparisons.
 function appointmentStart(appointment) {
   const date = appointment.preferredDate.toISOString().slice(0, 10);
   const [year, month, day] = date.split('-').map(Number);
@@ -27,6 +29,7 @@ function appointmentStart(appointment) {
   return new Date(instant);
 }
 
+// Find upcoming unsent reminders, deduplicate notification creation, and mark the matching appointment time as reminded.
 async function sendDueReminders() {
   const now = new Date();
   const from = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -48,6 +51,7 @@ async function sendDueReminders() {
     if (start <= now || start.getTime() - reminderWindowMs > now.getTime()) continue;
     const dedupeKey = `appointment-reminder:${appointment._id}`;
     try {
+      // Persist notification data as a new record in MongoDB; subsequent code uses the stored result.
       await Notification.create({
         user: appointment.customer,
         type: 'AppointmentReminder',
@@ -59,10 +63,12 @@ async function sendDueReminders() {
     } catch (error) {
       if (error.code !== 11000) throw error;
     }
+    // Apply the specified appointment database changes only to records matching this filter.
     await Appointment.updateOne({ _id: appointment._id, preferredDate: appointment.preferredDate, preferredTime: appointment.preferredTime, status: { $in: REMINDER_STATUSES }, reminderSentAt: { $exists: false } }, { $set: { reminderSentAt: now } });
   }
 }
 
+// Run once immediately, then every minute. The running flag prevents overlapping checks in this process.
 export function startAppointmentReminderScheduler() {
   let running = false;
   const check = async () => {

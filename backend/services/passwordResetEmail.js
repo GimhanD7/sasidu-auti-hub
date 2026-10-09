@@ -1,3 +1,4 @@
+// Build and send password reset links through SMTP using server-only mail settings.
 import nodemailer from 'nodemailer';
 
 export const passwordResetEmail = {

@@ -1,3 +1,4 @@
+// Render the public workshop landing page and navigation into booking and account access.
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { dashboardForRole } from '../auth/roles';

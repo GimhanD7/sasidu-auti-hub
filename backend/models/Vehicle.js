@@ -1,3 +1,4 @@
+// Store vehicle identity and service-related details under a customer reference; registration uniqueness prevents duplicate vehicle records.
 import mongoose from 'mongoose';
 
 const vehicleSchema = new mongoose.Schema({

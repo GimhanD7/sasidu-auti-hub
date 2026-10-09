@@ -1,3 +1,4 @@
+// Display issued invoices and provide a print view; printing does not change payment status.
 import { amountDue, canPayInvoice } from '../../lib/invoicePayment';
 import { invoiceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
@@ -132,6 +133,7 @@ export default function CustomerInvoices() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [printTarget, setPrintTarget] = useState('');
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api

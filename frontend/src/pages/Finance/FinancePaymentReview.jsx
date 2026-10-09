@@ -1,3 +1,4 @@
+// Review pending payment submissions and send a completed/failed decision to the server for invoice reconciliation.
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import FinancePaymentHistory from './FinancePaymentHistory';
@@ -26,6 +27,7 @@ export default function FinancePaymentReview() {
   const [retry, setRetry] = useState(0);
   const [previewSlip, setPreviewSlip] = useState(null);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api
@@ -48,6 +50,7 @@ export default function FinancePaymentReview() {
     setError('');
     setNotice('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       const { data } = await api.patch(`/admin/payments/${payment.id}/review`, {
         decision,
         failureReason: reasons[payment.id] || '',

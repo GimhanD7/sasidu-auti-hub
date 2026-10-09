@@ -1,3 +1,4 @@
+// Choose the landing dashboard for an account role so authentication redirects stay consistent.
 export const dashboardForRole = (role) =>
   ({
     Customer: '/customer/dashboard',

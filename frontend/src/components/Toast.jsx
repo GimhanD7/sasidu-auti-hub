@@ -1,3 +1,4 @@
+// Listen for notification events and show transient feedback to the user.
 import { useEffect, useState } from 'react';
 export default function Toast() {
   const [toast, setToast] = useState(null);

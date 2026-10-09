@@ -1,3 +1,4 @@
+// Show the customer appointment list and submit cancellation or rescheduling actions with feedback from the server.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -55,6 +56,7 @@ export default function CustomerAppointments() {
   const [retry, setRetry] = useState(0);
   const [availabilityRetry, setAvailabilityRetry] = useState(0);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([
@@ -81,6 +83,7 @@ export default function CustomerAppointments() {
     return () => controller.abort();
   }, [retry]);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api
@@ -98,6 +101,7 @@ export default function CustomerAppointments() {
     return () => controller.abort();
   }, [appointmentRetry]);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     if (!options) return undefined;
     const controller = new AbortController();
@@ -126,6 +130,7 @@ export default function CustomerAppointments() {
     return () => controller.abort();
   }, [options, rangeStart, rangeLength, availabilityRetry]);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     if (!rescheduleForm?.date) return undefined;
     const controller = new AbortController();
@@ -171,6 +176,7 @@ export default function CustomerAppointments() {
     setBooking(true);
     setFormError('');
     try {
+      // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data } = await api.post('/appointments', {
         vehicleId: selectedVehicle,
         serviceType,
@@ -213,6 +219,7 @@ export default function CustomerAppointments() {
     setManagementError('');
     setManagementMessage('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       await api.patch(`/appointments/${appointment.id}/cancel`);
       setManagementMessage(`Appointment ${appointment.appointmentNumber} was cancelled.`);
       setCancelConfirmId('');
@@ -233,6 +240,7 @@ export default function CustomerAppointments() {
     setManagementMessage('');
     setRescheduleError('');
     try {
+      // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data } = await api.post(`/appointments/${rescheduleForm.id}/reschedule-request`, {
         preferredDate: rescheduleForm.date,
         preferredTime: rescheduleForm.time,

@@ -1,3 +1,4 @@
+// Service catalog fields describe booking duration, estimated cost, and required skill; active/deleted flags control catalog visibility.
 import mongoose from 'mongoose';
 
 const serviceTypeSchema = new mongoose.Schema({

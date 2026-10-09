@@ -1,3 +1,4 @@
+// Manage customer vehicle cards and create/edit dialogs. Save and remove actions call the API; typing in a form only changes local state.
 import VehicleImageInput from '../../components/VehicleImageInput';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -315,6 +316,7 @@ export default function CustomerVehicles() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api
@@ -407,6 +409,7 @@ export default function CustomerVehicles() {
     setDeletingId(id);
     setPageError('');
     try {
+      // Ask the server to remove this record; server-side checks decide whether deletion is allowed.
       await api.delete(`/vehicles/${id}`);
       setVehicles((previous) => previous.filter((item) => (item._id || item.id) !== id));
       setConfirmDeleteId(null);

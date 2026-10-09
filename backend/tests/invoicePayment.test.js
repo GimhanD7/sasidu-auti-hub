@@ -1,3 +1,4 @@
+// Regression tests for the behaviors named in each test; assertions document expected results and rejected inputs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Invoice from '../models/Invoice.js';

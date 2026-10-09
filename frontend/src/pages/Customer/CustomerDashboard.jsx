@@ -1,3 +1,4 @@
+// Load the customer overview and display upcoming appointments, vehicle service progress, and account summaries.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -277,6 +278,7 @@ export default function CustomerDashboard() {
   const [result, setResult] = useState(null);
   const [retry, setRetry] = useState(0);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api

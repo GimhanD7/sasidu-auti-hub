@@ -1,3 +1,4 @@
+// Load assigned service jobs and link each job to its editable detail view.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ export default function TechnicianJobs() {
   const [startingAppointmentId, setStartingAppointmentId] = useState('');
   const [startError, setStartError] = useState('');
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(
@@ -74,6 +76,7 @@ export default function TechnicianJobs() {
     setStartingAppointmentId(appointmentId);
     setStartError('');
     try {
+      // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data } = await api.post(`/auth/technician/appointments/${appointmentId}/start`);
       navigate(`/technician/jobs/${data.id}`);
     } catch (error) {

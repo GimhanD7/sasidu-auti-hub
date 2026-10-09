@@ -1,3 +1,4 @@
+// Store billing line items, totals, and payment state. Save hooks choose customer notifications when an invoice is issued or marked paid.
 import mongoose from 'mongoose';
 import Notification from './Notification.js';
 import ServiceJob from './ServiceJob.js';
@@ -36,6 +37,8 @@ const invoiceSchema = new mongoose.Schema({
   dueDate: { type: Date }
 }, { timestamps: true });
 
+// Capture notification intent before saving; the post-save hook delivers it only after persistence succeeds.
+// These document hooks do not run for direct updateOne operations such as payment reconciliation.
 invoiceSchema.pre('save', function captureCustomerInvoiceEvents() {
   this.$locals.customerInvoiceEvent = null;
   if (this.paymentStatus === 'Pending' && !this.dueDate) this.dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -49,6 +52,7 @@ invoiceSchema.post('save', async function notifyCustomerOfInvoiceEvent(invoice) 
   try {
     const job = await ServiceJob.findById(invoice.serviceJob).select('serviceNumber').lean();
     const paid = type === 'PaymentConfirmation';
+    // Persist notification data as a new record in MongoDB; subsequent code uses the stored result.
     await Notification.create({
       user: invoice.customer,
       type,

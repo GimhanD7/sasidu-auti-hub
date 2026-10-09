@@ -1,3 +1,4 @@
+// Map URLs to pages and role-specific layouts. ProtectedRoute checks the session before rendering protected page groups.
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Auth/Login';
 import Home from './pages/Home';

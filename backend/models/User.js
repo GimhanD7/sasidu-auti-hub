@@ -1,14 +1,17 @@
+// Store account identity, hashed passwords, access role, session version, and technician scheduling details.
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, trim: true, lowercase: true },
   mobile: { type: String, unique: true, sparse: true }, // Legacy profiles may omit mobile
+  // Controllers must hash passwords before assigning this field; the schema does not hash them automatically.
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'Customer', 'Admin', 'Technician'], default: 'Customer' },
   isActive: { type: Boolean, default: true },
   resetTokenHash: { type: String, select: false },
   resetTokenExpiresAt: { type: Date, select: false },
+  // Increasing this number invalidates older sessions when requireAuth compares their stored version.
   sessionVersion: { type: Number, default: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   passwordChangedAt: Date,

@@ -1,3 +1,4 @@
+// Edit the current account profile and synchronize saved details with the shared authentication state.
 import ChangePassword from './ChangePassword';
 import { useState } from 'react';
 import { api } from '../../lib/api';
@@ -27,6 +28,7 @@ export default function Profile() {
     setError('');
     setNotice('');
     try {
+      // Request a server-side change; update the displayed state from the successful response below.
       const { data } = await api.patch('/auth/me', form);
       setForm({
         fullName: data.user.fullName || '',

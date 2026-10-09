@@ -1,3 +1,4 @@
+// Build billing lines from completed work, save drafts, issue invoices, and remove drafts. Tax is calculated after the discount.
 import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
@@ -12,6 +13,7 @@ const jobPopulate = [
   { path: 'billingInvoice', select: 'invoiceNumber paymentStatus totalAmount partsCost labourCost additionalRepairsCost tax discount parts labourItems' },
 ];
 
+// Convert recorded parts and labour to monetary lines and include only approved additional repairs in the subtotal.
 function buildInvoiceLines(job) {
   const parts = (job.replacedParts || []).map(part => {
     const quantity = Number(part.quantity) || 0;
@@ -82,6 +84,7 @@ export async function listFinanceInvoices(req, res) {
   }
 }
 
+// Only drafts may be edited here. Finalizing changes the status to Pending and requires a positive invoice total.
 export async function updateDraftInvoice(req, res) {
   const { invoiceId } = req.params;
   const taxRate = Number(req.body?.taxRate ?? 0);
@@ -97,6 +100,7 @@ export async function updateDraftInvoice(req, res) {
     invoice.totalAmount = roundMoney(subtotal - invoice.discount + invoice.tax);
     if (req.body?.finalize === true && invoice.totalAmount <= 0) return res.status(400).json({ message: 'Add the correct parts or labour charges before issuing this invoice. The amount due must be greater than LKR 0.00.' });
     if (req.body?.finalize === true) invoice.paymentStatus = 'Pending';
+    // Persist the changes made to invoice above; document validation and registered save hooks run here.
     await invoice.save();
     res.set('Cache-Control', 'private, no-store').json({ message: req.body?.finalize === true ? 'Invoice finalized and issued to the customer.' : 'Draft invoice updated.', invoice: {
       id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus,
@@ -108,12 +112,14 @@ export async function updateDraftInvoice(req, res) {
   }
 }
 
+// Unlink the job before removing a draft invoice; issued invoices are excluded by the lookup.
 export async function deleteDraftInvoice(req, res) {
   const { invoiceId } = req.params;
   if (!mongoose.isValidObjectId(invoiceId)) return res.status(400).json({ message: 'Invalid invoice.' });
   try {
     const invoice = await Invoice.findOne({ _id: invoiceId, paymentStatus: 'Draft' });
     if (!invoice) return res.status(404).json({ message: 'Draft invoice not found.' });
+    // Apply the specified service job database changes only to records matching this filter.
     await ServiceJob.updateOne({ billingInvoice: invoice._id }, { $unset: { billingInvoice: 1 } });
     await invoice.deleteOne();
     res.set('Cache-Control', 'private, no-store').json({ message: 'Draft invoice deleted.' });
@@ -122,6 +128,7 @@ export async function deleteDraftInvoice(req, res) {
   }
 }
 
+// Reuse the existing draft or create one for a completed job; reject a second finalized invoice for that job.
 export async function saveJobInvoice(req, res) {
   const taxRate = Number(req.body?.taxRate ?? 0);
   const discountRate = Number(req.body?.discountRate ?? 0);

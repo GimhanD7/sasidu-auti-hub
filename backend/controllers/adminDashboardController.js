@@ -1,3 +1,4 @@
+// Build the administrator dashboard and appointment list from workshop records; return display data without changing those records.
 import Appointment from '../models/Appointment.js';
 import Invoice from '../models/Invoice.js';
 import Payment from '../models/Payment.js';

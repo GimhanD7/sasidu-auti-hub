@@ -1,3 +1,4 @@
+// Collect booking details and send the selected vehicle, service, and requested appointment time to the API.
 import React, { useState } from 'react';
 const BookAppointment = () => {
   const [currentStep, setCurrentStep] = useState(1);

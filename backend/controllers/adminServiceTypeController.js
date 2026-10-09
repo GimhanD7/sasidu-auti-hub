@@ -1,3 +1,4 @@
+// Manage the bookable service catalog. Deactivation hides a service from booking; deletion marks it deleted while retaining its database record.
 import mongoose from 'mongoose';
 import ServiceType from '../models/ServiceType.js';
 
@@ -10,8 +11,10 @@ export const DEFAULT_SERVICE_TYPES = [
   { name: 'General Repair', defaultDurationMinutes: 120, estimatedCost: 15000, requiredSkill: 'General Repair' },
 ];
 
+// Seed defaults only when the catalog is empty; upserts avoid creating the same named defaults twice.
 export async function ensureDefaultServiceTypes() {
   if (await ServiceType.exists({})) return;
+  // Apply the specified service type database changes only to records matching this filter.
   await ServiceType.bulkWrite(DEFAULT_SERVICE_TYPES.map(item => ({ updateOne: { filter: { name: item.name }, update: { $setOnInsert: item }, upsert: true } })), { ordered: false });
 }
 
@@ -37,6 +40,7 @@ export async function createAdminServiceType(req, res) {
   if (!input) return res.status(400).json({ message: 'Enter a name, skill, duration from 15 to 1,440 minutes, and a non-negative estimated cost.' });
   try {
     await ensureDefaultServiceTypes();
+    // Persist service type data as a new record in MongoDB; subsequent code uses the stored result.
     const serviceType = await ServiceType.create(input);
     res.status(201).json({ serviceType: { id: String(serviceType._id), ...input, isActive: true } });
   } catch (error) {
@@ -49,25 +53,30 @@ export async function updateAdminServiceType(req, res) {
   if (!input) return res.status(400).json({ message: 'Enter a name, skill, duration from 15 to 1,440 minutes, and a non-negative estimated cost.' });
   try {
     await ensureDefaultServiceTypes();
+    // Apply the specified service type database changes only to records matching this filter.
     const serviceType = await ServiceType.findByIdAndUpdate(req.params.serviceTypeId, { ...input }, { new: true, runValidators: true });
     if (!serviceType) return res.status(404).json({ message: 'Service type not found.' });
     res.json({ serviceType: { id: String(serviceType._id), name: serviceType.name, defaultDurationMinutes: serviceType.defaultDurationMinutes, estimatedCost: serviceType.estimatedCost, requiredSkill: serviceType.requiredSkill, isActive: serviceType.isActive } });
   } catch (error) { res.status(error.code === 11000 ? 409 : 503).json({ message: error.code === 11000 ? 'A service type with this name already exists.' : 'Unable to update the service type.' }); }
 }
 
+// Keep the service in the catalog but make it unavailable for new bookings.
 export async function deactivateAdminServiceType(req, res) {
   try {
     await ensureDefaultServiceTypes();
+    // Apply the specified service type database changes only to records matching this filter.
     const serviceType = await ServiceType.findByIdAndUpdate(req.params.serviceTypeId, { isActive: false }, { new: true });
     if (!serviceType) return res.status(404).json({ message: 'Service type not found.' });
     res.json({ serviceType: { id: String(serviceType._id), isActive: serviceType.isActive } });
   } catch { res.status(503).json({ message: 'Unable to deactivate the service type.' }); }
 }
 
+// Re-enable a service only if it has not been marked deleted.
 export async function activateAdminServiceType(req, res) {
   if (!mongoose.isValidObjectId(req.params.serviceTypeId)) return res.status(400).json({ message: 'Invalid service type.' });
   try {
     await ensureDefaultServiceTypes();
+    // Apply the specified service type database changes only to records matching this filter.
     const serviceType = await ServiceType.findOneAndUpdate(
       { _id: req.params.serviceTypeId, isDeleted: { $ne: true } },
       { isActive: true },
@@ -83,9 +92,11 @@ export async function getActiveServiceTypeNames() {
   return (await ServiceType.find({ isActive: true, isDeleted: { $ne: true } }).select('name').sort({ name: 1 }).lean()).map(item => item.name);
 }
 
+// Soft-delete the catalog entry so it stops appearing in new bookings while existing service history remains intact.
 export async function deleteAdminServiceType(req, res) {
   if (!mongoose.isValidObjectId(req.params.serviceTypeId)) return res.status(400).json({ message: 'Invalid service type.' });
   try {
+    // Apply the specified service type database changes only to records matching this filter.
     const item = await ServiceType.findOneAndUpdate({ _id: req.params.serviceTypeId, isDeleted: { $ne: true } }, { isActive: false, isDeleted: true });
     if (!item) return res.status(404).json({ message: 'Service type not found.' });
     res.json({ message: 'Service type deleted. Existing service history is preserved.' });

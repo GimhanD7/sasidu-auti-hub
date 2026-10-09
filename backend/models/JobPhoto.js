@@ -1,3 +1,4 @@
+// Store job photo bytes and metadata linked to a service job and uploader; access is checked by the photo controller.
 import mongoose from 'mongoose';
 
 const jobPhotoSchema = new mongoose.Schema({

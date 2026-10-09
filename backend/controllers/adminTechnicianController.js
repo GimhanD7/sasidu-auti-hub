@@ -1,3 +1,4 @@
+// Manage technician accounts, specialization, schedules, and availability used by workshop assignment screens.
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
@@ -56,11 +57,13 @@ export async function createAdminTechnician(req, res) {
   try {
     if (await User.exists({ $or: [{ email: data.email }, ...(data.mobile ? [{ mobile: data.mobile }] : [])] })) return res.status(409).json({ message: 'A user already exists with this email or mobile.' });
     const generatedPassword = '12345678';
+    // Persist user data as a new record in MongoDB; subsequent code uses the stored result.
     const user = await User.create({ ...data, password: await bcrypt.hash(generatedPassword, 10), role: 'Technician' });
     let accountSetupEmailSent = false;
     if (passwordResetEmail.isConfigured()) {
       try {
         const token = newToken();
+        // Apply the specified user database changes only to records matching this filter.
         await User.updateOne({ _id: user._id }, { $set: { resetTokenHash: hashToken(token), resetTokenExpiresAt: new Date(Date.now() + 30 * 60 * 1000) } });
         await passwordResetEmail.send(user.email, token);
         accountSetupEmailSent = true;
@@ -83,6 +86,7 @@ export async function updateAdminTechnician(req, res) {
     if (!user) return res.status(404).json({ message: 'Technician not found.' });
     if (await User.exists({ _id: { $ne: user._id }, $or: [{ email: data.email }, ...(data.mobile ? [{ mobile: data.mobile }] : [])] })) return res.status(409).json({ message: 'Another user already has this email or mobile.' });
     Object.assign(user, data);
+    // Persist the changes made to user above; document validation and registered save hooks run here.
     await user.save();
     res.set('Cache-Control', 'private, no-store').json({ technician: technicianView(user) });
   } catch (error) {

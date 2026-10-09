@@ -1,3 +1,4 @@
+// Customer administration: search profiles, assemble related service records, create or edit accounts, and change account availability.
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
@@ -220,6 +221,7 @@ export async function createAdminCustomer(req, res) {
 
     // 3. Hash default password and save the new Customer document
     const generatedPassword = '12345678';
+    // Persist user data as a new record in MongoDB; subsequent code uses the stored result.
     const customer = await User.create({
       ...data,
       password: await bcrypt.hash(generatedPassword, 10),
@@ -231,6 +233,7 @@ export async function createAdminCustomer(req, res) {
     if (passwordResetEmail.isConfigured()) {
       try {
         const token = newToken();
+        // Apply the specified user database changes only to records matching this filter.
         await User.updateOne(
           { _id: customer._id },
           { $set: { resetTokenHash: hashToken(token), resetTokenExpiresAt: new Date(Date.now() + 30 * 60 * 1000) } }
@@ -283,6 +286,7 @@ export async function updateAdminCustomer(req, res) {
 
     // 4. Update customer properties and persist changes
     Object.assign(customer, data);
+    // Persist the changes made to customer above; document validation and registered save hooks run here.
     await customer.save();
 
     // 5. Return updated customer record

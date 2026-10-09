@@ -1,3 +1,4 @@
+// Summarize assigned work and notifications for a technician, using workshop-local day boundaries for daily counts.
 import ServiceJob from '../models/ServiceJob.js';
 import Notification from '../models/Notification.js';
 import Appointment from '../models/Appointment.js';

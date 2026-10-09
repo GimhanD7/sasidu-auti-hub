@@ -1,3 +1,4 @@
+// Customer booking workflow: show availability, create appointments, cancel bookings, and submit reschedule requests.
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
@@ -132,6 +133,7 @@ async function notifyAppointmentChange(appointment, { type, title, message, dedu
     const notifications = [{ user: appointment.customer, type, title, message, link: '/customer/appointments', ...(dedupeKey ? { dedupeKey: `${dedupeKey}:${appointment.customer}` } : {}) }];
     const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
     for (const admin of admins) notifications.push({ user: admin._id, type, title, message, link: '/admin/appointments', ...(dedupeKey ? { dedupeKey: `${dedupeKey}:${admin._id}` } : {}) });
+    // Persist notification records in MongoDB; subsequent code uses the stored result.
     await Notification.insertMany(notifications, { ordered: false });
     return true;
   } catch { return false; }
@@ -147,6 +149,7 @@ export async function cancelCustomerAppointment(req, res) {
     }
     appointment.status = 'Cancelled';
     appointment.history.push({ action: 'Appointment cancelled', details: 'Cancelled by customer', actor: req.user._id });
+    // Persist the changes made to appointment above; document validation and registered save hooks run here.
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
     const notified = await notifyAppointmentChange(appointment, {
@@ -181,6 +184,7 @@ export async function requestCustomerAppointmentReschedule(req, res) {
 
     appointment.rescheduleRequest = { preferredDate: day, preferredTime, notes: notes.trim(), status: 'Pending', requestedAt: new Date() };
     appointment.history.push({ action: 'Reschedule requested', details: `Requested ${dateKey(day)} at ${preferredTime}${notes.trim() ? ` · ${notes.trim()}` : ''}`.slice(0, 1000), actor: req.user._id });
+    // Persist the changes made to appointment above; document validation and registered save hooks run here.
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
     const notified = await notifyAppointmentChange(appointment, {
@@ -227,6 +231,7 @@ export async function createCustomerAppointment(req, res) {
 
     const appointmentId = new mongoose.Types.ObjectId();
     const appointmentNumber = `APT-${dateKey(day).replaceAll('-', '')}-${appointmentId.toString().slice(-6).toUpperCase()}`;
+    // Persist appointment data as a new record in MongoDB; subsequent code uses the stored result.
     const appointment = await Appointment.create({
       _id: appointmentId,
       appointmentNumber,
@@ -244,6 +249,7 @@ export async function createCustomerAppointment(req, res) {
 
     let notificationCreated = false;
     try {
+      // Persist notification data as a new record in MongoDB; subsequent code uses the stored result.
       await Notification.create({
         user: req.user._id,
         type: 'AppointmentConfirmation',

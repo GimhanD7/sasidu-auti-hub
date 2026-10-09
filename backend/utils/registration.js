@@ -1,3 +1,4 @@
+// Normalize and validate registration input before account creation; return either accepted data or a user-facing error.
 export function validateRegistration(body = {}) {
   const { fullName, email, mobile, password, confirmPassword } = body ?? {};
   if ([fullName, email, mobile, password, confirmPassword].some(value => typeof value !== 'string')) {

@@ -1,7 +1,9 @@
+// Resolve the session cookie to an active account before protected handlers run; enforce allowed roles separately.
 import AuthSession from '../models/AuthSession.js';
 import User from '../models/User.js';
 import { readSessionToken, hashToken, normalizeRole } from '../utils/session.js';
 
+// A valid token is not enough: the account must be active and its session version must still match.
 export async function requireAuth(req, res, next) {
   const token = readSessionToken(req);
   if (!token) return res.status(401).json({ message: 'Please sign in to continue.' });

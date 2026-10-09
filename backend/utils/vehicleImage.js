@@ -1,3 +1,4 @@
+// Validate optional vehicle images as supported HTTPS URLs or size-limited image data before saving vehicle details.
 export const MAX_IMAGE_BYTES = 1024 * 1024;
 export function validVehicleImage(value) {
   if (!value) return true;

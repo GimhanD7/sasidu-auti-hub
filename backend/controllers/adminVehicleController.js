@@ -1,3 +1,4 @@
+// Administrative vehicle lookup and editing, including validation of registration details and the linked customer.
 import { validVehicleImage } from '../utils/vehicleImage.js';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
@@ -102,6 +103,7 @@ export async function createAdminVehicle(req, res) {
     if (!customer) return res.status(400).json({ message: 'Select an active customer for this vehicle.' });
     const expression = `^${escapeRegex(data.registrationNumber)}$`;
     if (await Vehicle.exists({ registrationNumber: { $regex: expression, $options: 'i' } })) return res.status(409).json({ message: 'That registration number is already registered.' });
+    // Persist vehicle data as a new record in MongoDB; subsequent code uses the stored result.
     const vehicle = await Vehicle.create({ ...data, customer: customer._id });
     res.status(201).set('Cache-Control', 'private, no-store').json({ vehicle: { id: String(vehicle._id), registrationNumber: vehicle.registrationNumber, make: vehicle.make, model: vehicle.model }, customer: { id: String(customer._id), name: customer.name } });
   } catch (createError) {
@@ -131,6 +133,7 @@ export async function updateAdminVehicle(req, res) {
     const expression = `^${escapeRegex(data.registrationNumber)}$`;
     if (await Vehicle.exists({ _id: { $ne: vehicle._id }, registrationNumber: { $regex: expression, $options: 'i' } })) return res.status(409).json({ message: 'That registration number is already registered.' });
     Object.assign(vehicle, data);
+    // Persist the changes made to vehicle above; document validation and registered save hooks run here.
     await vehicle.save();
     res.set('Cache-Control', 'private, no-store').json({ vehicle: { id: String(vehicle._id), registrationNumber: vehicle.registrationNumber, make: vehicle.make, model: vehicle.model } });
   } catch (updateError) {

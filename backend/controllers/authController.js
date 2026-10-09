@@ -1,3 +1,4 @@
+// Account registration, cookie-based login, profile changes, logout, and password recovery. Only public user fields belong in responses.
 import User from '../models/User.js';
 import bcrypt from 'bcrypt';
 import { validateRegistration } from '../utils/registration.js';
@@ -47,6 +48,7 @@ export const registerUser = async (req, res) => {
   }
 };
 
+// Accept email or mobile login, verify the password hash, and enforce any role-specific login requirement before issuing a cookie.
 const authenticateUser = async (req, res, requiredRole) => {
   try {
     const { email, password, remember = false } = req.body || {};
@@ -114,6 +116,7 @@ export async function updateCurrentUser(req, res) {
     user.name = name;
     user.email = normalizedEmail;
     user.mobile = normalizedMobile || undefined;
+    // Persist the changes made to user above; document validation and registered save hooks run here.
     await user.save();
     res.set('Cache-Control', 'no-store').json({ message: 'Profile updated successfully.', user: publicUser(user) });
   } catch (error) {
@@ -122,6 +125,7 @@ export async function updateCurrentUser(req, res) {
   }
 }
 
+// Delete the current server session and clear its browser cookie so it cannot be reused after logout.
 export async function logoutUser(req, res) {
   try {
     const token = readSessionToken(req);
@@ -133,6 +137,7 @@ export async function logoutUser(req, res) {
   }
 }
 
+// Verify the old password, save a new hash, and invalidate existing sessions. This handler is also used by shared password-change routes.
 export async function changeTechnicianPassword(req, res) {
   const { currentPassword, newPassword, confirmPassword } = req.body || {};
   if (typeof currentPassword !== 'string' || !currentPassword || typeof newPassword !== 'string' || newPassword.length < 8 || Buffer.byteLength(newPassword, 'utf8') > 72) {
@@ -146,13 +151,16 @@ export async function changeTechnicianPassword(req, res) {
     if (await bcrypt.compare(newPassword, user.password)) return res.status(400).json({ message: 'Choose a new password that differs from your current password.' });
     user.password = await bcrypt.hash(newPassword, 10);
     user.sessionVersion = (user.sessionVersion || 0) + 1;
+    // Persist the changes made to user above; document validation and registered save hooks run here.
     await user.save();
+    // Permanently remove matching auth session records; the filter limits which records this operation affects.
     await AuthSession.deleteMany({ user: user._id });
     res.clearCookie(COOKIE_NAME, cookieOptions());
     res.json({ message: 'Password changed successfully. Sign in again with your new password.' });
   } catch { res.status(503).json({ message: 'Unable to change your password. Please try again.' }); }
 }
 
+// Store a short-lived token hash and email the raw token; use the same success response for known and unknown accounts.
 export async function forgotPassword(req, res) {
   const email = req.body?.email;
   if (typeof email !== 'string' || email.trim().length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -164,10 +172,12 @@ export async function forgotPassword(req, res) {
     if (user) {
       const token = newToken();
       const tokenHash = hashToken(token);
+      // Apply the specified user database changes only to records matching this filter.
       await User.updateOne({ _id: user._id }, { $set: { resetTokenHash: tokenHash, resetTokenExpiresAt: new Date(Date.now() + 30 * 60 * 1000) } });
       try {
         await passwordResetEmail.send(user.email, token);
       } catch {
+        // Apply the specified user database changes only to records matching this filter.
         await User.updateOne({ _id: user._id, resetTokenHash: tokenHash }, { $unset: { resetTokenHash: '', resetTokenExpiresAt: '' } });
         // Keep the public response identical for existing and unknown accounts.
         console.error('Password reset email could not be delivered. Check SMTP configuration.');
@@ -179,6 +189,7 @@ export async function forgotPassword(req, res) {
   }
 }
 
+// Consume an unexpired reset token in the same update that replaces the password and increments the session version.
 export async function resetPassword(req, res) {
   const { token, password, confirmPassword } = req.body || {};
   if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return res.status(400).json({ message: 'This reset link is invalid or expired.' });
@@ -188,6 +199,7 @@ export async function resetPassword(req, res) {
   if (password !== confirmPassword) return res.status(400).json({ message: 'Passwords do not match.' });
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    // Apply the specified user database changes only to records matching this filter.
     const user = await User.findOneAndUpdate(
       { resetTokenHash: hashToken(token), resetTokenExpiresAt: { $gt: new Date() }, isActive: { $ne: false } },
       { $set: { password: hashedPassword }, $inc: { sessionVersion: 1 }, $unset: { resetTokenHash: '', resetTokenExpiresAt: '' } },

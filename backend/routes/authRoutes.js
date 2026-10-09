@@ -1,3 +1,4 @@
+// Wire HTTP paths to controller actions. Middleware order determines which session and role checks run before each handler.
 import express from 'express';
 import { registerUser, loginUser, adminLoginUser, technicianLoginUser, changeTechnicianPassword, logoutUser, getCurrentUser, updateCurrentUser, forgotPassword, resetPassword } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';

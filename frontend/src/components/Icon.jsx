@@ -1,3 +1,4 @@
+// Render reusable SVG icons selected by name so pages can share the same icon styling.
 const paths = {
   car: (
     <>

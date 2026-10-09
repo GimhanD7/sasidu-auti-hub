@@ -1,3 +1,4 @@
+// Mount the React application into the HTML root and load the shared stylesheet.
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';

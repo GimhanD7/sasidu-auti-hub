@@ -1,3 +1,4 @@
+// Load workshop summary data and render the administrator overview with loading and error states.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';

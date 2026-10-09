@@ -1,3 +1,4 @@
+// Render payment screens with controlled test data for browser checks.
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';

@@ -1,3 +1,4 @@
+// Limit repeated authentication requests within a time window. The counters live in this server process, not in MongoDB.
 // Per-process protection. Use a shared rate-limit store when running multiple instances.
 export function authRateLimit(limit = 20, windowMs = 15 * 60 * 1000) {
   const attempts = new Map();

@@ -1,3 +1,4 @@
+// Load one vehicle profile with its active repairs, service history, invoices, and recommendations.
 import { serviceStatus } from '../../lib/serviceStatus';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -38,6 +39,7 @@ export default function CustomerVehicleProfile() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
 
+  // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
     const controller = new AbortController();
     api

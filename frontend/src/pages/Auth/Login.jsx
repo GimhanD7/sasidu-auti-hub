@@ -1,3 +1,4 @@
+// Collect login credentials, use the shared authentication action, and navigate according to the signed-in account.
 import { notify } from '../../lib/notify';
 import PasswordInput from '../../components/PasswordInput';
 import React, { useState } from 'react';
