@@ -2,6 +2,16 @@
 
 The React frontend displays customer, administrator, and technician screens. The Express backend validates requests and stores workshop records in MongoDB.
 
+## Run the application
+
+Install dependencies once with `npm install --prefix backend` and `npm install --prefix frontend`. Configure `backend/.env` and make sure MongoDB is running. Then start both applications from the project root with one command:
+
+```sh
+npm run dev
+```
+
+The frontend runs at `http://localhost:5173` and the API runs at `http://localhost:5000`. Press `Ctrl+C` once to stop both processes.
+
 ## Following an action through the code
 
 1. A page under `frontend/src/pages` holds form values in React state. Typing changes the form locally.
