@@ -1,7 +1,8 @@
 // Manage service catalog forms, search, and active status. Creating, updating, deleting, or toggling a service calls the API before refreshing the list.
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-const blank = { name: '', defaultDurationMinutes: 60, estimatedCost: 0, requiredSkill: '' };
+const ISSUE_TYPES = ['Maintenance', 'Engine', 'Transmission', 'Brakes', 'Electrical', 'Suspension', 'Cooling', 'Exhaust', 'Tyres', 'Body', 'Other'];
+const blank = { name: '', issueType: 'Other', defaultDurationMinutes: 60, estimatedCost: 0, requiredSkill: '' };
 const money = (value) =>
   new Intl.NumberFormat(undefined, {
     style: 'currency',
@@ -62,6 +63,7 @@ export default function AdminServiceTypes() {
     setEditingId(item.id);
     setForm({
       name: item.name,
+      issueType: item.issueType || 'Other',
       defaultDurationMinutes: item.defaultDurationMinutes,
       estimatedCost: item.estimatedCost,
       requiredSkill: item.requiredSkill,
@@ -143,7 +145,7 @@ export default function AdminServiceTypes() {
       )
     : 0;
   const visibleItems = items.filter((item) => {
-    const matchesSearch = `${item.name} ${item.requiredSkill}`
+    const matchesSearch = `${item.name} ${item.requiredSkill} ${item.issueType || ''}`
       .toLowerCase()
       .includes(search.trim().toLowerCase());
     const matchesStatus =
@@ -213,6 +215,19 @@ export default function AdminServiceTypes() {
             </button>
           </header>
           <form onSubmit={save}>
+            <label>
+              Vehicle issue category
+              <select
+                required
+                value={form.issueType}
+                onChange={(event) => setForm({ ...form, issueType: event.target.value })}
+              >
+                {ISSUE_TYPES.map((issueType) => (
+                  <option key={issueType} value={issueType}>{issueType}</option>
+                ))}
+              </select>
+              <small>This category controls which service types appear for an issue.</small>
+            </label>
             <label>
               Service name
               <input
@@ -342,6 +357,10 @@ export default function AdminServiceTypes() {
                   <span>estimated charge</span>
                 </div>
                 <dl>
+                  <div>
+                    <dt>Issue category</dt>
+                    <dd>{item.issueType || 'Other'}</dd>
+                  </div>
                   <div>
                     <dt>Duration</dt>
                     <dd>{duration(Number(item.defaultDurationMinutes) || 0)}</dd>

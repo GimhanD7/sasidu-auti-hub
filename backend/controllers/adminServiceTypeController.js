@@ -1,14 +1,15 @@
 // Manage the bookable service catalog. Deactivation hides a service from booking; deletion marks it deleted while retaining its database record.
 import mongoose from 'mongoose';
 import ServiceType from '../models/ServiceType.js';
+import { ISSUE_TYPES, inferIssueType } from '../utils/issueTypes.js';
 
 export const DEFAULT_SERVICE_TYPES = [
-  { name: 'Full Service', defaultDurationMinutes: 180, estimatedCost: 25000, requiredSkill: 'General Maintenance' },
-  { name: 'Oil Change', defaultDurationMinutes: 60, estimatedCost: 8000, requiredSkill: 'General Maintenance' },
-  { name: 'Brake Service', defaultDurationMinutes: 120, estimatedCost: 18000, requiredSkill: 'Brake Systems' },
-  { name: 'Engine Diagnosis', defaultDurationMinutes: 90, estimatedCost: 12000, requiredSkill: 'Engine Diagnostics' },
-  { name: 'Electrical Diagnosis', defaultDurationMinutes: 90, estimatedCost: 12000, requiredSkill: 'Auto Electrical' },
-  { name: 'General Repair', defaultDurationMinutes: 120, estimatedCost: 15000, requiredSkill: 'General Repair' },
+  { name: 'Full Service', issueType: 'Maintenance', defaultDurationMinutes: 180, estimatedCost: 25000, requiredSkill: 'General Maintenance' },
+  { name: 'Oil Change', issueType: 'Maintenance', defaultDurationMinutes: 60, estimatedCost: 8000, requiredSkill: 'General Maintenance' },
+  { name: 'Brake Service', issueType: 'Brakes', defaultDurationMinutes: 120, estimatedCost: 18000, requiredSkill: 'Brake Systems' },
+  { name: 'Engine Diagnosis', issueType: 'Engine', defaultDurationMinutes: 90, estimatedCost: 12000, requiredSkill: 'Engine Diagnostics' },
+  { name: 'Electrical Diagnosis', issueType: 'Electrical', defaultDurationMinutes: 90, estimatedCost: 12000, requiredSkill: 'Auto Electrical' },
+  { name: 'General Repair', issueType: 'Other', defaultDurationMinutes: 120, estimatedCost: 15000, requiredSkill: 'General Repair' },
 ];
 
 // Seed defaults only when the catalog is empty; upserts avoid creating the same named defaults twice.
@@ -21,17 +22,18 @@ export async function ensureDefaultServiceTypes() {
 const validInput = body => {
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
   const requiredSkill = typeof body?.requiredSkill === 'string' ? body.requiredSkill.trim() : '';
+  const issueType = typeof body?.issueType === 'string' ? body.issueType : inferIssueType(name, requiredSkill);
   const duration = Number(body?.defaultDurationMinutes);
   const cost = Number(body?.estimatedCost);
-  if (!name || name.length > 100 || !requiredSkill || requiredSkill.length > 100 || !Number.isInteger(duration) || duration < 15 || duration > 1440 || !Number.isFinite(cost) || cost < 0 || cost > 10000000) return null;
-  return { name, requiredSkill, defaultDurationMinutes: duration, estimatedCost: cost };
+  if (!name || name.length > 100 || !requiredSkill || requiredSkill.length > 100 || !ISSUE_TYPES.includes(issueType) || !Number.isInteger(duration) || duration < 15 || duration > 1440 || !Number.isFinite(cost) || cost < 0 || cost > 10000000) return null;
+  return { name, issueType, requiredSkill, defaultDurationMinutes: duration, estimatedCost: cost };
 };
 
 export async function listAdminServiceTypes(req, res) {
   try {
     await ensureDefaultServiceTypes();
     const serviceTypes = await ServiceType.find({ isDeleted: { $ne: true } }).sort({ isActive: -1, name: 1 }).lean();
-    res.set('Cache-Control', 'private, no-store').json({ serviceTypes: serviceTypes.map(item => ({ id: String(item._id), name: item.name, defaultDurationMinutes: item.defaultDurationMinutes, estimatedCost: item.estimatedCost, requiredSkill: item.requiredSkill, isActive: item.isActive })) });
+    res.set('Cache-Control', 'private, no-store').json({ serviceTypes: serviceTypes.map(item => ({ id: String(item._id), name: item.name, issueType: item.issueType || inferIssueType(item.name, item.requiredSkill), defaultDurationMinutes: item.defaultDurationMinutes, estimatedCost: item.estimatedCost, requiredSkill: item.requiredSkill, isActive: item.isActive })) });
   } catch { res.status(503).json({ message: 'Unable to load service types.' }); }
 }
 
@@ -56,7 +58,7 @@ export async function updateAdminServiceType(req, res) {
     // Apply the specified service type database changes only to records matching this filter.
     const serviceType = await ServiceType.findByIdAndUpdate(req.params.serviceTypeId, { ...input }, { new: true, runValidators: true });
     if (!serviceType) return res.status(404).json({ message: 'Service type not found.' });
-    res.json({ serviceType: { id: String(serviceType._id), name: serviceType.name, defaultDurationMinutes: serviceType.defaultDurationMinutes, estimatedCost: serviceType.estimatedCost, requiredSkill: serviceType.requiredSkill, isActive: serviceType.isActive } });
+    res.json({ serviceType: { id: String(serviceType._id), name: serviceType.name, issueType: serviceType.issueType, defaultDurationMinutes: serviceType.defaultDurationMinutes, estimatedCost: serviceType.estimatedCost, requiredSkill: serviceType.requiredSkill, isActive: serviceType.isActive } });
   } catch (error) { res.status(error.code === 11000 ? 409 : 503).json({ message: error.code === 11000 ? 'A service type with this name already exists.' : 'Unable to update the service type.' }); }
 }
 
@@ -90,6 +92,19 @@ export async function activateAdminServiceType(req, res) {
 export async function getActiveServiceTypeNames() {
   await ensureDefaultServiceTypes();
   return (await ServiceType.find({ isActive: true, isDeleted: { $ne: true } }).select('name').sort({ name: 1 }).lean()).map(item => item.name);
+}
+
+export async function getActiveServiceTypeOptions() {
+  await ensureDefaultServiceTypes();
+  const items = await ServiceType.find({ isActive: true, isDeleted: { $ne: true } }).sort({ name: 1 }).lean();
+  return items.map(item => ({
+    id: String(item._id),
+    name: item.name,
+    issueType: item.issueType || inferIssueType(item.name, item.requiredSkill),
+    estimatedCost: item.estimatedCost,
+    defaultDurationMinutes: item.defaultDurationMinutes,
+    requiredSkill: item.requiredSkill,
+  }));
 }
 
 // Soft-delete the catalog entry so it stops appearing in new bookings while existing service history remains intact.

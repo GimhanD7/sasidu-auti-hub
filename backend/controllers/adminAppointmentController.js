@@ -7,9 +7,11 @@ import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
 import ServiceJob from '../models/ServiceJob.js';
+import ServiceType from '../models/ServiceType.js';
 import { hashToken, newToken } from '../utils/session.js';
 import { passwordResetEmail } from '../services/passwordResetEmail.js';
-import { getActiveServiceTypeNames } from './adminServiceTypeController.js';
+import { ISSUE_TYPES, inferIssueType } from '../utils/issueTypes.js';
+import { getActiveServiceTypeNames, getActiveServiceTypeOptions } from './adminServiceTypeController.js';
 
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const ACTIVE_STATUSES = ['Pending', 'Confirmed', 'Checked In', 'In Service'];
@@ -24,6 +26,7 @@ export async function getAdminAppointmentOptions(req, res) {
   if (customerId && !mongoose.isValidObjectId(customerId)) return res.status(400).json({ message: 'Choose a valid customer.' });
   try {
     const serviceTypes = await getActiveServiceTypeNames();
+    const serviceTypeOptions = await getActiveServiceTypeOptions();
     let customers = [];
     let vehicles = [];
     if (customerId) {
@@ -43,6 +46,8 @@ export async function getAdminAppointmentOptions(req, res) {
       customers: customers.map(item => ({ id: String(item._id), name: item.name, email: item.email, mobile: item.mobile || '' })),
       vehicles: vehicles.map(item => ({ id: String(item._id), make: item.make, model: item.model, year: item.year || null, registrationNumber: item.registrationNumber })),
       serviceTypes,
+      serviceTypeOptions,
+      issueTypes: ISSUE_TYPES,
     });
   } catch {
     res.status(503).json({ message: 'Unable to load customer and booking options.' });
@@ -51,14 +56,23 @@ export async function getAdminAppointmentOptions(req, res) {
 
 export async function createAdminAppointment(req, res) {
   const body = req.body || {};
-  const { customerId, newCustomer, vehicleId, newVehicle, serviceType, preferredDate, preferredTime, problemDescription, customerNotes = '', internalNotes = '' } = body;
+  const { customerId, newCustomer, vehicleId, newVehicle, serviceType, issueType, technicianId, expectedFinishDate, estimatedCost, preferredDate, preferredTime, problemDescription, customerNotes = '', internalNotes = '' } = body;
   if ((!customerId && !newCustomer) || (customerId && newCustomer)) return res.status(400).json({ message: 'Select an existing customer or enter a new customer.' });
   if ((!vehicleId && !newVehicle) || (vehicleId && newVehicle)) return res.status(400).json({ message: 'Select an existing vehicle or enter a new vehicle.' });
-  let serviceTypeNames;
-  try { serviceTypeNames = await getActiveServiceTypeNames(); }
+  let serviceTypeRecord;
+  try {
+    await getActiveServiceTypeOptions();
+    serviceTypeRecord = await ServiceType.findOne({ name: serviceType, isActive: true, isDeleted: { $ne: true } }).lean();
+  }
   catch { return res.status(503).json({ message: 'Unable to validate the selected service type.' }); }
-  if (!serviceTypeNames.includes(serviceType)) return res.status(400).json({ message: 'Choose a valid service type.' });
-  if (typeof problemDescription !== 'string' || !problemDescription.trim() || problemDescription.trim().length > 1000) return res.status(400).json({ message: 'Enter a customer complaint of 1 to 1,000 characters.' });
+  if (!serviceTypeRecord) return res.status(400).json({ message: 'Choose a valid service type.' });
+  const serviceIssueType = serviceTypeRecord.issueType || inferIssueType(serviceTypeRecord.name, serviceTypeRecord.requiredSkill);
+  const normalizedIssueType = issueType || serviceIssueType;
+  if (!ISSUE_TYPES.includes(normalizedIssueType)) return res.status(400).json({ message: 'Choose a valid vehicle issue type.' });
+  if (serviceIssueType !== normalizedIssueType) return res.status(400).json({ message: 'Choose a service type that matches the selected vehicle issue.' });
+  const normalizedEstimatedCost = estimatedCost === undefined || estimatedCost === '' ? Number(serviceTypeRecord.estimatedCost) : Number(estimatedCost);
+  if (!Number.isFinite(normalizedEstimatedCost) || normalizedEstimatedCost < 0 || normalizedEstimatedCost > 10000000) return res.status(400).json({ message: 'Enter a valid estimated service cost.' });
+  if (problemDescription !== undefined && (typeof problemDescription !== 'string' || problemDescription.trim().length > 1000)) return res.status(400).json({ message: 'Customer complaint must be no more than 1,000 characters.' });
   if (typeof customerNotes !== 'string' || customerNotes.trim().length > 1000 || typeof internalNotes !== 'string' || internalNotes.trim().length > 1000) return res.status(400).json({ message: 'Notes must be 1,000 characters or fewer.' });
   if (typeof preferredDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate) || typeof preferredTime !== 'string' || !TIME_PATTERN.test(preferredTime)) return res.status(400).json({ message: 'Choose a valid appointment date and time.' });
   const day = new Date(`${preferredDate}T00:00:00.000Z`);
@@ -67,6 +81,13 @@ export async function createAdminAppointment(req, res) {
   if (day < today || day.getTime() > today.getTime() + 30 * 24 * 60 * 60 * 1000) return res.status(400).json({ message: 'Choose an appointment date from today through the next 30 days.' });
   if (!businessDays().has(day.getUTCDay() || 7)) return res.status(400).json({ message: 'The workshop is closed on that date.' });
   if (new Date(`${preferredDate}T${preferredTime}:00.000Z`) <= new Date()) return res.status(400).json({ message: 'Choose a future appointment time.' });
+  let finishDate;
+  if (expectedFinishDate) {
+    if (typeof expectedFinishDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expectedFinishDate)) return res.status(400).json({ message: 'Choose a valid estimated finish date.' });
+    finishDate = new Date(`${expectedFinishDate}T00:00:00.000Z`);
+    if (Number.isNaN(finishDate.getTime()) || finishDate.toISOString().slice(0, 10) !== expectedFinishDate || finishDate < day) return res.status(400).json({ message: 'Estimated finish date cannot be before the appointment date.' });
+  }
+  if (technicianId && !mongoose.isValidObjectId(technicianId)) return res.status(400).json({ message: 'Choose a valid technician.' });
 
   let newCustomerData;
   if (!customerId) {
@@ -97,6 +118,13 @@ export async function createAdminAppointment(req, res) {
     if (newVehicleData && await Vehicle.exists({ registrationNumber: newVehicleData.registrationNumber })) return res.status(409).json({ message: 'A vehicle with this registration number already exists.' });
     if (newCustomerData && await User.exists({ $or: [{ email: newCustomerData.email }, { mobile: newCustomerData.mobile }] })) return res.status(409).json({ message: 'A customer already exists with this email or mobile number. Search and select that customer.' });
 
+    let assignedTechnician;
+    if (technicianId) {
+      assignedTechnician = await User.findOne({ _id: technicianId, role: 'Technician', isActive: { $ne: false } }).select('_id name availabilityStatus');
+      if (!assignedTechnician) return res.status(404).json({ message: 'Active technician not found.' });
+      if ((assignedTechnician.availabilityStatus || 'Available') !== 'Available') return res.status(409).json({ message: 'This technician is unavailable for new assignments.' });
+    }
+
     let customer;
     if (customerId) {
       customer = await User.findOne({ _id: customerId, role: { $in: ['Customer', 'user'] }, isActive: { $ne: false } }).select('name email mobile');
@@ -122,7 +150,12 @@ export async function createAdminAppointment(req, res) {
     const appointment = await Appointment.create({
       _id: appointmentObjectId, appointmentNumber, bookingSlotKey: `${preferredDate}|${preferredTime}`,
       customer: customer._id, vehicle: vehicle._id, serviceType, preferredDate: day, preferredTime,
-      problemDescription: problemDescription.trim(), customerNotes: customerNotes.trim(), internalNotes: internalNotes.trim(), status: 'Pending',
+      problemDescription: problemDescription?.trim() || normalizedIssueType,
+      issueType: normalizedIssueType,
+      estimatedCost: normalizedEstimatedCost,
+      expectedFinishDate: finishDate,
+      assignedTechnician: assignedTechnician?._id,
+      customerNotes: customerNotes.trim(), internalNotes: internalNotes.trim(), status: 'Pending',
       history: [{ action: 'Appointment created', details: `Initial status: Pending · ${serviceType}`, actor: req.user._id }],
     });
 
@@ -134,6 +167,10 @@ export async function createAdminAppointment(req, res) {
         link: '/customer/appointments', dedupeKey: `appointment-created:${appointment._id}` });
       notificationCreated = true;
     } catch { /* The appointment remains saved if notification storage is temporarily unavailable. */ }
+
+    if (assignedTechnician) {
+      await Notification.create({ user: assignedTechnician._id, type: 'AppointmentAssigned', title: 'Appointment assigned', message: `${appointmentNumber} has been assigned to you.`, link: '/technician/jobs', dedupeKey: `admin-appointment-assigned:${appointment._id}:${assignedTechnician._id}` }).catch(() => {});
+    }
 
     let accountSetupEmailSent = false;
     if (createdCustomerId && passwordResetEmail.isConfigured()) {
@@ -147,7 +184,7 @@ export async function createAdminAppointment(req, res) {
     }
 
     res.status(201).set('Cache-Control', 'private, no-store').json({
-      appointment: { id: String(appointment._id), appointmentNumber, customer: customer.name, vehicle: `${vehicle.make} ${vehicle.model}`, registrationNumber: vehicle.registrationNumber, serviceType, preferredDate, preferredTime, status: appointment.status },
+      appointment: { id: String(appointment._id), appointmentNumber, customer: customer.name, vehicle: `${vehicle.make} ${vehicle.model}`, registrationNumber: vehicle.registrationNumber, issueType: normalizedIssueType, serviceType, preferredDate, preferredTime, expectedFinishDate: finishDate || null, estimatedCost: normalizedEstimatedCost, status: appointment.status },
       notificationCreated, accountSetupEmailSent, newCustomer: Boolean(createdCustomerId),
     });
   } catch (error) {
@@ -171,7 +208,7 @@ export async function getAdminAppointment(req, res) {
       id: String(appointment._id), appointmentNumber: appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`,
       customer: appointment.customer ? { id: String(appointment.customer._id), name: appointment.customer.name, email: appointment.customer.email, mobile: appointment.customer.mobile || '' } : null,
       vehicle: appointment.vehicle ? { id: String(appointment.vehicle._id), make: appointment.vehicle.make, model: appointment.vehicle.model, year: appointment.vehicle.year || null, registrationNumber: appointment.vehicle.registrationNumber, vinNumber: appointment.vehicle.vinNumber || '' } : null,
-      serviceType: appointment.serviceType, preferredDate: appointment.preferredDate.toISOString().slice(0, 10), preferredTime: appointment.preferredTime,
+      serviceType: appointment.serviceType, issueType: appointment.issueType || 'Other', estimatedCost: appointment.estimatedCost ?? null, expectedFinishDate: appointment.expectedFinishDate?.toISOString().slice(0, 10) || '', preferredDate: appointment.preferredDate.toISOString().slice(0, 10), preferredTime: appointment.preferredTime,
       problemDescription: appointment.problemDescription || '', customerNotes: appointment.customerNotes || '', internalNotes: appointment.internalNotes || '',
       status: appointment.status, technicianId: appointment.assignedTechnician ? String(appointment.assignedTechnician._id) : '',
       technician: appointment.assignedTechnician?.name || '',
@@ -192,6 +229,7 @@ export async function updateAdminAppointment(req, res) {
     const oldTime = appointment.preferredTime;
     const oldStatus = appointment.status;
     const oldServiceType = appointment.serviceType;
+    const oldIssueType = appointment.issueType || 'Other';
     const oldTechnician = appointment.assignedTechnician ? String(appointment.assignedTechnician) : '';
 
     if (body.rescheduleDecision !== undefined) {
@@ -242,8 +280,30 @@ export async function updateAdminAppointment(req, res) {
       }
     }
     if (body.serviceType !== undefined) {
-      if (body.serviceType !== appointment.serviceType && !(await getActiveServiceTypeNames()).includes(body.serviceType)) return res.status(400).json({ message: 'Choose a valid service type.' });
+      const service = await ServiceType.findOne({ name: body.serviceType, isDeleted: { $ne: true }, ...(body.serviceType === appointment.serviceType ? {} : { isActive: true }) }).lean();
+      if (!service) return res.status(400).json({ message: 'Choose a valid service type.' });
+      const serviceIssueType = service.issueType || inferIssueType(service.name, service.requiredSkill);
+      if (serviceIssueType !== (body.issueType || appointment.issueType || serviceIssueType)) return res.status(400).json({ message: 'Choose a service type that matches the selected vehicle issue.' });
       appointment.serviceType = body.serviceType;
+    }
+    if (body.issueType !== undefined) {
+      if (!ISSUE_TYPES.includes(body.issueType)) return res.status(400).json({ message: 'Choose a valid vehicle issue type.' });
+      const service = await ServiceType.findOne({ name: body.serviceType || appointment.serviceType, isDeleted: { $ne: true } }).lean();
+      if (service && (service.issueType || inferIssueType(service.name, service.requiredSkill)) !== body.issueType) return res.status(400).json({ message: 'Choose a service type that matches the selected vehicle issue.' });
+      appointment.issueType = body.issueType;
+    }
+    if (body.estimatedCost !== undefined) {
+      const cost = Number(body.estimatedCost);
+      if (!Number.isFinite(cost) || cost < 0 || cost > 10000000) return res.status(400).json({ message: 'Enter a valid estimated service cost.' });
+      appointment.estimatedCost = cost;
+    }
+    if (body.expectedFinishDate !== undefined) {
+      if (body.expectedFinishDate === '') appointment.expectedFinishDate = undefined;
+      else {
+        const dateValue = typeof body.expectedFinishDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.expectedFinishDate) ? new Date(`${body.expectedFinishDate}T12:00:00.000Z`) : new Date('invalid');
+        if (Number.isNaN(dateValue.getTime()) || dateValue < appointment.preferredDate) return res.status(400).json({ message: 'Estimated finish date cannot be before the appointment date.' });
+        appointment.expectedFinishDate = dateValue;
+      }
     }
     for (const [field, label] of [['problemDescription', 'Customer complaint'], ['customerNotes', 'Customer notes'], ['internalNotes', 'Internal notes']]) {
       if (body[field] !== undefined) {
@@ -268,6 +328,7 @@ export async function updateAdminAppointment(req, res) {
     if (oldStatus !== appointment.status) changes.push(`Status: ${oldStatus} → ${appointment.status}`);
     if (oldDate !== appointment.preferredDate.toISOString().slice(0, 10) || oldTime !== appointment.preferredTime) changes.push(`Scheduled time: ${oldDate} ${oldTime} → ${appointment.preferredDate.toISOString().slice(0, 10)} ${appointment.preferredTime}`);
     if (oldServiceType !== appointment.serviceType) changes.push(`Service type: ${oldServiceType} → ${appointment.serviceType}`);
+    if (oldIssueType !== appointment.issueType) changes.push(`Vehicle issue type: ${oldIssueType} → ${appointment.issueType}`);
     if (oldTechnician !== (appointment.assignedTechnician ? String(appointment.assignedTechnician) : '')) changes.push('Technician assignment changed');
     if (body.rescheduleDecision !== undefined) changes.push(`Customer reschedule request ${body.rescheduleDecision.toLowerCase()}`);
     if (changes.length) appointment.history.push({ action: 'Appointment updated', details: changes.join(' · ').slice(0, 1000), actor: req.user._id });
@@ -340,7 +401,8 @@ export async function convertAdminAppointmentToJob(req, res) {
       const assignedTechnician = await User.findOne({ _id: appointment.assignedTechnician, role: 'Technician', isActive: { $ne: false } }).select('availabilityStatus');
       if (!assignedTechnician || (assignedTechnician.availabilityStatus || 'Available') !== 'Available') return res.status(409).json({ message: 'The appointment’s assigned technician is unavailable. Reassign or remove them before creating this service job.' });
     }
-    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: 'Assigned' }] : [], customerComplaint, priority, expectedCompletionTime, status: 'In Progress', timeline: [{ status: 'In Progress', actor: req.user._id, notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
+    const jobExpectedFinish = expectedCompletionTime || (appointment.expectedFinishDate ? new Date(`${appointment.expectedFinishDate.toISOString().slice(0, 10)}T12:00:00.000Z`) : undefined);
+    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: 'Assigned' }] : [], customerComplaint, issueType: appointment.issueType || 'Other', estimatedCost: appointment.estimatedCost, priority, expectedCompletionTime: jobExpectedFinish, status: 'In Progress', timeline: [{ status: 'In Progress', actor: req.user._id, notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
     appointment.status = 'In Service';
     appointment.history.push({ action: 'Service job created', details: `Moved to In Service · ${job.serviceNumber}`, actor: req.user._id });
     appointment.bookingSlotKey = undefined;

@@ -1,6 +1,7 @@
 // Persist repair progress, assignments, parts, labour, reports, and history. Save hooks create customer notices for selected status milestones.
 import mongoose from 'mongoose';
 import Notification from './Notification.js';
+import { ISSUE_TYPES } from '../utils/issueTypes.js';
 
 const serviceJobSchema = new mongoose.Schema({
   serviceNumber: { type: String, unique: true, sparse: true, default: function serviceNumberFromId() { return `JOB-${String(this._id).slice(-8).toUpperCase()}`; } },
@@ -20,6 +21,8 @@ const serviceJobSchema = new mongoose.Schema({
     default: 'In Progress'
   },
   customerComplaint: { type: String, trim: true, maxlength: 1000 },
+  issueType: { type: String, enum: ISSUE_TYPES, default: 'Other' },
+  estimatedCost: { type: Number, min: 0, max: 10000000 },
   inspection: {
     findings: { type: String, trim: true, maxlength: 5000, default: '' },
     diagnosis: { type: String, trim: true, maxlength: 5000, default: '' },

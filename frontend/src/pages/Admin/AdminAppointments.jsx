@@ -346,7 +346,7 @@ export default function AdminAppointments() {
 function SimpleBookingModal({ technicians, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [options, setOptions] = useState({ customers: [], serviceTypes: [] });
+  const [options, setOptions] = useState({ customers: [], serviceTypes: [], serviceTypeOptions: [], issueTypes: [] });
 
   // Form State
   const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -367,10 +367,13 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
   const [vehicleReg, setVehicleReg] = useState('');
 
   // Appointment Fields
+  const [issueType, setIssueType] = useState('');
   const [serviceType, setServiceType] = useState('');
+  const [technicianId, setTechnicianId] = useState('');
+  const [estimatedCost, setEstimatedCost] = useState('');
   const [preferredDate, setPreferredDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [expectedFinishDate, setExpectedFinishDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [preferredTime, setPreferredTime] = useState('09:00');
-  const [problemDescription, setProblemDescription] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
 
   // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
@@ -379,10 +382,34 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
       .get('/admin/appointment-options')
       .then(({ data }) => {
         setOptions(data);
-        if (data.serviceTypes?.length) setServiceType(data.serviceTypes[0]);
+        const firstService = data.serviceTypeOptions?.[0];
+        if (firstService) {
+          setIssueType(firstService.issueType);
+          setServiceType(firstService.name);
+          setEstimatedCost(String(firstService.estimatedCost));
+        }
       })
       .catch(() => setError('Unable to load appointment options.'));
   }, []);
+
+  const matchingServices = options.serviceTypeOptions.filter(
+    (item) => item.issueType === issueType || item.issueType === 'Other',
+  );
+
+  function handleIssueTypeChange(value) {
+    setIssueType(value);
+    const firstMatchingService = options.serviceTypeOptions.find(
+      (item) => item.issueType === value,
+    ) || options.serviceTypeOptions.find((item) => item.issueType === 'Other');
+    setServiceType(firstMatchingService?.name || '');
+    setEstimatedCost(firstMatchingService ? String(firstMatchingService.estimatedCost) : '');
+  }
+
+  function handleServiceTypeChange(value) {
+    setServiceType(value);
+    const selected = matchingServices.find((item) => item.name === value);
+    if (selected) setEstimatedCost(String(selected.estimatedCost));
+  }
 
   async function handleCustomerChange(id) {
     setCustomerId(id);
@@ -414,6 +441,11 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
     try {
       const payload = {
         serviceType,
+        issueType,
+        technicianId,
+        expectedFinishDate,
+        estimatedCost,
+        problemDescription: issueType,
         preferredDate,
         preferredTime,
         problemDescription,
@@ -634,30 +666,48 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
             )}
           </div>
 
-          {/* Service & Date/Time */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+          {/* Issue category drives the matching bookable service choices. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Service Type</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Vehicle issue type</label>
               <select
                 required
-                value={serviceType}
-                onChange={(e) => setServiceType(e.target.value)}
+                value={issueType}
+                onChange={(e) => handleIssueTypeChange(e.target.value)}
                 style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               >
-                {(options.serviceTypes || []).map((st) => (
-                  <option key={st} value={st}>
-                    {st}
+                {(options.issueTypes || []).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Date</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Matching service type</label>
+              <select
+                required
+                value={serviceType}
+                onChange={(e) => handleServiceTypeChange(e.target.value)}
+                style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
+              >
+                {matchingServices.map((item) => (
+                  <option key={item.id} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Appointment date</label>
               <input
                 required
                 type="date"
                 value={preferredDate}
-                onChange={(e) => setPreferredDate(e.target.value)}
+                onChange={(e) => {
+                  setPreferredDate(e.target.value);
+                  if (expectedFinishDate < e.target.value) setExpectedFinishDate(e.target.value);
+                }}
                 style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               />
             </div>
@@ -671,20 +721,45 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                 style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               />
             </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-              Problem Description / Customer Request
-            </label>
-            <textarea
-              rows="2"
-              placeholder="Describe customer's issues or requested service details..."
-              value={problemDescription}
-              onChange={(e) => setProblemDescription(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
-            />
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Assign technician</label>
+              <select
+                value={technicianId}
+                onChange={(e) => setTechnicianId(e.target.value)}
+                style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
+              >
+                <option value="">Choose later</option>
+                {technicians.map((technician) => (
+                  <option key={technician.id} value={technician.id} disabled={technician.status && technician.status !== 'Available'}>
+                    {technician.name}{technician.status && technician.status !== 'Available' ? ` · ${technician.status}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Estimated finish date</label>
+              <input
+                required
+                type="date"
+                min={preferredDate}
+                value={expectedFinishDate}
+                onChange={(e) => setExpectedFinishDate(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Estimated cost (LKR)</label>
+              <input
+                required
+                type="number"
+                min="0"
+                max="10000000"
+                step="100"
+                value={estimatedCost}
+                onChange={(e) => setEstimatedCost(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
+              />
+            </div>
           </div>
 
           <div>
@@ -874,6 +949,12 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)' }}>Plate: {appt?.vehicle?.registrationNumber || 'N/A'}</div>
                 </div>
               </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.65rem' }}>
+              <div><small>Vehicle issue</small><div>{appt?.issueType || 'Other'}</div></div>
+              <div><small>Estimated finish</small><div>{appt?.expectedFinishDate || 'Not set'}</div></div>
+              <div><small>Estimated cost</small><div>{appt?.estimatedCost == null ? 'Not set' : `LKR ${Number(appt.estimatedCost).toLocaleString()}`}</div></div>
             </div>
 
             {/* Editable Fields */}

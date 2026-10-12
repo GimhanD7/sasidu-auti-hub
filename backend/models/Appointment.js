@@ -1,6 +1,7 @@
 // Appointment storage: customer/vehicle references, booking slot, status, reschedule request, and history. Save hooks manage slots and customer notices.
 import mongoose from 'mongoose';
 import Notification from './Notification.js';
+import { ISSUE_TYPES } from '../utils/issueTypes.js';
 
 const appointmentSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -9,6 +10,9 @@ const appointmentSchema = new mongoose.Schema({
   // One date/time key reserves a slot. Removing it on cancellation/completion makes that slot bookable again.
   bookingSlotKey: { type: String, unique: true, sparse: true },
   serviceType: { type: String, required: true },
+  issueType: { type: String, enum: ISSUE_TYPES, default: 'Other' },
+  estimatedCost: { type: Number, min: 0, max: 10000000 },
+  expectedFinishDate: Date,
   preferredDate: { type: Date, required: true },
   preferredTime: { type: String, required: true },
   problemDescription: { type: String, trim: true, maxlength: 1000 },
