@@ -199,7 +199,9 @@ export async function requestCustomerAppointmentReschedule(req, res) {
 
 export async function createCustomerAppointment(req, res) {
   const { vehicleId, preferredDate, preferredTime, problemDescription, customerNotes = '' } = req.body || {};
-  const serviceType = 'Issue assessment';
+  const rawServiceType = req.body?.serviceType;
+  if (rawServiceType !== undefined && (typeof rawServiceType !== 'string' || rawServiceType.trim().length > 200)) return res.status(400).json({ message: 'Enter a service type of no more than 200 characters.' });
+  const serviceType = rawServiceType?.trim() || 'Issue assessment';
   const day = parseDay(preferredDate);
   if (!mongoose.isValidObjectId(vehicleId)) return res.status(400).json({ message: 'Select one of your registered vehicles.' });
   if (!day || !TIME_PATTERN.test(preferredTime || '')) return res.status(400).json({ message: 'Choose an available date and time slot.' });

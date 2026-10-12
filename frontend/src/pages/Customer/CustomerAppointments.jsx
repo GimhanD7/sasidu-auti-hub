@@ -44,6 +44,7 @@ export default function CustomerAppointments() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
+  const [serviceType, setServiceType] = useState('');
   const [problemDescription, setProblemDescription] = useState('');
   const [dates, setDates] = useState([]);
   const [loadError, setLoadError] = useState('');
@@ -179,9 +180,11 @@ export default function CustomerAppointments() {
         preferredDate: selectedDate,
         preferredTime: selectedTime,
         problemDescription,
+        serviceType,
       });
       setBookingResult(data);
       setProblemDescription('');
+      setServiceType('');
       setSelectedTime('');
       setAppointmentRetry((value) => value + 1);
       setAvailabilityRetry((value) => value + 1);
@@ -690,6 +693,11 @@ export default function CustomerAppointments() {
                       );
                     })}
                   </select>
+                </label>
+                <label className="appointment-field appointment-field-wide">
+                  Service type (optional)
+                  <input type="text" maxLength={200} value={serviceType} onChange={(event) => setServiceType(event.target.value)} placeholder="e.g. Full service or brake repair" />
+                  <small>Enter your own description, or leave blank for the workshop to assess.</small>
                 </label>
                 <label className="appointment-field appointment-field-wide">
                   What do you need help with? *

@@ -9,7 +9,7 @@ const appointmentSchema = new mongoose.Schema({
   appointmentNumber: { type: String, unique: true, sparse: true },
   // One date/time key reserves a slot. Removing it on cancellation/completion makes that slot bookable again.
   bookingSlotKey: { type: String, unique: true, sparse: true },
-  serviceType: { type: String, required: true },
+  serviceType: { type: String, required: true, trim: true, maxlength: 200 },
   issueType: { type: String, enum: ISSUE_TYPES, default: 'Other' },
   estimatedCost: { type: Number, min: 0, max: 10000000 },
   expectedFinishDate: Date,

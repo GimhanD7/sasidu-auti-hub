@@ -293,7 +293,7 @@ export default function AdminAppointments() {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        Manage / Convert
+                        Manage Appointment
                       </button>
                     </td>
                   </tr>
@@ -330,11 +330,6 @@ export default function AdminAppointments() {
             setManagedAppointmentId('');
             await loadAppointments();
           }}
-          onConverted={async (jobNum) => {
-            setSuccessMessage(`Appointment converted to Job ${jobNum}!`);
-            setManagedAppointmentId('');
-            await loadAppointments();
-          }}
         />
       )}
     </div>
@@ -347,7 +342,7 @@ export default function AdminAppointments() {
 function SimpleBookingModal({ technicians, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [options, setOptions] = useState({ customers: [], serviceTypes: [], serviceTypeOptions: [], issueTypes: [] });
+  const [options, setOptions] = useState({ customers: [], issueTypes: [] });
 
   // Form State
   const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -368,7 +363,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
   const [vehicleReg, setVehicleReg] = useState('');
 
   // Appointment Fields
-  const [issueType, setIssueType] = useState('');
+  const [issueType, setIssueType] = useState('Other');
   const [serviceType, setServiceType] = useState('');
   const [technicianId, setTechnicianId] = useState('');
   const [estimatedCost, setEstimatedCost] = useState('');
@@ -383,34 +378,10 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
       .get('/admin/appointment-options')
       .then(({ data }) => {
         setOptions(data);
-        const firstService = data.serviceTypeOptions?.[0];
-        if (firstService) {
-          setIssueType(firstService.issueType);
-          setServiceType(firstService.name);
-          setEstimatedCost(String(firstService.estimatedCost));
-        }
+
       })
       .catch(() => setError('Unable to load appointment options.'));
   }, []);
-
-  const matchingServices = options.serviceTypeOptions.filter(
-    (item) => item.issueType === issueType || item.issueType === 'Other',
-  );
-
-  function handleIssueTypeChange(value) {
-    setIssueType(value);
-    const firstMatchingService = options.serviceTypeOptions.find(
-      (item) => item.issueType === value,
-    ) || options.serviceTypeOptions.find((item) => item.issueType === 'Other');
-    setServiceType(firstMatchingService?.name || '');
-    setEstimatedCost(firstMatchingService ? String(firstMatchingService.estimatedCost) : '');
-  }
-
-  function handleServiceTypeChange(value) {
-    setServiceType(value);
-    const selected = matchingServices.find((item) => item.name === value);
-    if (selected) setEstimatedCost(String(selected.estimatedCost));
-  }
 
   async function handleCustomerChange(id) {
     setCustomerId(id);
@@ -446,7 +417,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
         technicianId,
         expectedFinishDate,
         estimatedCost,
-        problemDescription: issueType,
+        problemDescription: serviceType.trim(),
         preferredDate,
         preferredTime,
         internalNotes,
@@ -666,14 +637,14 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
             )}
           </div>
 
-          {/* Issue category drives the matching bookable service choices. */}
+          {/* Service descriptions are entered manually, independently of issue categories. */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Vehicle issue type</label>
               <select
                 required
                 value={issueType}
-                onChange={(e) => handleIssueTypeChange(e.target.value)}
+                onChange={(e) => setIssueType(e.target.value)}
                 style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               >
                 {(options.issueTypes || []).map((type) => (
@@ -684,19 +655,16 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Matching service type</label>
-              <select
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Service type</label>
+              <input
+                type="text"
                 required
+                maxLength={200}
+                placeholder="Enter service type, e.g. full service"
                 value={serviceType}
-                onChange={(e) => handleServiceTypeChange(e.target.value)}
+                onChange={(e) => setServiceType(e.target.value)}
                 style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
-              >
-                {matchingServices.map((item) => (
-                  <option key={item.id} value={item.name}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Appointment date</label>
@@ -802,14 +770,14 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
 /* =========================================================
    SIMPLE APPOINTMENT MANAGER MODAL
    ========================================================= */
-function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved, onConverted }) {
+function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [appt, setAppt] = useState(null);
 
   // Editable fields
-  const [status, setStatus] = useState('');
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [technicianId, setTechnicianId] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
@@ -824,7 +792,6 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
       .get(`/admin/appointments/${appointmentId}`)
       .then(({ data }) => {
         setAppt(data);
-        setStatus(data.status || 'Pending');
         setTechnicianId(data.technicianId || '');
         setPreferredDate(data.preferredDate || '');
         setPreferredTime(data.preferredTime || '');
@@ -840,22 +807,26 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
       });
   }, [appointmentId]);
 
+  function appointmentChanges(nextStatus = appt.status === 'Pending' ? 'Confirmed' : appt.status) {
+    return {
+      status: nextStatus,
+      technicianId,
+      ...(preferredDate !== appt.preferredDate || preferredTime !== appt.preferredTime
+        ? { preferredDate, preferredTime } : {}),
+      serviceType: serviceType.trim(),
+      expectedFinishDate,
+      estimatedCost,
+      internalNotes,
+    };
+  }
+
   async function handleSave() {
     setSaving(true);
     setError('');
     try {
       // Request a server-side change; update the displayed state from the successful response below.
-      await api.patch(`/admin/appointments/${appointmentId}`, {
-        status,
-        technicianId: technicianId || null,
-        preferredDate,
-        preferredTime,
-        serviceType,
-        expectedFinishDate,
-        estimatedCost,
-        internalNotes,
-      });
-      onSaved('Appointment saved successfully.');
+      await api.patch(`/admin/appointments/${appointmentId}`, appointmentChanges());
+      onSaved(appt.status === 'Pending' ? 'Appointment confirmed and assigned. The technician can now start service.' : 'Appointment saved successfully.');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to update appointment.');
     } finally {
@@ -863,33 +834,21 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
     }
   }
 
-  async function handleConvertToJob() {
+  async function handleCancelAppointment() {
     setSaving(true);
     setError('');
     try {
-      // First save any edits
-      await api.patch(`/admin/appointments/${appointmentId}`, {
-        status: 'Confirmed',
-        technicianId: technicianId || null,
-        preferredDate,
-        preferredTime,
-        serviceType,
-        expectedFinishDate,
-        estimatedCost,
-        internalNotes,
-      });
-      // Convert to job
-      const { data } = await api.post(`/admin/appointments/${appointmentId}/convert-to-job`, {
-        technicianId: technicianId || undefined,
-        priority: 'Normal',
-      });
-      onConverted(data.serviceNumber || 'Created');
+      await api.patch(`/admin/appointments/${appointmentId}`, { status: 'Cancelled' });
+      onSaved('Appointment cancelled.');
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to convert to service job.');
+      setError(err.response?.data?.message || 'Unable to cancel appointment.');
     } finally {
       setSaving(false);
     }
   }
+
+  const canCancel = appt && !appt.serviceJob && ['Pending', 'Confirmed', 'Checked In'].includes(appt.status);
+  const canSave = appt && appt.status !== 'Cancelled';
 
   return (
     <div
@@ -969,17 +928,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
-                >
-                  {STATUSES.map((st) => (
-                    <option key={st} value={st}>
-                      {serviceStatus(st)}
-                    </option>
-                  ))}
-                </select>
+                <div role="status" style={{ padding: '0.55rem' }}>{serviceStatus(appt?.status)}</div>
               </div>
 
               <div>
@@ -1023,6 +972,8 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Service Type</label>
               <input
                 type="text"
+                maxLength={200}
+                placeholder="Enter service type, e.g. full service"
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
@@ -1059,43 +1010,37 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
               />
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color, #2c2c32)' }}>
-              <button
-                type="button"
-                onClick={handleConvertToJob}
-                disabled={saving || appt?.status === 'Cancelled'}
-                style={{
-                  padding: '0.55rem 1rem',
-                  background: '#0284c7',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                }}
-              >
-                ⚙ Convert to Job
-              </button>
-
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)' }}>
+              {appt?.status === 'Pending'
+                ? 'Enter the service details and assign a technician to confirm this appointment. The technician starts and completes the service.'
+                : 'Service progress is updated automatically when the technician starts or completes the job.'}
+            </p>
+            {confirmCancel && (
+              <div role="alert">
+                <p>Cancel this appointment? The customer will be notified and the time slot released.</p>
+                <button type="button" disabled={saving} onClick={handleCancelAppointment}>Yes, Cancel Appointment</button>
+                <button type="button" disabled={saving} onClick={() => setConfirmCancel(false)}>Keep Appointment</button>
+              </div>
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color, #2c2c32)' }}>
+              {canCancel && <button type="button" disabled={saving} onClick={() => setConfirmCancel(true)}>Cancel Appointment</button>}
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={onClose}
                   style={{ padding: '0.55rem 1rem', background: '#27272a', color: '#f4f4f5', border: '1px solid #52525b', borderRadius: '6px', cursor: 'pointer' }}
                 >
-                  Cancel
+                  Close
                 </button>
-                <button
+                {canSave && <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={saving || !serviceType.trim() || (['Pending', 'Confirmed'].includes(appt?.status) && !technicianId)}
                   className="btn-primary"
                   style={{ padding: '0.55rem 1.2rem', fontWeight: 600, borderRadius: '6px', cursor: 'pointer' }}
                 >
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
+                  {saving ? 'Saving…' : appt?.status === 'Pending' ? 'Confirm & Assign' : 'Save Appointment'}
+                </button>}
               </div>
             </div>
           </div>

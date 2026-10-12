@@ -3,11 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import ServiceJob from '../models/ServiceJob.js';
 import Appointment from '../models/Appointment.js';
+import Vehicle from '../models/Vehicle.js';
+import { createCustomerAppointment } from '../controllers/customerAppointmentController.js';
 import Invoice from '../models/Invoice.js';
 import Payment from '../models/Payment.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
-import { convertAdminAppointmentToJob } from '../controllers/adminAppointmentController.js';
+import { convertAdminAppointmentToJob, updateAdminAppointment } from '../controllers/adminAppointmentController.js';
 import { updateTechnicianJobCard } from '../controllers/technicianJobCardController.js';
 import { updateDraftInvoice } from '../controllers/financeInvoiceController.js';
 import { submitCustomerPayment } from '../controllers/customerPaymentController.js';
@@ -15,14 +17,18 @@ import { reviewFinancePayment } from '../controllers/financePaymentController.js
 const id = n => `507f1f77bcf86cd7994390${String(n).padStart(2, '0')}`;
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, set() { return this; }, json(body) { this.body = body; return this; } });
 
-test('confirmed appointment starts directly, completes without testing, and is paid only after verification', async t => {
+test('custom customer booking is confirmed by admin, started and completed by technician, then paid only after admin verification', async t => {
   const technician = { _id: id(1), role: 'Technician', name: 'Technician' };
   const customer = { _id: id(2) };
-  const appointment = { _id: id(3), assignedTechnician: technician._id, customer: customer._id, vehicle: id(4), status: 'Confirmed', problemDescription: 'Oil service', history: [], async save() {} };
+  let appointment;
   let job;
   let invoice;
   const payments = [];
-  t.mock.method(Appointment, 'findById', async () => appointment);
+  t.mock.method(Appointment, 'findById', () => ({ select: async () => appointment, then: resolve => resolve(appointment) }));
+  t.mock.method(Appointment, 'exists', async () => false);
+  t.mock.method(Appointment, 'create', async data => (appointment = { ...data, _id: id(3), updatedAt: new Date(), async save() {} }));
+  t.mock.method(Vehicle, 'findOne', () => ({ select: async () => ({ _id: id(4), make: 'Toyota', model: 'Prius' }) }));
+  t.mock.method(User, 'findOne', () => ({ select: async () => ({ ...technician, availabilityStatus: 'Available' }) }));
   t.mock.method(Appointment, 'updateOne', async (filter, update) => { Object.assign(appointment, update.$set); return { modifiedCount: 1 }; });
   t.mock.method(ServiceJob, 'findOne', async query => query.technician && query.technician !== technician._id ? null : job || null);
   t.mock.method(ServiceJob, 'create', async data => (job = { ...data, _id: id(5), serviceNumber: 'JOB-SIMPLE', tasks: [], additionalRepairs: [], replacedParts: [], labourEntries: [], repairNotes: [], $locals: {}, async save() {} }));
@@ -42,11 +48,28 @@ test('confirmed appointment starts directly, completes without testing, and is p
   t.mock.method(Payment, 'create', async data => { const payment = { ...data, _id: id(10 + payments.length), status: 'Pending Verification' }; payments.push(payment); return payment; });
   t.mock.method(Payment, 'findOne', async query => { const payment = payments.find(payment => payment._id === query._id && payment.status === query.status); return payment ? { ...payment } : null; });
   t.mock.method(Payment, 'findOneAndUpdate', async (query, update) => { const payment = payments.find(payment => payment._id === query._id && payment.status === query.status); if (!payment) return null; Object.assign(payment, update.$set); return payment; });
+  const booking = response();
+  await createCustomerAppointment({ user: customer, body: { vehicleId: id(4), preferredDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10), preferredTime: '10:37', serviceType: '  Custom full service  ', problemDescription: 'Oil service' } }, booking);
+  assert.equal(booking.code, 201);
+  assert.equal(appointment.status, 'Pending');
+  assert.equal(appointment.serviceType, 'Custom full service');
+  const adminStart = response();
+  await convertAdminAppointmentToJob({ params: { appointmentId: appointment._id }, user: { _id: id(7), role: 'Admin' }, body: {} }, adminStart);
+  assert.equal(adminStart.code, 403);
+  const confirm = response();
+  await updateAdminAppointment({ params: { appointmentId: appointment._id }, user: { _id: id(7), role: 'Admin' }, body: { technicianId: technician._id, serviceType: 'Full service with custom inspection', estimatedCost: 2000 } }, confirm);
+  assert.equal(confirm.code, 200);
+  assert.equal(appointment.status, 'Confirmed');
+  assert.equal(job, undefined, 'Confirmation does not start a service job');
+  const wrongTechnician = response();
+  await convertAdminAppointmentToJob({ params: { appointmentId: appointment._id }, user: { _id: id(9), role: 'Technician' }, body: {} }, wrongTechnician);
+  assert.equal(wrongTechnician.code, 403);
   const start = response();
   await convertAdminAppointmentToJob({ params: { appointmentId: appointment._id }, user: technician, body: {} }, start);
   assert.equal(start.code, 201); assert.equal(job.status, 'In Progress'); assert.equal(appointment.status, 'In Service');
-  const unacceptedEdit = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'repairNote', note: 'Work started before acceptance.' } }, unacceptedEdit); assert.equal(unacceptedEdit.code, 409);
-  const accepted = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'acceptJob' } }, accepted); assert.equal(accepted.code, 200); assert.ok(job.technicianAcceptedAt);
+  assert.equal(job.estimatedCost, 2000);
+  assert.ok(job.technicianAcceptedAt, 'Starting service also accepts the assignment');
+  assert.equal(job.technicianAcceptedBy, technician._id);
   for (const body of [{ action: 'partAdd', name: 'Oil filter', quantity: 2, unitCost: 500 }, { action: 'labourAdd', description: 'Oil service', hours: 1, ratePerHour: 1000 }]) {
     const res = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body }, res); assert.equal(res.code, 200);
   }

@@ -7,7 +7,7 @@ const processes = [
   {
     name: 'Backend',
     cwd: path.join(root, 'backend'),
-    args: ['server.js'],
+    args: ['--watch', 'server.js'],
   },
   {
     name: 'Frontend',

@@ -38,6 +38,7 @@ export async function updateTechnicianJobCard(req, res) {
   try {
     const job = await findAssignedJob(req.params.jobId, req.user._id);
     if (!job) return res.status(404).json({ message: 'Assigned service job not found.' });
+    if (job.status === 'Ready') return res.status(409).json({ message: 'This service is completed and cannot be changed.' });
     if (action === 'acceptJob') {
       if (job.technicianAcceptedAt) return res.status(409).json({ message: 'You have already accepted this job.' });
       job.technicianAcceptedAt = new Date();
@@ -47,7 +48,6 @@ export async function updateTechnicianJobCard(req, res) {
       return res.json({ message: 'Job accepted. You can now update its workflow.', status: job.status, acceptedAt: job.technicianAcceptedAt });
     }
     if (!job.technicianAcceptedAt) return res.status(409).json({ message: 'Accept this assigned job before updating its workflow.' });
-    if (job.status === 'Ready') return res.status(409).json({ message: 'This service is completed and cannot be changed.' });
     const now = new Date();
     let message;
 
