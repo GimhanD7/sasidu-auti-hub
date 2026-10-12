@@ -95,6 +95,12 @@ function InvoiceCard({ invoice, printTarget, onPrint }) {
             <dd>{money(invoice.additionalRepairsCost)}</dd>
           </div>
         )}
+        {invoice.adminChargeAmount > 0 && (
+          <div>
+            <dt>{invoice.adminChargeDescription || 'Workshop charge'}</dt>
+            <dd>{money(invoice.adminChargeAmount)}</dd>
+          </div>
+        )}
         <div>
           <dt>Tax</dt>
           <dd>{money(invoice.tax)}</dd>

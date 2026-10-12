@@ -22,6 +22,7 @@ export default function FinanceInvoices() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All statuses');
   const [rateOverrides, setRateOverrides] = useState({});
+  const [chargeOverrides, setChargeOverrides] = useState({});
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +82,10 @@ export default function FinanceInvoices() {
   }, [invoices, search, statusFilter]);
 
   const invoice = (invoices || []).find((item) => item.id === selectedId);
-  const base = invoice ? (invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0) : 0;
+  const charge = chargeOverrides[invoice?.id] || {};
+  const adminChargeDescription = charge.description ?? invoice?.adminChargeDescription ?? '';
+  const adminChargeAmount = charge.amount ?? String(invoice?.adminChargeAmount || 0);
+  const base = invoice ? (invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0) + (Number(adminChargeAmount) || 0) : 0;
   const rates = rateOverrides[invoice?.id] || {};
   const discountRate =
     rates.discountRate ?? (base ? String(Math.round(((Number(invoice?.discount || 0) / base) * 100) * 100) / 100) : '0');
@@ -102,6 +106,8 @@ export default function FinanceInvoices() {
       const { data } = await api.patch(`/admin/invoices/${invoice.id}`, {
         taxRate: Number(taxRate) || 0,
         discountRate: Number(discountRate) || 0,
+        adminChargeDescription,
+        adminChargeAmount: Number(adminChargeAmount) || 0,
         finalize,
       });
       setInvoices((current) =>
@@ -413,6 +419,11 @@ export default function FinanceInvoices() {
                     <strong>{money(invoice.additionalRepairsCost)}</strong>
                   </div>
                 )}
+                {Number(adminChargeAmount) > 0 && (
+                  <div className="finance-invoice-line">
+                    <span>{adminChargeDescription || 'Workshop charge'}</span><span>—</span><span>—</span><strong>{money(adminChargeAmount)}</strong>
+                  </div>
+                )}
                 {!(invoice.parts?.length) && !(invoice.labourItems?.length) && !Number(invoice.additionalRepairsCost) && (
                   <p style={{ padding: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
                     No line items recorded for this service.
@@ -422,6 +433,14 @@ export default function FinanceInvoices() {
 
               <div className="finance-invoice-bottom">
                 <div className="finance-invoice-adjustments">
+                  <label>
+                    Workshop charge description
+                    <input type="text" maxLength="200" value={adminChargeDescription} onChange={(event) => setChargeOverrides((current) => ({ ...current, [invoice.id]: { ...current[invoice.id], description: event.target.value } }))} disabled={busy || invoice.paymentStatus !== 'Draft'} placeholder="e.g. Additional labour" />
+                  </label>
+                  <label>
+                    Workshop charge (LKR)
+                    <input type="number" min="0" max="100000000" step="0.01" value={adminChargeAmount} onChange={(event) => setChargeOverrides((current) => ({ ...current, [invoice.id]: { ...current[invoice.id], amount: event.target.value } }))} disabled={busy || invoice.paymentStatus !== 'Draft'} />
+                  </label>
                   <label>
                     Discount (%)
                     <input
@@ -488,6 +507,9 @@ export default function FinanceInvoices() {
                       <dt>Approved additional repairs</dt>
                       <dd>{money(invoice.additionalRepairsCost)}</dd>
                     </div>
+                  )}
+                  {Number(adminChargeAmount) > 0 && (
+                    <div><dt>{adminChargeDescription || 'Workshop charge'}</dt><dd>{money(adminChargeAmount)}</dd></div>
                   )}
                   <div>
                     <dt>Subtotal</dt>
@@ -620,6 +642,9 @@ export default function FinanceInvoices() {
                         <td>—</td>
                         <td>{money(invoice.additionalRepairsCost)}</td>
                       </tr>
+                    )}
+                    {Number(invoice.adminChargeAmount) > 0 && (
+                      <tr><td>{invoice.adminChargeDescription || 'Workshop charge'}</td><td>—</td><td>—</td><td>{money(invoice.adminChargeAmount)}</td></tr>
                     )}
                   </tbody>
                 </table>

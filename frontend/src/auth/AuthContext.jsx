@@ -75,6 +75,7 @@ export function AuthProvider({ children }) {
   }
 
   function retrySession() {
+    setSessionError('');
     setLoading(true);
     setRetry((value) => value + 1);
   }

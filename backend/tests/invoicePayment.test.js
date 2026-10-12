@@ -36,9 +36,11 @@ test('issuing a draft invoice emails the customer and returns the delivery state
   t.mock.method(invoiceEmail, 'isConfigured', () => true);
   const send = t.mock.method(invoiceEmail, 'send', async () => {});
   const res = response();
-  await updateDraftInvoice({ params: { invoiceId: invoice._id }, body: { finalize: true, taxRate: 0, discountRate: 0 } }, res);
+  await updateDraftInvoice({ params: { invoiceId: invoice._id }, body: { finalize: true, taxRate: 0, discountRate: 0, adminChargeDescription: 'Additional labour', adminChargeAmount: 200 } }, res);
   assert.equal(res.code, 200);
   assert.equal(invoice.paymentStatus, 'Pending');
+  assert.equal(invoice.totalAmount, 1700);
+  assert.equal(invoice.adminChargeDescription, 'Additional labour');
   assert.equal(res.body.emailed, true);
   assert.match(res.body.message, /emailed/);
   assert.equal(send.mock.callCount(), 1);

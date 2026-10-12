@@ -23,6 +23,8 @@ const invoiceSchema = new mongoose.Schema({
   partsCost: { type: Number, default: 0 },
   labourCost: { type: Number, default: 0 },
   additionalRepairsCost: { type: Number, default: 0 },
+  adminChargeDescription: { type: String, trim: true, maxlength: 200, default: '' },
+  adminChargeAmount: { type: Number, min: 0, max: 100000000, default: 0 },
   tax: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
   totalAmount: { type: Number, required: true },

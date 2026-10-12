@@ -23,7 +23,7 @@ const jobPopulate = [
   { path: 'customer', select: 'name email mobile' },
   { path: 'vehicle', select: 'registrationNumber make model year' },
   { path: 'appointment', select: 'serviceType' },
-  { path: 'billingInvoice', select: 'invoiceNumber paymentStatus totalAmount partsCost labourCost additionalRepairsCost tax discount parts labourItems' },
+  { path: 'billingInvoice', select: 'invoiceNumber paymentStatus totalAmount partsCost labourCost additionalRepairsCost adminChargeDescription adminChargeAmount tax discount parts labourItems' },
 ];
 
 // Convert recorded parts and labour to monetary lines and include only approved additional repairs in the subtotal.
@@ -56,8 +56,10 @@ function serializeJob(job) {
     parts: lines.parts, labourItems: lines.labourItems,
     approvedRepairs: (job.additionalRepairs || []).filter(repair => repair.status === 'Approved').map(repair => ({ description: repair.description || 'Approved additional repair', amount: roundMoney(repair.estimatedCost) })),
     partsCost: existing?.partsCost ?? lines.partsCost, labourCost: existing?.labourCost ?? lines.labourCost,
-    additionalRepairsCost: existing?.additionalRepairsCost ?? lines.additionalRepairsCost, subtotal: roundMoney(existing?.partsCost ?? lines.partsCost) + roundMoney(existing?.labourCost ?? lines.labourCost) + roundMoney(existing?.additionalRepairsCost ?? lines.additionalRepairsCost),
-    invoice: existing ? { id: String(existing._id), invoiceNumber: existing.invoiceNumber, paymentStatus: existing.paymentStatus, totalAmount: existing.totalAmount, tax: existing.tax || 0, discount: existing.discount || 0 } : null,
+    additionalRepairsCost: existing?.additionalRepairsCost ?? lines.additionalRepairsCost,
+    adminChargeDescription: existing?.adminChargeDescription || '', adminChargeAmount: roundMoney(existing?.adminChargeAmount),
+    subtotal: roundMoney(existing?.partsCost ?? lines.partsCost) + roundMoney(existing?.labourCost ?? lines.labourCost) + roundMoney(existing?.additionalRepairsCost ?? lines.additionalRepairsCost) + roundMoney(existing?.adminChargeAmount),
+    invoice: existing ? { id: String(existing._id), invoiceNumber: existing.invoiceNumber, paymentStatus: existing.paymentStatus, totalAmount: existing.totalAmount, adminChargeDescription: existing.adminChargeDescription || '', adminChargeAmount: roundMoney(existing.adminChargeAmount), tax: existing.tax || 0, discount: existing.discount || 0 } : null,
   };
 }
 
@@ -86,7 +88,7 @@ export async function listFinanceInvoices(req, res) {
         paymentStatus: invoice.paymentStatus || 'Pending', totalAmount: roundMoney(invoice.totalAmount),
         amountPaid: roundMoney(invoice.amountPaid), amountDue: roundMoney(Math.max(0, invoice.totalAmount - (invoice.amountPaid || 0))),
         parts: invoice.parts || [], labourItems: invoice.labourItems || [],
-        partsCost: roundMoney(invoice.partsCost), labourCost: roundMoney(invoice.labourCost), additionalRepairsCost: roundMoney(invoice.additionalRepairsCost), tax: roundMoney(invoice.tax), discount: roundMoney(invoice.discount),
+        partsCost: roundMoney(invoice.partsCost), labourCost: roundMoney(invoice.labourCost), additionalRepairsCost: roundMoney(invoice.additionalRepairsCost), adminChargeDescription: invoice.adminChargeDescription || '', adminChargeAmount: roundMoney(invoice.adminChargeAmount), tax: roundMoney(invoice.tax), discount: roundMoney(invoice.discount),
         issuedAt: invoice.createdAt, paymentDate: invoice.paymentDate || null, paymentMethod: invoice.paymentMethod || '',
         customer: invoice.customer ? { name: invoice.customer.name || 'Customer', email: invoice.customer.email || '', mobile: invoice.customer.mobile || '' } : null,
         serviceJob: { id: job._id ? String(job._id) : '', serviceNumber: job.serviceNumber || '', serviceType: job.appointment?.serviceType || 'Service repair', vehicle: vehicle ? { make: vehicle.make || '', model: vehicle.model || '', year: vehicle.year || null, registrationNumber: vehicle.registrationNumber || '' } : null },
@@ -104,10 +106,16 @@ export async function updateDraftInvoice(req, res) {
   const discountRate = Number(req.body?.discountRate ?? 0);
   if (!mongoose.isValidObjectId(invoiceId)) return res.status(400).json({ message: 'Invalid invoice.' });
   if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100 || !Number.isFinite(discountRate) || discountRate < 0 || discountRate > 100) return res.status(400).json({ message: 'Tax and discount rates must be between 0 and 100 percent.' });
+  const adminChargeDescription = req.body?.adminChargeDescription === undefined ? undefined : typeof req.body.adminChargeDescription === 'string' ? req.body.adminChargeDescription.trim() : null;
+  const adminChargeAmount = req.body?.adminChargeAmount === undefined ? undefined : Number(req.body.adminChargeAmount);
+  if (adminChargeDescription === null || (adminChargeDescription !== undefined && adminChargeDescription.length > 200)) return res.status(400).json({ message: 'Workshop charge description must be 200 characters or fewer.' });
+  if (adminChargeAmount !== undefined && (!Number.isFinite(adminChargeAmount) || adminChargeAmount < 0 || adminChargeAmount > 100000000)) return res.status(400).json({ message: 'Enter a valid workshop charge amount.' });
   try {
     const invoice = await Invoice.findOne({ _id: invoiceId, paymentStatus: 'Draft' });
     if (!invoice) return res.status(404).json({ message: 'Draft invoice not found.' });
-    const subtotal = roundMoney((invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0));
+    if (adminChargeDescription !== undefined) invoice.adminChargeDescription = adminChargeDescription;
+    if (adminChargeAmount !== undefined) invoice.adminChargeAmount = roundMoney(adminChargeAmount);
+    const subtotal = roundMoney((invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0) + (invoice.adminChargeAmount || 0));
     invoice.discount = roundMoney(subtotal * discountRate / 100);
     invoice.tax = roundMoney((subtotal - invoice.discount) * taxRate / 100);
     invoice.totalAmount = roundMoney(subtotal - invoice.discount + invoice.tax);
@@ -122,6 +130,7 @@ export async function updateDraftInvoice(req, res) {
     res.set('Cache-Control', 'private, no-store').json({ message, emailed, invoice: {
       id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus,
       partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost,
+      adminChargeDescription: invoice.adminChargeDescription || '', adminChargeAmount: roundMoney(invoice.adminChargeAmount),
       tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount,
     } });
   } catch {
@@ -152,13 +161,18 @@ export async function saveJobInvoice(req, res) {
   if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100 || !Number.isFinite(discountRate) || discountRate < 0 || discountRate > 100) {
     return res.status(400).json({ message: 'Tax and discount rates must be between 0 and 100 percent.' });
   }
+  const requestedChargeDescription = req.body?.adminChargeDescription;
+  const requestedChargeAmount = req.body?.adminChargeAmount;
+  if ((requestedChargeDescription !== undefined && (typeof requestedChargeDescription !== 'string' || requestedChargeDescription.trim().length > 200)) || (requestedChargeAmount !== undefined && (!Number.isFinite(Number(requestedChargeAmount)) || Number(requestedChargeAmount) < 0 || Number(requestedChargeAmount) > 100000000))) return res.status(400).json({ message: 'Enter a valid workshop charge description and amount.' });
   try {
     const job = await ServiceJob.findOne({ _id: req.params.jobId, status: 'Ready' }).populate(jobPopulate);
     if (!job) return res.status(404).json({ message: 'Completed service job not found.' });
     let invoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
     if (invoice && invoice.paymentStatus !== 'Draft') return res.status(409).json({ message: 'This job already has a finalized invoice.' });
     const lines = buildInvoiceLines(job);
-    const subtotal = roundMoney(lines.partsCost + lines.labourCost + lines.additionalRepairsCost);
+    const adminChargeDescription = requestedChargeDescription === undefined ? invoice?.adminChargeDescription || '' : requestedChargeDescription.trim();
+    const adminChargeAmount = requestedChargeAmount === undefined ? roundMoney(invoice?.adminChargeAmount) : roundMoney(requestedChargeAmount);
+    const subtotal = roundMoney(lines.partsCost + lines.labourCost + lines.additionalRepairsCost + adminChargeAmount);
     const discount = roundMoney(subtotal * discountRate / 100);
     const tax = roundMoney((subtotal - discount) * taxRate / 100);
     const totalAmount = roundMoney(subtotal - discount + tax);
@@ -168,11 +182,11 @@ export async function saveJobInvoice(req, res) {
       invoice = await Invoice.create({
         serviceJob: job._id, customer: job.customer?._id || job.customer,
         invoiceNumber: `INV-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`,
-        ...lines, tax, discount, totalAmount, paymentStatus: 'Draft',
+        ...lines, adminChargeDescription, adminChargeAmount, tax, discount, totalAmount, paymentStatus: 'Draft',
       });
       job.billingInvoice = invoice._id;
     } else {
-      Object.assign(invoice, { ...lines, tax, discount, totalAmount });
+      Object.assign(invoice, { ...lines, adminChargeDescription, adminChargeAmount, tax, discount, totalAmount });
     }
     if (req.body.finalize === true) invoice.paymentStatus = 'Pending';
     if (typeof invoice.save === 'function') await invoice.save();
@@ -183,7 +197,7 @@ export async function saveJobInvoice(req, res) {
         ? 'Invoice issued and emailed to the customer.'
         : 'Invoice issued, but email delivery is unavailable. The customer can view it in their account.',
       emailed,
-      invoice: { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus, partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost, tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount },
+      invoice: { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus, partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost, adminChargeDescription: invoice.adminChargeDescription || '', adminChargeAmount: roundMoney(invoice.adminChargeAmount), tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount },
     });
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ message: 'An invoice already exists for this job. Refresh the billing page and try again.' });

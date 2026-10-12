@@ -814,6 +814,8 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [serviceType, setServiceType] = useState('');
+  const [expectedFinishDate, setExpectedFinishDate] = useState('');
+  const [estimatedCost, setEstimatedCost] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
 
   // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
@@ -827,6 +829,8 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
         setPreferredDate(data.preferredDate || '');
         setPreferredTime(data.preferredTime || '');
         setServiceType(data.serviceType || '');
+        setExpectedFinishDate(data.expectedFinishDate || '');
+        setEstimatedCost(data.estimatedCost == null ? '' : String(data.estimatedCost));
         setInternalNotes(data.internalNotes || '');
         setLoading(false);
       })
@@ -847,6 +851,8 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
         preferredDate,
         preferredTime,
         serviceType,
+        expectedFinishDate,
+        estimatedCost,
         internalNotes,
       });
       onSaved('Appointment saved successfully.');
@@ -868,6 +874,8 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
         preferredDate,
         preferredTime,
         serviceType,
+        expectedFinishDate,
+        estimatedCost,
         internalNotes,
       });
       // Convert to job
@@ -1019,6 +1027,17 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
                 onChange={(e) => setServiceType(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
               />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Estimated finish date</label>
+                <input type="date" min={preferredDate} value={expectedFinishDate} onChange={(e) => setExpectedFinishDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Estimated cost (LKR)</label>
+                <input type="number" min="0" max="10000000" step="0.01" value={estimatedCost} onChange={(e) => setEstimatedCost(e.target.value)} style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }} />
+              </div>
             </div>
 
             {appt?.problemDescription && (

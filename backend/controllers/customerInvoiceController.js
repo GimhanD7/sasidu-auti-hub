@@ -29,6 +29,8 @@ export async function listCustomerInvoices(req, res) {
         partsCost: invoice.partsCost ?? 0,
         labourCost: invoice.labourCost ?? 0,
         additionalRepairsCost: invoice.additionalRepairsCost ?? 0,
+        adminChargeDescription: invoice.adminChargeDescription || '',
+        adminChargeAmount: invoice.adminChargeAmount ?? 0,
         tax: invoice.tax ?? 0,
         discount: invoice.discount ?? 0,
         totalAmount: invoice.totalAmount,
