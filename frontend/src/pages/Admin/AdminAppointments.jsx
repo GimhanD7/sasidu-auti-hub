@@ -249,6 +249,7 @@ export default function AdminAppointments() {
                     <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
                       <strong>{formatDate(appt.preferredDate)}</strong>
                       <div style={{ color: '#64748b', fontSize: '0.8rem' }}>⏰ {appt.preferredTime}</div>
+                      {appt.expectedFinishDate && <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Finish estimate: {formatDate(appt.expectedFinishDate)}</div>}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ fontWeight: 600 }}>{appt.customer}</div>
@@ -448,7 +449,6 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
         problemDescription: issueType,
         preferredDate,
         preferredTime,
-        problemDescription,
         internalNotes,
       };
 
@@ -730,8 +730,8 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
               >
                 <option value="">Choose later</option>
                 {technicians.map((technician) => (
-                  <option key={technician.id} value={technician.id} disabled={technician.status && technician.status !== 'Available'}>
-                    {technician.name}{technician.status && technician.status !== 'Available' ? ` · ${technician.status}` : ''}
+                  <option key={technician.id} value={technician.id} disabled={(technician.availabilityStatus || technician.status) && (technician.availabilityStatus || technician.status) !== 'Available'}>
+                    {technician.name}{(technician.availabilityStatus || technician.status) && (technician.availabilityStatus || technician.status) !== 'Available' ? ` · ${technician.availabilityStatus || technician.status}` : ''}
                   </option>
                 ))}
               </select>

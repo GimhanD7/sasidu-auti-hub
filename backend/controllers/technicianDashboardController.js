@@ -33,6 +33,8 @@ function serializeJob(job) {
     serviceNumber: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`,
     status: job.status,
     priority: job.priority || 'Normal',
+    issueType: job.issueType || job.appointment?.issueType || 'Other',
+    estimatedCost: job.estimatedCost ?? job.appointment?.estimatedCost ?? null,
     complaint: job.customerComplaint || '',
     expectedCompletionTime: job.expectedCompletionTime || null,
     updatedAt: job.updatedAt,
@@ -53,10 +55,10 @@ export async function getTechnicianDashboard(req, res) {
     const { start, end } = zonedDayBounds();
     const [jobs, assignedCount, inProgressCount, waitingApprovalCount, completedTodayCount, completedCount, highPriorityCount, notifications, unreadNotifications, appointments] = await Promise.all([
       ServiceJob.find({ technician: technicianId })
-        .select('serviceNumber status priority customerComplaint expectedCompletionTime updatedAt createdAt timeline')
+        .select('serviceNumber status priority issueType estimatedCost customerComplaint expectedCompletionTime updatedAt createdAt timeline')
         .populate({ path: 'customer', select: 'name' })
         .populate({ path: 'vehicle', select: 'make model year registrationNumber' })
-        .populate({ path: 'appointment', select: 'serviceType preferredDate preferredTime' })
+        .populate({ path: 'appointment', select: 'serviceType issueType estimatedCost preferredDate preferredTime' })
         .sort({ updatedAt: -1 }).limit(250).lean(),
       ServiceJob.countDocuments({ technician: technicianId, status: 'Inspecting' }),
       ServiceJob.countDocuments({ technician: technicianId, status: 'In Progress' }),
@@ -103,6 +105,9 @@ export async function getTechnicianDashboard(req, res) {
         appointmentNumber: appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`,
         status: appointment.status,
         serviceType: appointment.serviceType,
+        issueType: appointment.issueType || 'Other',
+        estimatedCost: appointment.estimatedCost ?? null,
+        expectedFinishDate: appointment.expectedFinishDate || null,
         preferredDate: appointment.preferredDate,
         preferredTime: appointment.preferredTime,
         customer: appointment.customer?.name || 'Customer unavailable',

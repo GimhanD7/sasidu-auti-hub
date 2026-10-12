@@ -21,6 +21,8 @@ function jobSummary(job) {
     serviceNumber: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`,
     status: job.status,
     priority: job.priority || 'Normal',
+    issueType: job.issueType || job.appointment?.issueType || 'Other',
+    estimatedCost: job.estimatedCost ?? job.appointment?.estimatedCost ?? null,
     complaint: job.customerComplaint || '',
     expectedCompletionTime: job.expectedCompletionTime || null,
     createdAt: job.createdAt,
@@ -59,7 +61,7 @@ export async function listTechnicianJobs(req, res) {
       ServiceJob.find(filter).sort(SORTS[sort]).skip((page - 1) * limit).limit(limit)
         .populate({ path: 'customer', select: 'name' })
         .populate({ path: 'vehicle', select: 'make model year registrationNumber' })
-        .populate({ path: 'appointment', select: 'serviceType preferredDate preferredTime' }).lean(),
+        .populate({ path: 'appointment', select: 'serviceType issueType estimatedCost preferredDate preferredTime' }).lean(),
       ServiceJob.countDocuments(filter),
       Appointment.find({
         assignedTechnician: req.user._id,
@@ -82,6 +84,9 @@ export async function listTechnicianJobs(req, res) {
         appointmentNumber: appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`,
         status: appointment.status,
         serviceType: appointment.serviceType,
+        issueType: appointment.issueType || 'Other',
+        estimatedCost: appointment.estimatedCost ?? null,
+        expectedFinishDate: appointment.expectedFinishDate || null,
         preferredDate: appointment.preferredDate,
         preferredTime: appointment.preferredTime,
         customer: appointment.customer?.name || 'Customer unavailable',
@@ -137,7 +142,7 @@ export async function getTechnicianJob(req, res) {
     const job = await ServiceJob.findOne({ _id: req.params.jobId, technician: req.user._id })
       .populate({ path: 'customer', select: 'name email mobile' })
       .populate({ path: 'vehicle', select: 'make model year registrationNumber mileage fuelType vinNumber' })
-      .populate({ path: 'appointment', select: 'appointmentNumber serviceType preferredDate preferredTime status problemDescription' })
+      .populate({ path: 'appointment', select: 'appointmentNumber serviceType issueType estimatedCost expectedFinishDate preferredDate preferredTime status problemDescription' })
       .populate({ path: 'billingInvoice', select: 'invoiceNumber paymentStatus totalAmount' }).lean();
     if (!job) return res.status(404).json({ message: 'Service job not found.' });
     const photos = await JobPhoto.find({ job: job._id }).select('_id filename contentType category evidenceType description createdAt').sort({ createdAt: -1 }).lean();
@@ -145,7 +150,7 @@ export async function getTechnicianJob(req, res) {
       ...jobSummary(job),
       customer: { name: job.customer?.name || 'Customer unavailable', email: job.customer?.email || '', mobile: job.customer?.mobile || '' },
       vehicle: job.vehicle ? { make: job.vehicle.make, model: job.vehicle.model, year: job.vehicle.year, registrationNumber: job.vehicle.registrationNumber, mileage: job.vehicle.mileage, fuelType: job.vehicle.fuelType, vinNumber: job.vehicle.vinNumber } : null,
-      appointment: job.appointment ? { number: job.appointment.appointmentNumber || '', serviceType: job.appointment.serviceType, preferredDate: job.appointment.preferredDate, preferredTime: job.appointment.preferredTime, status: job.appointment.status, problemDescription: job.appointment.problemDescription || '' } : null,
+      appointment: job.appointment ? { number: job.appointment.appointmentNumber || '', serviceType: job.appointment.serviceType, issueType: job.appointment.issueType || 'Other', estimatedCost: job.appointment.estimatedCost ?? null, expectedFinishDate: job.appointment.expectedFinishDate || null, preferredDate: job.appointment.preferredDate, preferredTime: job.appointment.preferredTime, status: job.appointment.status, problemDescription: job.appointment.problemDescription || '' } : null,
       assignedTechnician: req.user.name || 'Technician',
       currentTechnicianId: String(req.user._id),
       inspection: job.inspection || { findings: '', diagnosis: '', notes: '', issues: [], recommendedRepairs: [], startedAt: null, completedAt: null },

@@ -146,6 +146,7 @@ export async function createAdminAppointment(req, res) {
 
     const appointmentObjectId = new mongoose.Types.ObjectId();
     const appointmentNumber = `APT-${preferredDate.replaceAll('-', '')}-${appointmentObjectId.toString().slice(-6).toUpperCase()}`;
+    const initialStatus = assignedTechnician ? 'Confirmed' : 'Pending';
     // Persist appointment data as a new record in MongoDB; subsequent code uses the stored result.
     const appointment = await Appointment.create({
       _id: appointmentObjectId, appointmentNumber, bookingSlotKey: `${preferredDate}|${preferredTime}`,
@@ -155,14 +156,14 @@ export async function createAdminAppointment(req, res) {
       estimatedCost: normalizedEstimatedCost,
       expectedFinishDate: finishDate,
       assignedTechnician: assignedTechnician?._id,
-      customerNotes: customerNotes.trim(), internalNotes: internalNotes.trim(), status: 'Pending',
-      history: [{ action: 'Appointment created', details: `Initial status: Pending · ${serviceType}`, actor: req.user._id }],
+      customerNotes: customerNotes.trim(), internalNotes: internalNotes.trim(), status: initialStatus,
+      history: [{ action: 'Appointment created', details: `Initial status: ${initialStatus} · ${serviceType}`, actor: req.user._id }],
     });
 
     let notificationCreated = false;
     try {
       // Persist notification data as a new record in MongoDB; subsequent code uses the stored result.
-      await Notification.create({ user: customer._id, type: 'AppointmentConfirmation', title: 'Appointment request received',
+      await Notification.create({ user: customer._id, type: 'AppointmentConfirmation', title: initialStatus === 'Confirmed' ? 'Appointment confirmed' : 'Appointment request received',
         message: `${appointmentNumber}: ${serviceType} for ${vehicle.make} ${vehicle.model} on ${preferredDate} at ${preferredTime}.`,
         link: '/customer/appointments', dedupeKey: `appointment-created:${appointment._id}` });
       notificationCreated = true;
@@ -283,8 +284,10 @@ export async function updateAdminAppointment(req, res) {
       const service = await ServiceType.findOne({ name: body.serviceType, isDeleted: { $ne: true }, ...(body.serviceType === appointment.serviceType ? {} : { isActive: true }) }).lean();
       if (!service) return res.status(400).json({ message: 'Choose a valid service type.' });
       const serviceIssueType = service.issueType || inferIssueType(service.name, service.requiredSkill);
-      if (serviceIssueType !== (body.issueType || appointment.issueType || serviceIssueType)) return res.status(400).json({ message: 'Choose a service type that matches the selected vehicle issue.' });
+      const selectedIssueType = body.issueType || (appointment.issueType === serviceIssueType ? appointment.issueType : serviceIssueType);
+      if (serviceIssueType !== selectedIssueType) return res.status(400).json({ message: 'Choose a service type that matches the selected vehicle issue.' });
       appointment.serviceType = body.serviceType;
+      if (body.issueType === undefined) appointment.issueType = serviceIssueType;
     }
     if (body.issueType !== undefined) {
       if (!ISSUE_TYPES.includes(body.issueType)) return res.status(400).json({ message: 'Choose a valid vehicle issue type.' });

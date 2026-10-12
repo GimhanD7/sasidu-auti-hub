@@ -64,6 +64,8 @@ export default function TechnicianJobDetails() {
       <section className="section-card">
         <h2>Service details</h2>
         <p><strong>Type:</strong> {job.serviceType} · <strong>Customer:</strong> {job.customer?.name} ({job.customer?.mobile || 'No phone'})</p>
+        <p><strong>Issue type:</strong> {job.issueType || 'Other'} · <strong>Estimated cost:</strong> {job.estimatedCost == null ? 'Not set' : money(job.estimatedCost)}</p>
+        {job.expectedCompletionTime && <p><strong>Estimated finish:</strong> {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(job.expectedCompletionTime))}</p>}
         {job.complaint && <p><strong>Customer note:</strong> {job.complaint}</p>}
         {job.appointment?.problemDescription && job.appointment?.problemDescription !== job.complaint && (
           <p><strong>Problem description:</strong> {job.appointment.problemDescription}</p>

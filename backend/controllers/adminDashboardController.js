@@ -138,6 +138,8 @@ export async function listAdminAppointments(req, res) {
         customer: appointment.customer?.name || 'Customer', email: appointment.customer?.email || '',
         vehicle: appointment.vehicle ? `${appointment.vehicle.make} ${appointment.vehicle.model}` : 'Vehicle unavailable',
         registrationNumber: appointment.vehicle?.registrationNumber || '', serviceType: appointment.serviceType,
+        issueType: appointment.issueType || 'Other', estimatedCost: appointment.estimatedCost ?? null,
+        expectedFinishDate: appointment.expectedFinishDate || null,
         preferredDate: appointment.preferredDate, preferredTime: appointment.preferredTime, status: appointment.status,
         technicianId: appointment.assignedTechnician ? String(appointment.assignedTechnician._id) : '',
         technician: appointment.assignedTechnician?.name || 'Unassigned',

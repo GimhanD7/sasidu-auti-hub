@@ -177,6 +177,12 @@ export default function TechnicianJobs() {
                     <small>
                       {appointment.customer} · {appointment.serviceType}
                     </small>
+                    <small>
+                      {appointment.issueType || 'Other'} · Estimate:{' '}
+                      {appointment.estimatedCost == null
+                        ? 'Not set'
+                        : `LKR ${Number(appointment.estimatedCost).toLocaleString()}`}
+                    </small>
                     {appointment.complaint && <small>{appointment.complaint}</small>}
                   </div>
                   <div className="technician-appointment-meta">
