@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Appointment from '../models/Appointment.js';
 import Vehicle from '../models/Vehicle.js';
-import ServiceType from '../models/ServiceType.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import { createCustomerAppointment, getAppointmentAvailability, requestCustomerAppointmentReschedule } from '../controllers/customerAppointmentController.js';
@@ -13,19 +12,20 @@ const response = () => ({ code: 200, status(code) { this.code = code; return thi
 const tomorrow = () => new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
 test('custom minute bookings and reschedules retain date, conflict and race validation', async t => {
-  t.mock.method(ServiceType, 'exists', async () => true);
-  t.mock.method(ServiceType, 'find', () => ({ sort() { return this; }, select() { return this; }, lean: async () => [{ name: 'Oil Change' }] }));
   t.mock.method(Vehicle, 'findOne', () => ({ select: async () => ({ _id: id, make: 'Toyota', model: 'Corolla' }) }));
   let conflict = false;
   let duplicate = false;
+  let createdAppointment;
   t.mock.method(Appointment, 'exists', async query => { assert.equal(query.preferredTime, '10:37'); return conflict; });
-  t.mock.method(Appointment, 'create', async data => { if (duplicate) throw { code: 11000 }; return data; });
+  t.mock.method(Appointment, 'create', async data => { if (duplicate) throw { code: 11000 }; createdAppointment = data; return data; });
   t.mock.method(Notification, 'create', async () => ({}));
   t.mock.method(User, 'find', () => ({ select() { return this; }, lean: async () => [] }));
   t.mock.method(Notification, 'insertMany', async () => []);
-  const body = { vehicleId: id, serviceType: 'Oil Change', preferredDate: tomorrow(), preferredTime: '10:37', problemDescription: 'Oil service' };
+  const body = { vehicleId: id, preferredDate: tomorrow(), preferredTime: '10:37', problemDescription: 'Oil service' };
   const create = async changes => { const res = response(); await createCustomerAppointment({ user: { _id: id }, body: { ...body, ...changes } }, res); return res; };
   assert.equal((await create()).code, 201);
+  assert.equal(createdAppointment.serviceType, 'Issue assessment');
+  assert.equal(createdAppointment.problemDescription, 'Oil service');
   assert.equal((await create({ preferredTime: '25:37' })).code, 400);
   assert.equal((await create({ preferredDate: '2000-01-01' })).code, 400);
   conflict = true;

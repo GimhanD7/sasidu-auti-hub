@@ -9,6 +9,8 @@ const serviceJobSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
   technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  technicianAcceptedAt: Date,
+  technicianAcceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   technicianAssignments: [{
     technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -78,6 +80,7 @@ const serviceJobSchema = new mongoose.Schema({
   },
   finalReport: {
     notes: { type: String, trim: true, maxlength: 3000, default: '' },
+    workDone: [{ type: String, trim: true, maxlength: 500 }],
     tasksVerified: { type: Boolean, default: false },
     partsVerified: { type: Boolean, default: false },
     labourVerified: { type: Boolean, default: false },

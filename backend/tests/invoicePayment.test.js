@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Invoice from '../models/Invoice.js';
 import ServiceJob from '../models/ServiceJob.js';
+import User from '../models/User.js';
+import { invoiceEmail } from '../services/invoiceEmail.js';
 import { updateDraftInvoice, saveJobInvoice } from '../controllers/financeInvoiceController.js';
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, set() { return this; }, json(body) { this.body = body; } });
 
@@ -24,4 +26,20 @@ test('job billing cannot create a zero-total issued invoice', async t => {
   const create = t.mock.method(Invoice, 'create', async () => { throw new Error('Should not create an invoice'); });
   const res = response(); await saveJobInvoice({ params: { jobId: job._id }, body: { finalize: true } }, res);
   assert.equal(res.code, 400); assert.match(res.body.message, /charges/); assert.equal(create.mock.callCount(), 0);
+});
+
+test('issuing a draft invoice emails the customer and returns the delivery state', async t => {
+  const customer = { _id: 'customer-id', name: 'Workshop Customer', email: 'customer@example.com' };
+  const invoice = { _id: '507f1f77bcf86cd799439012', customer: customer._id, invoiceNumber: 'INV-TEST-2', paymentStatus: 'Draft', partsCost: 1000, labourCost: 500, async save() {} };
+  t.mock.method(Invoice, 'findOne', async () => invoice);
+  t.mock.method(User, 'findById', () => ({ select: async () => customer }));
+  t.mock.method(invoiceEmail, 'isConfigured', () => true);
+  const send = t.mock.method(invoiceEmail, 'send', async () => {});
+  const res = response();
+  await updateDraftInvoice({ params: { invoiceId: invoice._id }, body: { finalize: true, taxRate: 0, discountRate: 0 } }, res);
+  assert.equal(res.code, 200);
+  assert.equal(invoice.paymentStatus, 'Pending');
+  assert.equal(res.body.emailed, true);
+  assert.match(res.body.message, /emailed/);
+  assert.equal(send.mock.callCount(), 1);
 });

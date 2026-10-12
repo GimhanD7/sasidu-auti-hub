@@ -258,7 +258,7 @@ export default function TechnicianJobs() {
                       : 'Expected completion not set'}
                   </span>
                   <Link to={`/technician/jobs/${job.id}`}>
-                    Open job <span aria-hidden="true">→</span>
+                    {job.technicianAcceptedAt ? 'Open job' : 'Review & accept job'} <span aria-hidden="true">→</span>
                   </Link>
                 </footer>
               </article>

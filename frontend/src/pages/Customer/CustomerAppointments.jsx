@@ -44,9 +44,7 @@ export default function CustomerAppointments() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
-  const [serviceType, setServiceType] = useState('');
   const [problemDescription, setProblemDescription] = useState('');
-  const [customerNotes, setCustomerNotes] = useState('');
   const [dates, setDates] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [availabilityError, setAvailabilityError] = useState('');
@@ -71,7 +69,6 @@ export default function CustomerAppointments() {
           (previous) =>
             previous || vehicleResponse.data[0]?._id || vehicleResponse.data[0]?.id || '',
         );
-        setServiceType((previous) => previous || optionResponse.data.serviceTypes[0] || '');
         setLoadError('');
       })
       .catch((error) => {
@@ -179,15 +176,12 @@ export default function CustomerAppointments() {
       // Send the submitted data to the server; the response below determines the success message and local state changes.
       const { data } = await api.post('/appointments', {
         vehicleId: selectedVehicle,
-        serviceType,
         preferredDate: selectedDate,
         preferredTime: selectedTime,
         problemDescription,
-        customerNotes,
       });
       setBookingResult(data);
       setProblemDescription('');
-      setCustomerNotes('');
       setSelectedTime('');
       setAppointmentRetry((value) => value + 1);
       setAvailabilityRetry((value) => value + 1);
@@ -208,7 +202,6 @@ export default function CustomerAppointments() {
   function startAnotherBooking() {
     setBookingResult(null);
     setProblemDescription('');
-    setCustomerNotes('');
     setSelectedTime('');
     setRangeStart(today);
     setRangeLength(RANGE_DAYS);
@@ -308,7 +301,7 @@ export default function CustomerAppointments() {
               Appointment request received · {bookingResult.appointment.appointmentNumber}
             </strong>
             <p>
-              {bookingResult.appointment.serviceType} for {bookingResult.appointment.vehicle.make}{' '}
+              Appointment for {bookingResult.appointment.vehicle.make}{' '}
               {bookingResult.appointment.vehicle.model} ·{' '}
               {longDate(bookingResult.appointment.preferredDate)} at{' '}
               {bookingResult.appointment.preferredTime}. Status: {bookingResult.appointment.status}.
@@ -674,7 +667,7 @@ export default function CustomerAppointments() {
                 <span>01</span>
                 <div>
                   <h2>Service details</h2>
-                  <p>Tell us which vehicle needs work and what service you need.</p>
+                  <p>Select your vehicle and describe the issue for the workshop.</p>
                 </div>
               </div>
               <div className="appointment-form-grid">
@@ -698,20 +691,6 @@ export default function CustomerAppointments() {
                     })}
                   </select>
                 </label>
-                <label className="appointment-field">
-                  Service type
-                  <select
-                    required
-                    value={serviceType}
-                    onChange={(event) => setServiceType(event.target.value)}
-                  >
-                    {options.serviceTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </label>
                 <label className="appointment-field appointment-field-wide">
                   What do you need help with? *
                   <textarea
@@ -724,17 +703,6 @@ export default function CustomerAppointments() {
                     placeholder="Describe the issue, warning light, noise or service needed…"
                   />
                   <small>{problemDescription.length}/1,000 characters</small>
-                </label>
-                <label className="appointment-field appointment-field-wide">
-                  Additional notes <span className="optional-label">Optional</span>
-                  <textarea
-                    maxLength={1000}
-                    rows={3}
-                    value={customerNotes}
-                    onChange={(event) => setCustomerNotes(event.target.value)}
-                    placeholder="Anything else the workshop should know?"
-                  />
-                  <small>{customerNotes.length}/1,000 characters</small>
                 </label>
               </div>
             </section>
@@ -841,10 +809,6 @@ export default function CustomerAppointments() {
                   </dd>
                 </div>
                 <div>
-                  <dt>Service</dt>
-                  <dd>{serviceType || 'Select service type'}</dd>
-                </div>
-                <div>
                   <dt>Date</dt>
                   <dd>{selectedDate ? longDate(selectedDate) : 'Select an available date'}</dd>
                 </div>
@@ -864,7 +828,6 @@ export default function CustomerAppointments() {
                 disabled={
                   booking ||
                   !selectedVehicle ||
-                  !serviceType ||
                   !selectedDate ||
                   !selectedTime ||
                   !problemDescription.trim()

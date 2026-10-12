@@ -44,7 +44,9 @@ export default function TechnicianJobDetails() {
   async function submit(event, action) {
     event.preventDefault();
     const form = event.currentTarget;
-    if (await update(action, Object.fromEntries(new FormData(form)))) form.reset();
+    const values = Object.fromEntries(new FormData(form));
+    if (action === 'completeJob') values.workDone = String(values.workDone || '').split('\n').map(item => item.trim()).filter(Boolean);
+    if (await update(action, values)) form.reset();
   }
 
   const completed = job?.status === 'Ready';
@@ -72,6 +74,16 @@ export default function TechnicianJobDetails() {
         )}
         <p className="section-help-text">Record parts replaced (optional), direct service charges or labour, and complete the service when finished.</p>
       </section>
+
+      {!job.technicianAcceptedAt ? (
+        <section className="section-card completion-card">
+          <h2>Accept assigned job</h2>
+          <p>Confirm that you are taking responsibility for this assigned service job. You can then update its progress and record the work performed.</p>
+          <button type="button" className="btn-complete" disabled={busy} onClick={() => update('acceptJob')}>
+            {busy ? 'Accepting…' : 'Accept job'}
+          </button>
+        </section>
+      ) : <>
 
       <section className="section-card">
         <h2>Parts / Replaced Items</h2>
@@ -221,7 +233,9 @@ export default function TechnicianJobDetails() {
         {completed ? (
           <>
             <p className="completed-badge">✓ Job marked Ready and sent to billing.</p>
-            {job.finalReport?.notes && <p><strong>Completion Notes:</strong> {job.finalReport.notes}</p>}
+            {(job.finalReport?.workDone?.length ? job.finalReport.workDone : job.finalReport?.notes ? [job.finalReport.notes] : []).length > 0 && (
+              <div><strong>Work completed</strong><ul>{(job.finalReport?.workDone?.length ? job.finalReport.workDone : [job.finalReport.notes]).map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></div>
+            )}
             {job.billingInvoice && (
               <p><strong>Invoice Number:</strong> {job.billingInvoice.invoiceNumber} · <strong>Invoice Amount:</strong> {money(job.billingInvoice.totalAmount)}</p>
             )}
@@ -231,8 +245,8 @@ export default function TechnicianJobDetails() {
           <form onSubmit={event => submit(event, 'completeJob')}>
             <fieldset disabled={busy} style={{ display: 'grid', gap: '0.8rem' }}>
               <label>
-                Completion notes
-                <textarea name="reportNotes" required maxLength={3000} placeholder="Describe the work completed, inspection results, or remarks..." />
+                Work completed (one item per line)
+                <textarea name="workDone" required maxLength={3000} placeholder={'Oil and filter replaced\nFront brakes inspected and adjusted\nRoad test completed'} />
               </label>
               <p className="section-help-text">Completing the service generates the billing invoice with total {money(totalJobCost)} and notifies Admin. Customer payment is verified separately.</p>
               <button type="submit" className="btn-complete" disabled={busy || job.status === 'Waiting for Approval'}>
@@ -242,6 +256,7 @@ export default function TechnicianJobDetails() {
           </form>
         )}
       </section>
+      </>}
     </>}
   </main>;
 }

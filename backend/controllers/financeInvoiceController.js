@@ -3,9 +3,22 @@ import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
 import ServiceJob from '../models/ServiceJob.js';
+import User from '../models/User.js';
+import { invoiceEmail } from '../services/invoiceEmail.js';
 
 
 const roundMoney = value => Math.round((Number(value) || 0) * 100) / 100;
+async function emailIssuedInvoice(invoice) {
+  if (!invoiceEmail.isConfigured()) return false;
+  try {
+    const customer = await User.findById(invoice.customer).select('name email');
+    if (!customer?.email) return false;
+    await invoiceEmail.send(invoice, customer);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const jobPopulate = [
   { path: 'customer', select: 'name email mobile' },
   { path: 'vehicle', select: 'registrationNumber make model year' },
@@ -102,7 +115,11 @@ export async function updateDraftInvoice(req, res) {
     if (req.body?.finalize === true) invoice.paymentStatus = 'Pending';
     // Persist the changes made to invoice above; document validation and registered save hooks run here.
     await invoice.save();
-    res.set('Cache-Control', 'private, no-store').json({ message: req.body?.finalize === true ? 'Invoice finalized and issued to the customer.' : 'Draft invoice updated.', invoice: {
+    const emailed = req.body?.finalize === true ? await emailIssuedInvoice(invoice) : null;
+    const message = req.body?.finalize !== true ? 'Draft invoice updated.' : emailed
+      ? 'Invoice issued and emailed to the customer.'
+      : 'Invoice issued, but email delivery is unavailable. The customer can view it in their account.';
+    res.set('Cache-Control', 'private, no-store').json({ message, emailed, invoice: {
       id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus,
       partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost,
       tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount,
@@ -160,8 +177,12 @@ export async function saveJobInvoice(req, res) {
     if (req.body.finalize === true) invoice.paymentStatus = 'Pending';
     if (typeof invoice.save === 'function') await invoice.save();
     if (createdNew && typeof job.save === 'function') await job.save();
+    const emailed = req.body.finalize === true ? await emailIssuedInvoice(invoice) : null;
     res.set('Cache-Control', 'private, no-store').json({
-      message: req.body.finalize === true ? 'Invoice finalized and issued to the customer.' : 'Draft invoice saved for review.',
+      message: req.body.finalize !== true ? 'Draft invoice saved for review.' : emailed
+        ? 'Invoice issued and emailed to the customer.'
+        : 'Invoice issued, but email delivery is unavailable. The customer can view it in their account.',
+      emailed,
       invoice: { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus, partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost, tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount },
     });
   } catch (error) {

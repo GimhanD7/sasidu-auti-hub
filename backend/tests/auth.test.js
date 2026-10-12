@@ -293,6 +293,11 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal(jobDetails.data.job.priority, 'Urgent');
     assert.equal(jobDetails.data.job.expectedCompletionTime, null);
     assert.equal((await request('/api/auth/technician/jobs/64f000000000000000000099', { cookie: technicianLogin.cookie })).response.status, 404);
+    const acceptJob = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'acceptJob' } });
+    assert.equal(acceptJob.response.status, 200);
+    assert.ok(dashboardJobs[0].technicianAcceptedAt);
+    const acceptInspectionJob = await request('/api/auth/technician/jobs/64f000000000000000000002/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'acceptJob' } });
+    assert.equal(acceptInspectionJob.response.status, 200);
     const repairNote = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'repairNote', note: 'Customer notified of inspection results.' } });
     assert.equal(repairNote.response.status, 200);
     assert.equal(dashboardJobs[0].repairNotes[0].note, 'Customer notified of inspection results.');
@@ -377,11 +382,11 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     const passedFinalTest = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'finalTestComplete', checklist: finalTestItems.map(item => ({ item, result: 'Passed' })), notes: 'All checks passed on the second test.' } });
     assert.equal(passedFinalTest.response.status, 200);
     assert.equal(dashboardJobs[0].finalTest.result, 'Passed');
-    const readyUpdate = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'completeJob', tasksVerified: true, partsVerified: true, labourVerified: true, reportNotes: 'Brake service completed and final test passed.' } });
+    const readyUpdate = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'completeJob', tasksVerified: true, partsVerified: true, labourVerified: true, workDone: ['Replaced front brake pads.', 'Completed final safety test.'] } });
     assert.equal(readyUpdate.response.status, 200);
     assert.equal(dashboardJobs[0].status, 'Ready');
     assert.equal(dashboardJobs[0].billingInvoice, '64f000000000000000000060');
-    assert.equal(dashboardJobs[0].finalReport.notes, 'Brake service completed and final test passed.');
+    assert.deepEqual(dashboardJobs[0].finalReport.workDone, ['Replaced front brake pads.', 'Completed final safety test.']);
     assert.equal(readyUpdate.data.invoice.paymentStatus, 'Draft');
     assert.ok(readyUpdate.data.invoice.totalAmount >= 125 && readyUpdate.data.invoice.totalAmount <= 126);
     assert.ok(deliveredNotifications.some(notification => notification.type === 'ServiceJobCompleted'));

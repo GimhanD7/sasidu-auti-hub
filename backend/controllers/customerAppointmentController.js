@@ -4,7 +4,6 @@ import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import Vehicle from '../models/Vehicle.js';
 import User from '../models/User.js';
-import { getActiveServiceTypeOptions } from './adminServiceTypeController.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Confirmed', 'Checked In', 'In Service'];
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
@@ -33,8 +32,7 @@ function isFutureSlot(date, time) { return new Date(`${date}T${time}:00`).getTim
 
 export async function getAppointmentOptions(req, res) {
   try {
-    const serviceTypeOptions = await getActiveServiceTypeOptions();
-    res.set('Cache-Control', 'private, no-store').json({ serviceTypes: serviceTypeOptions.map(item => item.name), businessDays: [...businessWeekdays()], daysAhead: 30 });
+    res.set('Cache-Control', 'private, no-store').json({ businessDays: [...businessWeekdays()], daysAhead: 30 });
   } catch { res.status(503).json({ message: 'Unable to load appointment options.' }); }
 }
 
@@ -200,14 +198,10 @@ export async function requestCustomerAppointmentReschedule(req, res) {
 }
 
 export async function createCustomerAppointment(req, res) {
-  const { vehicleId, serviceType, preferredDate, preferredTime, problemDescription, customerNotes = '' } = req.body || {};
+  const { vehicleId, preferredDate, preferredTime, problemDescription, customerNotes = '' } = req.body || {};
+  const serviceType = 'Issue assessment';
   const day = parseDay(preferredDate);
   if (!mongoose.isValidObjectId(vehicleId)) return res.status(400).json({ message: 'Select one of your registered vehicles.' });
-  let serviceTypeOptions;
-  try { serviceTypeOptions = await getActiveServiceTypeOptions(); }
-  catch { return res.status(503).json({ message: 'Unable to validate the selected service type.' }); }
-  const selectedService = serviceTypeOptions.find(item => item.name === serviceType);
-  if (!selectedService) return res.status(400).json({ message: 'Choose a valid service type.' });
   if (!day || !TIME_PATTERN.test(preferredTime || '')) return res.status(400).json({ message: 'Choose an available date and time slot.' });
   if (typeof problemDescription !== 'string' || !problemDescription.trim() || problemDescription.trim().length > 1000) {
     return res.status(400).json({ message: 'Describe the service problem in 1 to 1,000 characters.' });
@@ -243,7 +237,7 @@ export async function createCustomerAppointment(req, res) {
       customer: req.user._id,
       vehicle: vehicle._id,
       serviceType,
-      issueType: selectedService.issueType,
+      issueType: 'Other',
       preferredDate: day,
       preferredTime,
       problemDescription: problemDescription.trim(),

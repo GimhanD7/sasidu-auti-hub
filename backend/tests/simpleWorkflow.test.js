@@ -45,6 +45,8 @@ test('confirmed appointment starts directly, completes without testing, and is p
   const start = response();
   await convertAdminAppointmentToJob({ params: { appointmentId: appointment._id }, user: technician, body: {} }, start);
   assert.equal(start.code, 201); assert.equal(job.status, 'In Progress'); assert.equal(appointment.status, 'In Service');
+  const unacceptedEdit = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'repairNote', note: 'Work started before acceptance.' } }, unacceptedEdit); assert.equal(unacceptedEdit.code, 409);
+  const accepted = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'acceptJob' } }, accepted); assert.equal(accepted.code, 200); assert.ok(job.technicianAcceptedAt);
   for (const body of [{ action: 'partAdd', name: 'Oil filter', quantity: 2, unitCost: 500 }, { action: 'labourAdd', description: 'Oil service', hours: 1, ratePerHour: 1000 }]) {
     const res = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body }, res); assert.equal(res.code, 200);
   }
@@ -52,6 +54,7 @@ test('confirmed appointment starts directly, completes without testing, and is p
   const complete = response();
   await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'completeJob', reportNotes: 'Oil and filter replaced.' } }, complete);
   assert.equal(complete.code, 200); assert.equal(job.status, 'Ready'); assert.equal(appointment.status, 'Completed'); assert.equal(invoice.paymentStatus, 'Draft'); assert.equal(invoice.totalAmount, 2000);
+  assert.deepEqual(job.finalReport.workDone, ['Oil and filter replaced.']);
   const edit = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'partAdd', name: 'Extra', quantity: 1, unitCost: 50 } }, edit); assert.equal(edit.code, 409);
   const paymentBody = { invoiceId: invoice._id, method: 'Bank Transfer', transactionReference: 'BANK-001' };
   const beforeIssue = response(); await submitCustomerPayment({ user: customer, body: paymentBody }, beforeIssue); assert.equal(beforeIssue.code, 404);
@@ -72,6 +75,7 @@ test('technician can add direct service charge without parts and complete job wi
     technician: technician._id,
     customer: customer._id,
     status: 'In Progress',
+    technicianAcceptedAt: new Date(),
     tasks: [],
     additionalRepairs: [],
     replacedParts: [],
