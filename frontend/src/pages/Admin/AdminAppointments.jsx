@@ -278,6 +278,9 @@ export default function AdminAppointments() {
                       <span className={`badge ${getStatusBadgeClass(appt.status)}`}>
                         {serviceStatus(appt.status)}
                       </span>
+                      {appt.cancellationRequest?.status === 'Pending' && (
+                        <div className="badge badge-warning">Cancellation requested</div>
+                      )}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
                       <button
@@ -925,6 +928,14 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
             </div>
 
             {/* Editable Fields */}
+            {appt?.cancellationRequest?.status === 'Pending' && (
+              <div role="alert" className="appointment-message">
+                <strong>Customer requested cancellation</strong>
+                <p>Requested on {new Date(appt.cancellationRequest.requestedAt).toLocaleString()}. The appointment remains active. Use Cancel Appointment to cancel it manually and notify the customer.</p>
+                {canCancel && <button type="button" disabled={saving} onClick={() => setConfirmCancel(true)}>Cancel Appointment</button>}
+                {!canCancel && <p>Service has already started. Review this request with the customer.</p>}
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Status</label>

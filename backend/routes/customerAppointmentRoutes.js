@@ -3,6 +3,7 @@ import express from 'express';
 import {
   createCustomerAppointment,
   cancelCustomerAppointment,
+  requestCustomerAppointmentCancellation,
   getAppointmentAvailability,
   getAppointmentOptions,
   listCustomerAppointments,
@@ -17,6 +18,7 @@ router.get('/availability', getAppointmentAvailability);
 router.get('/', listCustomerAppointments);
 router.post('/', createCustomerAppointment);
 router.patch('/:appointmentId/cancel', cancelCustomerAppointment);
+router.post('/:appointmentId/cancellation-request', requestCustomerAppointmentCancellation);
 router.post('/:appointmentId/reschedule-request', requestCustomerAppointmentReschedule);
 
 export default router;

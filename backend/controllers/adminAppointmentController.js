@@ -200,6 +200,7 @@ export async function getAdminAppointment(req, res) {
       problemDescription: appointment.problemDescription || '', customerNotes: appointment.customerNotes || '', internalNotes: appointment.internalNotes || '',
       status: appointment.status, technicianId: appointment.assignedTechnician ? String(appointment.assignedTechnician._id) : '',
       technician: appointment.assignedTechnician?.name || '',
+      cancellationRequest: appointment.cancellationRequest?.status ? appointment.cancellationRequest : null,
       rescheduleRequest: appointment.rescheduleRequest?.status === 'Pending' ? { preferredDate: appointment.rescheduleRequest.preferredDate?.toISOString().slice(0, 10), preferredTime: appointment.rescheduleRequest.preferredTime, notes: appointment.rescheduleRequest.notes || '' } : null,
       history: (appointment.history || []).map(event => ({ action: event.action, details: event.details || '', timestamp: event.timestamp, actor: event.actor?.name || 'System' })),
       serviceJob: job ? { id: String(job._id), serviceNumber: job.serviceNumber, status: job.status } : null,
@@ -311,6 +312,11 @@ export async function updateAdminAppointment(req, res) {
     appointment.bookingSlotKey = ['Pending', 'Confirmed', 'Checked In', 'In Service'].includes(appointment.status)
       ? `${appointment.preferredDate.toISOString().slice(0, 10)}|${appointment.preferredTime}` : undefined;
     const changes = [];
+    if (appointment.status === 'Cancelled' && appointment.cancellationRequest?.status === 'Pending') {
+      appointment.cancellationRequest.status = 'Approved';
+      appointment.cancellationRequest.respondedAt = new Date();
+      changes.push('Customer cancellation request approved');
+    }
     if (oldStatus !== appointment.status) changes.push(`Status: ${oldStatus} → ${appointment.status}`);
     if (oldDate !== appointment.preferredDate.toISOString().slice(0, 10) || oldTime !== appointment.preferredTime) changes.push(`Scheduled time: ${oldDate} ${oldTime} → ${appointment.preferredDate.toISOString().slice(0, 10)} ${appointment.preferredTime}`);
     if (oldServiceType !== appointment.serviceType) changes.push(`Service type: ${oldServiceType} → ${appointment.serviceType}`);
@@ -342,6 +348,7 @@ export async function updateAdminAppointment(req, res) {
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ message: 'That time slot has just been booked. Select another slot.' });
     if (error.name === 'ValidationError' || error.name === 'CastError') return res.status(400).json({ message: 'Check the appointment details and try again.' });
+    if (error.name === 'VersionError') return res.status(409).json({ message: 'The appointment changed. Refresh and try again.' });
     res.status(503).json({ message: 'Unable to update the appointment. Please try again.' });
   }
 }

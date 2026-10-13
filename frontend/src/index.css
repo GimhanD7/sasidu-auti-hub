@@ -7742,9 +7742,13 @@
   }
   .vehicle-card-actions {
     align-items: stretch;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
-  .vehicle-card-actions > button {
-    flex: 1;
+  .vehicle-card-actions > button,
+  .vehicle-card-actions > a {
+    flex: 1 1 80px;
+    min-width: 0;
   }
   .view-details-btn {
     padding: 0.7rem;
@@ -7781,6 +7785,8 @@
     background: rgba(239, 68, 68, 0.1);
   }
   .vehicle-delete-confirm {
+    flex: 1 0 100%;
+    box-sizing: border-box;
     width: 100%;
     padding: 0.85rem;
     border: 1px solid rgba(239, 68, 68, 0.35);
@@ -7795,8 +7801,14 @@
   }
   .vehicle-delete-confirm > div {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.5rem;
+  }
+  .vehicle-delete-confirm > div > button {
+    flex: 1 1 110px;
+    min-width: 0;
+    white-space: normal;
   }
   .add-vehicle-card {
     display: flex;
@@ -11677,9 +11689,36 @@
     background: #fafbfe;
   }
   .app-toast {
+    position: fixed;
+    right: 1rem;
+    top: 1rem;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    padding: 1rem 1.25rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
     border: 1px solid rgba(21, 128, 93, 0.13);
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
+  }
+  .app-toast.success {
+    border-color: var(--success);
+  }
+  .app-toast.error {
+    border-color: var(--danger);
+  }
+  .app-toast > button {
+    flex-shrink: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
   }
   .app-icon {
     display: inline-block;

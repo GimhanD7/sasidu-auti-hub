@@ -21,8 +21,10 @@ const longDate = (key) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: 'full' }).format(new Date(`${key}T12:00:00`));
 const TODAY_LOCAL_DATE = localDateKey(new Date());
 const isUpcoming = (appointment) =>
+  ['Pending', 'Confirmed', 'Checked In'].includes(appointment.status) ||
+  (
   !['Completed', 'Cancelled'].includes(appointment.status) &&
-  new Date(`${appointment.preferredDate}T${appointment.preferredTime}:00`).getTime() > Date.now();
+  new Date(`${appointment.preferredDate}T${appointment.preferredTime}:00`).getTime() > Date.now());
 
 export default function CustomerAppointments() {
   const today = TODAY_LOCAL_DATE;
@@ -216,8 +218,13 @@ export default function CustomerAppointments() {
     setManagementMessage('');
     try {
       // Request a server-side change; update the displayed state from the successful response below.
-      await api.patch(`/appointments/${appointment.id}/cancel`);
-      setManagementMessage(`Appointment ${appointment.appointmentNumber} was cancelled.`);
+      if (appointment.status === 'Pending') {
+        await api.patch(`/appointments/${appointment.id}/cancel`);
+        setManagementMessage(`Appointment ${appointment.appointmentNumber} was cancelled.`);
+      } else {
+        await api.post(`/appointments/${appointment.id}/cancellation-request`);
+        setManagementMessage(`Cancellation requested for ${appointment.appointmentNumber}. Your appointment remains active until the admin cancels it.`);
+      }
       setCancelConfirmId('');
       setAppointmentRetry((value) => value + 1);
       setAvailabilityRetry((value) => value + 1);
@@ -366,7 +373,7 @@ export default function CustomerAppointments() {
           </p>
         ) : (
           <>
-            <h3 className="appointment-list-heading">Upcoming appointments</h3>
+            <h3 className="appointment-list-heading">Active appointments</h3>
             {upcomingAppointments.length ? (
               <div className="appointment-record-list">
                 {upcomingAppointments.map((appointment) => (
@@ -436,9 +443,15 @@ export default function CustomerAppointments() {
                         )}
                       </div>
                     )}
-                    {['Pending', 'Confirmed'].includes(appointment.status) && (
+                    {appointment.cancellationRequest?.status === 'Pending' && (
+                      <div className="appointment-reschedule-status" role="status">
+                        <strong>Cancellation request pending</strong>
+                        <small>Your appointment remains active until the admin reviews your request and cancels it.</small>
+                      </div>
+                    )}
+                    {['Pending', 'Confirmed', 'Checked In'].includes(appointment.status) && (
                       <div className="appointment-record-actions">
-                        {appointment.rescheduleRequest?.status === 'Pending' ? (
+                        {appointment.status !== 'Checked In' && (appointment.rescheduleRequest?.status === 'Pending' ? (
                           <button className="btn-outline" type="button" disabled>
                             Reschedule request pending
                           </button>
@@ -461,25 +474,26 @@ export default function CustomerAppointments() {
                           >
                             Request reschedule
                           </button>
-                        )}
+                        ))}
                         <button
                           className="appointment-cancel-trigger"
                           type="button"
-                          disabled={Boolean(actionId)}
+                          disabled={Boolean(actionId) || appointment.cancellationRequest?.status === 'Pending'}
                           onClick={() => {
                             setCancelConfirmId(appointment.id);
                             setManagementError('');
                           }}
                         >
-                          Cancel appointment
+                          {appointment.cancellationRequest?.status === 'Pending' ? 'Cancellation requested' : appointment.status === 'Pending' ? 'Cancel appointment' : 'Request cancellation'}
                         </button>
                       </div>
                     )}
                     {cancelConfirmId === appointment.id && (
                       <div className="appointment-cancel-confirm">
                         <p>
-                          Cancel appointment {appointment.appointmentNumber}? The time slot will
-                          become available to other customers.
+                          {appointment.status === 'Pending'
+                            ? `Cancel appointment ${appointment.appointmentNumber}? The time slot will become available to other customers.`
+                            : `Request cancellation for ${appointment.appointmentNumber}? Your appointment stays active until the admin cancels it.`}
                         </p>
                         <div>
                           <button
@@ -496,7 +510,7 @@ export default function CustomerAppointments() {
                             disabled={Boolean(actionId)}
                             onClick={() => cancelAppointment(appointment)}
                           >
-                            {actionId === appointment.id ? 'Cancelling…' : 'Confirm cancellation'}
+                            {actionId === appointment.id ? 'Submitting…' : appointment.status === 'Pending' ? 'Confirm cancellation' : 'Send cancellation request'}
                           </button>
                         </div>
                       </div>
@@ -595,7 +609,7 @@ export default function CustomerAppointments() {
                 ))}
               </div>
             ) : (
-              <p className="appointment-list-empty">No upcoming appointments.</p>
+              <p className="appointment-list-empty">No active appointments.</p>
             )}
             <h3 className="appointment-list-heading past">Past or cancelled appointments</h3>
             {pastAppointments.length ? (

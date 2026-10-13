@@ -18,6 +18,11 @@ const appointmentSchema = new mongoose.Schema({
   problemDescription: { type: String, trim: true, maxlength: 1000 },
   customerNotes: { type: String, trim: true, maxlength: 1000 },
   internalNotes: { type: String, trim: true, maxlength: 1000, select: false },
+  cancellationRequest: {
+    status: { type: String, enum: ['Pending', 'Approved'] },
+    requestedAt: Date,
+    respondedAt: Date,
+  },
   rescheduleRequest: {
     preferredDate: Date,
     preferredTime: String,
@@ -39,7 +44,7 @@ const appointmentSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now },
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   }]
-}, { timestamps: true });
+}, { timestamps: true, optimisticConcurrency: true });
 
 // Document saves refresh the slot key and reminder state. Direct updateOne calls must handle those fields themselves.
 appointmentSchema.pre('save', function releaseFinishedSlot() {

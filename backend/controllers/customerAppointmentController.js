@@ -58,6 +58,7 @@ function appointmentView(appointment) {
     status: appointment.status,
     technician: appointment.assignedTechnician?.name || null,
     createdAt: appointment.createdAt,
+    cancellationRequest: appointment.cancellationRequest?.status ? appointment.cancellationRequest : null,
     rescheduleRequest: appointment.rescheduleRequest?.status ? {
       preferredDate: appointment.rescheduleRequest.preferredDate ? dateKey(appointment.rescheduleRequest.preferredDate) : null,
       preferredTime: appointment.rescheduleRequest.preferredTime,
@@ -145,8 +146,8 @@ export async function cancelCustomerAppointment(req, res) {
   try {
     const appointment = await Appointment.findOne({ _id: req.params.appointmentId, customer: req.user._id });
     if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
-    if (!['Pending', 'Confirmed'].includes(appointment.status) || !isAppointmentUpcoming(appointment)) {
-      return res.status(409).json({ message: 'Only future pending or confirmed appointments can be cancelled online. Contact the workshop for help with an appointment already in service.' });
+    if (appointment.status !== 'Pending') {
+      return res.status(409).json({ message: 'Only unconfirmed appointments can be cancelled directly. Request cancellation for a confirmed appointment so the workshop can review it.' });
     }
     appointment.status = 'Cancelled';
     appointment.history.push({ action: 'Appointment cancelled', details: 'Cancelled by customer', actor: req.user._id });
@@ -157,8 +158,32 @@ export async function cancelCustomerAppointment(req, res) {
       type: 'AppointmentCancelled', title: 'Appointment cancelled', message: `Appointment ${number} on ${dateKey(appointment.preferredDate)} at ${appointment.preferredTime} was cancelled.`, dedupeKey: `appointment-cancelled:${appointment._id}`,
     });
     res.set('Cache-Control', 'private, no-store').json({ appointment: appointmentView(appointment.toObject()), notificationCreated: notified });
-  } catch {
+  } catch (error) {
+    if (error.name === 'VersionError') return res.status(409).json({ message: 'The appointment changed. Refresh and try again.' });
     res.status(503).json({ message: 'Unable to cancel this appointment. Please try again.' });
+  }
+}
+
+export async function requestCustomerAppointmentCancellation(req, res) {
+  if (!mongoose.isValidObjectId(req.params.appointmentId)) return res.status(400).json({ message: 'Invalid appointment ID.' });
+  try {
+    const appointment = await Appointment.findOne({ _id: req.params.appointmentId, customer: req.user._id });
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+    if (!['Confirmed', 'Checked In'].includes(appointment.status)) return res.status(409).json({ message: 'Cancellation can only be requested for a confirmed appointment before service starts.' });
+    if (appointment.cancellationRequest?.status === 'Pending') return res.status(409).json({ message: 'A cancellation request is already awaiting workshop review.' });
+    appointment.cancellationRequest = { status: 'Pending', requestedAt: new Date() };
+    appointment.history.push({ action: 'Cancellation requested', details: 'Customer requested cancellation; appointment remains active until the workshop cancels it.', actor: req.user._id });
+    await appointment.save();
+    const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
+    const notified = await notifyAppointmentChange(appointment, {
+      type: 'AppointmentCancellationRequest', title: 'Appointment cancellation requested',
+      message: `Cancellation requested for ${number} on ${dateKey(appointment.preferredDate)} at ${appointment.preferredTime}. The appointment remains active until the workshop cancels it.`,
+      dedupeKey: `appointment-cancellation-request:${appointment._id}:${appointment.cancellationRequest.requestedAt.getTime()}`,
+    });
+    res.set('Cache-Control', 'private, no-store').json({ appointment: appointmentView(appointment.toObject()), notificationCreated: notified });
+  } catch (error) {
+    if (error.name === 'VersionError') return res.status(409).json({ message: 'The appointment changed. Refresh and try again.' });
+    res.status(503).json({ message: 'Unable to request cancellation. Please try again.' });
   }
 }
 
