@@ -11688,6 +11688,76 @@
   .section-card tbody tr:hover {
     background: #fafbfe;
   }
+  .admin-data-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+  }
+  .admin-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.85rem;
+  }
+  .admin-data-table th,
+  .admin-data-table td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+  }
+  .admin-data-table th {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .admin-data-table td {
+    color: var(--text-primary);
+  }
+  .admin-data-table tbody tr:hover {
+    background: var(--bg-input);
+  }
+  .admin-data-table small {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+  }
+  .admin-data-table button,
+  .admin-data-table select {
+    white-space: nowrap;
+  }
+  .admin-data-table select {
+    max-width: 280px;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+  }
+  .admin-pricing-timing {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-surface);
+  }
+  .admin-pricing-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1rem 0;
+  }
+  .admin-invoice-pricing-table input {
+    width: 100%;
+    min-width: 90px;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+  }
+  .admin-invoice-pricing-table input[type='number'] {
+    width: 125px;
+  }
   .app-toast {
     position: fixed;
     right: 1rem;

@@ -381,38 +381,20 @@ export default function AdminTechnicians() {
         {loading ? (
           <p role="status">Loading technicians…</p>
         ) : technicians.length ? (
-          <div className="technician-list">
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table">
+              <thead><tr><th>Technician</th><th>Contact</th><th>Specialization</th><th>Schedule</th><th>In progress</th><th>Completed</th><th>Appointments</th><th>Availability</th><th>Account</th><th>Actions</th></tr></thead>
+              <tbody>
             {technicians.map((item) => (
-              <article className="technician-row" key={item.id}>
-                <button className="technician-row-open" onClick={() => openProfile(item.id)}>
-                  <span className="technician-avatar">
-                    {item.name
-                      .split(/\s+/)
-                      .map((part) => part[0])
-                      .slice(0, 2)
-                      .join('')
-                      .toUpperCase()}
-                  </span>
-                  <span className="technician-identity">
-                    <strong>{item.name}</strong>
-                    <small>
-                      {item.email} · {item.specialization}
-                    </small>
-                    <small>
-                      Works{' '}
-                      {item.workSchedule.days.map((day) => week[day - 1]).join(', ') || 'no days'} ·{' '}
-                      {item.workSchedule.startTime}–{item.workSchedule.endTime}
-                    </small>
-                  </span>
-                  <span className="technician-workload">
-                    <strong>{item.activeJobs} active</strong>
-                    <small>
-                      {item.readyJobs} ready · {item.upcomingAppointments} upcoming appointments
-                    </small>
-                  </span>
-                </button>
-                <label className="technician-row-status">
-                  Status
+              <tr key={item.id}>
+                <td><strong>{item.name}</strong></td>
+                <td>{item.email}<small>{item.mobile || '—'}</small></td>
+                <td>{item.specialization}</td>
+                <td>{item.workSchedule.days.map((day) => week[day - 1]).join(', ') || 'No days'}<small>{item.workSchedule.startTime}–{item.workSchedule.endTime}</small></td>
+                <td>{item.activeJobs}</td>
+                <td>{item.readyJobs}</td>
+                <td>{item.upcomingAppointments}</td>
+                <td>
                   <select
                     aria-label={`Availability for ${item.name}`}
                     value={item.availabilityStatus}
@@ -423,9 +405,13 @@ export default function AdminTechnicians() {
                       <option key={status}>{status}</option>
                     ))}
                   </select>
-                </label>
-              </article>
+                </td>
+                <td>{item.isActive ? 'Active' : 'Inactive'}</td>
+                <td><button type="button" className="btn-outline" onClick={() => openProfile(item.id)}>View profile</button></td>
+              </tr>
             ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <p>No technicians found.</p>

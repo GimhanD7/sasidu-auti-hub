@@ -33,6 +33,7 @@ test('issuing a draft invoice emails the customer and returns the delivery state
   const invoice = { _id: '507f1f77bcf86cd799439012', customer: customer._id, invoiceNumber: 'INV-TEST-2', paymentStatus: 'Draft', partsCost: 1000, labourCost: 500, async save() {} };
   t.mock.method(Invoice, 'findOne', async () => invoice);
   t.mock.method(User, 'findById', () => ({ select: async () => customer }));
+  t.mock.method(ServiceJob, 'findOne', async () => ({ status: 'Ready' }));
   t.mock.method(invoiceEmail, 'isConfigured', () => true);
   const send = t.mock.method(invoiceEmail, 'send', async () => {});
   const res = response();

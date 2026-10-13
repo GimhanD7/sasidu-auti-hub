@@ -198,31 +198,23 @@ export default function AdminVehicles() {
         {loading ? (
           <p role="status">Loading vehicles…</p>
         ) : vehicles.length ? (
-          <div className="vehicle-directory-list">
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table">
+              <thead><tr><th>Vehicle name</th><th>Vehicle number</th><th>Make</th><th>Fuel type</th><th>Year</th><th>Customer</th><th>Actions</th></tr></thead>
+              <tbody>
             {vehicles.map((vehicle) => (
-              <button
-                type="button"
-                className="vehicle-directory-row"
-                key={vehicle.id}
-                onClick={() => {
-                  setDetailsLoading(true);
-                  setSelectedId(vehicle.id);
-                }}
-              >
-                <span className="vehicle-symbol">🚘</span>
-                <span className="vehicle-directory-identity">
-                  <strong>
-                    {vehicle.registrationNumber} · {vehicle.year ? `${vehicle.year} ` : ''}
-                    {vehicle.make} {vehicle.model}
-                  </strong>
-                  <small>
-                    Owner: {vehicle.customer?.name || 'Customer unavailable'} ·{' '}
-                    {vehicle.customer?.email || ''}
-                  </small>
-                </span>
-                <span aria-hidden="true">›</span>
-              </button>
+              <tr key={vehicle.id}>
+                <td><strong>{vehicle.model}</strong></td>
+                <td>{vehicle.registrationNumber}</td>
+                <td>{vehicle.make}</td>
+                <td>{vehicle.fuelType || '—'}</td>
+                <td>{vehicle.year || '—'}</td>
+                <td>{vehicle.customer?.name || 'Customer unavailable'}<small>{vehicle.customer?.mobile || vehicle.customer?.email || ''}</small></td>
+                <td><button type="button" className="btn-outline" onClick={() => { setDetailsLoading(true); setSelectedId(vehicle.id); }}>View profile</button></td>
+              </tr>
             ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <p className="vehicle-empty">No vehicles match that search.</p>

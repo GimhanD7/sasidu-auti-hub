@@ -4,6 +4,7 @@ import ServiceJob from '../models/ServiceJob.js';
 import Appointment from '../models/Appointment.js';
 import Vehicle from '../models/Vehicle.js';
 import JobPhoto from '../models/JobPhoto.js';
+import { jobTiming } from '../utils/jobTiming.js';
 
 const STATUSES = ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test', 'Ready'];
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
@@ -20,6 +21,7 @@ function jobSummary(job) {
     id: String(job._id),
     serviceNumber: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`,
     status: job.status,
+    ...jobTiming(job),
     technicianAcceptedAt: job.technicianAcceptedAt || (job.status === 'Ready' ? job.updatedAt : null),
     priority: job.priority || 'Normal',
     issueType: job.issueType || job.appointment?.issueType || 'Other',
@@ -28,7 +30,6 @@ function jobSummary(job) {
     expectedCompletionTime: job.expectedCompletionTime || null,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
-    completedAt: [...(job.timeline || [])].reverse().find(event => event.status === 'Ready')?.timestamp || (job.status === 'Ready' ? job.updatedAt : null),
     customer: job.customer?.name || 'Customer unavailable',
     vehicle: job.vehicle ? { make: job.vehicle.make, model: job.vehicle.model, year: job.vehicle.year, registrationNumber: job.vehicle.registrationNumber } : null,
     serviceType: job.appointment?.serviceType || 'Service repair',

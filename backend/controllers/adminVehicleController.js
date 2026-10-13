@@ -58,7 +58,7 @@ export async function listAdminVehicles(req, res) {
     ]);
     res.set('Cache-Control', 'private, no-store').json({ vehicles: vehicles.map(vehicle => ({
       id: String(vehicle._id), registrationNumber: vehicle.registrationNumber, make: vehicle.make, model: vehicle.model,
-      year: vehicle.year || null, mileage: vehicle.mileage ?? null,
+      year: vehicle.year || null, mileage: vehicle.mileage ?? null, fuelType: vehicle.fuelType || '',
       customer: vehicle.customer ? { id: String(vehicle.customer._id), name: vehicle.customer.name, email: vehicle.customer.email, mobile: vehicle.customer.mobile || '' } : null,
     })), page, pages: Math.ceil(total / limit), total });
   } catch { res.status(503).json({ message: 'Unable to load vehicles. Please try again.' }); }

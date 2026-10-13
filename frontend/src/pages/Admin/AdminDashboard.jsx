@@ -128,6 +128,7 @@ export default function AdminDashboard() {
                   <tr>
                     <th>Appointment</th>
                     <th>Customer / vehicle</th>
+                    <th>Vehicle number</th>
                     <th>Service</th>
                     <th>When</th>
                     <th>Status</th>
@@ -140,9 +141,10 @@ export default function AdminDashboard() {
                       <td>
                         <strong>{item.customer}</strong>
                         <small>
-                          {item.vehicle} · {item.registrationNumber}
+                          {item.vehicle}
                         </small>
                       </td>
+                      <td>{item.registrationNumber || '—'}</td>
                       <td>{item.serviceType}</td>
                       <td>{dateTime(item.preferredDate, item.preferredTime)}</td>
                       <td>

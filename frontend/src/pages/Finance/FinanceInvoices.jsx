@@ -15,6 +15,8 @@ const money = (value) =>
 
 const date = (value) =>
   value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value)) : '—';
+const timestamp = value => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Not recorded';
+const roundMoney = value => Math.round(value * 100) / 100;
 
 export default function FinanceInvoices() {
   const [invoices, setInvoices] = useState(null);
@@ -23,6 +25,7 @@ export default function FinanceInvoices() {
   const [statusFilter, setStatusFilter] = useState('All statuses');
   const [rateOverrides, setRateOverrides] = useState({});
   const [chargeOverrides, setChargeOverrides] = useState({});
+  const [lineOverrides, setLineOverrides] = useState({});
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState('');
@@ -85,16 +88,32 @@ export default function FinanceInvoices() {
   const charge = chargeOverrides[invoice?.id] || {};
   const adminChargeDescription = charge.description ?? invoice?.adminChargeDescription ?? '';
   const adminChargeAmount = charge.amount ?? String(invoice?.adminChargeAmount || 0);
-  const base = invoice ? (invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0) + (Number(adminChargeAmount) || 0) : 0;
+  const pricedParts = lineOverrides[invoice?.id]?.parts || invoice?.parts || [];
+  const pricedLabour = lineOverrides[invoice?.id]?.labourItems || invoice?.labourItems || [];
+  const partsCost = roundMoney(pricedParts.reduce((sum, part) => sum + roundMoney(Number(part.quantity) * roundMoney(Number(part.unitPrice))), 0));
+  const labourCost = roundMoney(pricedLabour.reduce((sum, item) => sum + roundMoney(Number(item.hours) * roundMoney(Number(item.rate))), 0));
+  const base = invoice ? partsCost + labourCost + (invoice.additionalRepairsCost || 0) + (Number(adminChargeAmount) || 0) : 0;
+  const savedBase = invoice ? (invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0) + (invoice.adminChargeAmount || 0) : 0;
   const rates = rateOverrides[invoice?.id] || {};
   const discountRate =
-    rates.discountRate ?? (base ? String(Math.round(((Number(invoice?.discount || 0) / base) * 100) * 100) / 100) : '0');
-  const taxable = Math.max(0, base - (Number(invoice?.discount) || 0));
+    rates.discountRate ?? (savedBase ? String(Math.round(((Number(invoice?.discount || 0) / savedBase) * 100) * 100) / 100) : '0');
+  const taxable = Math.max(0, savedBase - (Number(invoice?.discount) || 0));
   const taxRate =
     rates.taxRate ?? (taxable ? String(Math.round(((Number(invoice?.tax || 0) / taxable) * 100) * 100) / 100) : '0');
   const previewDiscount = Math.round(base * (Number(discountRate) || 0)) / 100;
   const previewTax = Math.round(Math.max(0, base - previewDiscount) * (Number(taxRate) || 0)) / 100;
   const previewTotal = Math.round((base - previewDiscount + previewTax) * 100) / 100;
+
+  function changeLine(kind, index, field, value) {
+    setLineOverrides(current => {
+      const rows = current[invoice.id]?.[kind] || invoice[kind] || [];
+      return { ...current, [invoice.id]: { ...current[invoice.id], [kind]: rows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row) } };
+    });
+  }
+
+  function changeLabour(rows) {
+    setLineOverrides(current => ({ ...current, [invoice.id]: { ...current[invoice.id], labourItems: rows } }));
+  }
 
   async function updateInvoice(finalize) {
     if (!invoice) return;
@@ -108,6 +127,8 @@ export default function FinanceInvoices() {
         discountRate: Number(discountRate) || 0,
         adminChargeDescription,
         adminChargeAmount: Number(adminChargeAmount) || 0,
+        parts: pricedParts.map(part => ({ ...part, unitPrice: Number(part.unitPrice) })),
+        labourItems: pricedLabour.map(item => ({ ...item, hours: Number(item.hours), rate: Number(item.rate) })),
         finalize,
       });
       setInvoices((current) =>
@@ -122,6 +143,7 @@ export default function FinanceInvoices() {
         ),
       );
       setNotice(data.message || (finalize ? 'Invoice finalized and issued to customer successfully.' : 'Draft saved.'));
+      setLineOverrides(current => { const next = { ...current }; delete next[invoice.id]; return next; });
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to update this invoice.');
     } finally {
@@ -382,63 +404,55 @@ export default function FinanceInvoices() {
                 </div>
               </div>
 
-              <div className="finance-invoice-line-table">
-                <div className="finance-invoice-table-head">
-                  <span>Description</span>
-                  <span>Qty / Hours</span>
-                  <span>Rate</span>
-                  <span>Amount</span>
-                </div>
-                {(invoice.parts || []).map((part, index) => (
-                  <div className="finance-invoice-line" key={`part-${index}`}>
-                    <span>
-                      {part.name || 'Part'}
-                      {part.partNumber && <small>Part {part.partNumber}</small>}
-                    </span>
-                    <span>{part.quantity}</span>
-                    <span>{money(part.unitPrice)}</span>
-                    <strong>{money(part.total)}</strong>
-                  </div>
-                ))}
-                {(invoice.labourItems || []).map((item, index) => (
-                  <div className="finance-invoice-line" key={`labour-${index}`}>
-                    <span>
-                      {item.description || 'Labour'}
-                      <small>Labour</small>
-                    </span>
-                    <span>{item.hours} h</span>
-                    <span>{money(item.rate)}/h</span>
-                    <strong>{money(item.total)}</strong>
-                  </div>
-                ))}
-                {Number(invoice.additionalRepairsCost) > 0 && (
-                  <div className="finance-invoice-line">
-                    <span>Approved additional repairs</span>
-                    <span>—</span>
-                    <span>—</span>
-                    <strong>{money(invoice.additionalRepairsCost)}</strong>
-                  </div>
-                )}
-                {Number(adminChargeAmount) > 0 && (
-                  <div className="finance-invoice-line">
-                    <span>{adminChargeDescription || 'Workshop charge'}</span><span>—</span><span>—</span><strong>{money(adminChargeAmount)}</strong>
-                  </div>
-                )}
-                {!(invoice.parts?.length) && !(invoice.labourItems?.length) && !Number(invoice.additionalRepairsCost) && (
-                  <p style={{ padding: '1rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                    No line items recorded for this service.
-                  </p>
-                )}
+              <section className="admin-pricing-timing">
+                <h3>Completed work & recorded time</h3>
+                <p>Started: {timestamp(invoice.serviceJob?.startedAt)} · Completed: {timestamp(invoice.serviceJob?.completedAt)}</p>
+                <p>Recorded duration: {invoice.serviceJob?.durationHours == null ? 'Not recorded' : `${Number(invoice.serviceJob.durationHours).toFixed(2)} hours`}</p>
+                {invoice.serviceJob?.workDone?.length > 0 && <ul>{invoice.serviceJob.workDone.map((work, index) => <li key={index}>{work}</li>)}</ul>}
+              </section>
+
+              <div className="admin-data-table-wrap">
+                <table className="admin-data-table admin-invoice-pricing-table">
+                  <thead><tr><th>Spare part</th><th>Quantity</th><th>Unit price (LKR)</th><th>Total</th></tr></thead>
+                  <tbody>
+                    {pricedParts.map((part, index) => <tr key={`part-${index}`}>
+                      <td>{part.name}<small>{part.partNumber}</small></td>
+                      <td>{part.quantity}</td>
+                      <td>{invoice.paymentStatus === 'Draft' ? <input aria-label={`Unit price for ${part.name}`} type="number" min="0" max="100000000" step="0.01" value={part.unitPrice} disabled={busy} onChange={event => changeLine('parts', index, 'unitPrice', event.target.value)} /> : money(part.unitPrice)}</td>
+                      <td>{money(roundMoney(Number(part.quantity) * Number(part.unitPrice)))}</td>
+                    </tr>)}
+                    {!pricedParts.length && <tr><td colSpan="4">No spare parts recorded.</td></tr>}
+                  </tbody>
+                </table>
               </div>
+              <div className="admin-data-table-wrap">
+                <table className="admin-data-table admin-invoice-pricing-table">
+                  <thead><tr><th>Hourly labour</th><th>Hours</th><th>Hourly rate (LKR)</th><th>Total</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {pricedLabour.map((item, index) => <tr key={`labour-${index}`}>
+                      <td>{invoice.paymentStatus === 'Draft' ? <input aria-label={`Labour description ${index + 1}`} maxLength={200} value={item.description} disabled={busy} onChange={event => changeLine('labourItems', index, 'description', event.target.value)} /> : item.description}</td>
+                      <td>{invoice.paymentStatus === 'Draft' ? <input aria-label={`Labour hours ${index + 1}`} type="number" min="0" max="8760" step="any" value={item.hours} disabled={busy} onChange={event => changeLine('labourItems', index, 'hours', event.target.value)} /> : item.hours}</td>
+                      <td>{invoice.paymentStatus === 'Draft' ? <input aria-label={`Hourly rate ${index + 1}`} type="number" min="0" max="100000000" step="0.01" value={item.rate} disabled={busy} onChange={event => changeLine('labourItems', index, 'rate', event.target.value)} /> : money(item.rate)}</td>
+                      <td>{money(roundMoney(Number(item.hours) * Number(item.rate)))}</td>
+                      <td>{invoice.paymentStatus === 'Draft' && <button type="button" className="btn-outline" disabled={busy} onClick={() => changeLabour(pricedLabour.filter((_, row) => row !== index))}>Remove</button>}</td>
+                    </tr>)}
+                    {!pricedLabour.length && <tr><td colSpan="5">No hourly labour charges.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              {invoice.paymentStatus === 'Draft' && <div className="admin-pricing-actions">
+                <button type="button" className="btn-outline" disabled={busy} onClick={() => changeLabour([...pricedLabour, { description: 'Labour', hours: 0, rate: 0 }])}>Add hourly labour</button>
+                <button type="button" className="btn-outline" disabled={busy || invoice.serviceJob?.durationHours == null} onClick={() => changeLabour([{ description: 'Labour for recorded job duration', hours: invoice.serviceJob.durationHours, rate: pricedLabour[0]?.rate || 0 }])}>Use recorded job duration</button>
+              </div>}
 
               <div className="finance-invoice-bottom">
                 <div className="finance-invoice-adjustments">
                   <label>
-                    Workshop charge description
+                    Service charge description
                     <input type="text" maxLength="200" value={adminChargeDescription} onChange={(event) => setChargeOverrides((current) => ({ ...current, [invoice.id]: { ...current[invoice.id], description: event.target.value } }))} disabled={busy || invoice.paymentStatus !== 'Draft'} placeholder="e.g. Additional labour" />
                   </label>
                   <label>
-                    Workshop charge (LKR)
+                    Service amount (LKR)
                     <input type="number" min="0" max="100000000" step="0.01" value={adminChargeAmount} onChange={(event) => setChargeOverrides((current) => ({ ...current, [invoice.id]: { ...current[invoice.id], amount: event.target.value } }))} disabled={busy || invoice.paymentStatus !== 'Draft'} />
                   </label>
                   <label>
@@ -496,11 +510,11 @@ export default function FinanceInvoices() {
                 <dl className="finance-invoice-totals">
                   <div>
                     <dt>Parts</dt>
-                    <dd>{money(invoice.partsCost)}</dd>
+                    <dd>{money(partsCost)}</dd>
                   </div>
                   <div>
                     <dt>Labour</dt>
-                    <dd>{money(invoice.labourCost)}</dd>
+                    <dd>{money(labourCost)}</dd>
                   </div>
                   {Number(invoice.additionalRepairsCost) > 0 && (
                     <div>

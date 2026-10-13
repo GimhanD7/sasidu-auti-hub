@@ -10,6 +10,8 @@ const serviceJobSchema = new mongoose.Schema({
   vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
   technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   technicianAcceptedAt: Date,
+  startedAt: Date,
+  completedAt: Date,
   technicianAcceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   technicianAssignments: [{
     technician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

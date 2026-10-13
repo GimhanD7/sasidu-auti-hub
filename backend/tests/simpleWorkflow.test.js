@@ -26,6 +26,7 @@ test('custom customer booking is confirmed by admin, started and completed by te
   const payments = [];
   t.mock.method(Appointment, 'findById', () => ({ select: async () => appointment, then: resolve => resolve(appointment) }));
   t.mock.method(Appointment, 'exists', async () => false);
+  t.mock.method(ServiceJob, 'exists', async () => false);
   t.mock.method(Appointment, 'create', async data => (appointment = { ...data, _id: id(3), updatedAt: new Date(), async save() {} }));
   t.mock.method(Vehicle, 'findOne', () => ({ select: async () => ({ _id: id(4), make: 'Toyota', model: 'Prius' }) }));
   t.mock.method(User, 'findOne', () => ({ select: async () => ({ ...technician, availabilityStatus: 'Available' }) }));
@@ -69,19 +70,21 @@ test('custom customer booking is confirmed by admin, started and completed by te
   assert.equal(start.code, 201); assert.equal(job.status, 'In Progress'); assert.equal(appointment.status, 'In Service');
   assert.equal(job.estimatedCost, 2000);
   assert.ok(job.technicianAcceptedAt, 'Starting service also accepts the assignment');
+  assert.ok(job.startedAt, 'Starting service persists its start time');
   assert.equal(job.technicianAcceptedBy, technician._id);
-  for (const body of [{ action: 'partAdd', name: 'Oil filter', quantity: 2, unitCost: 500 }, { action: 'labourAdd', description: 'Oil service', hours: 1, ratePerHour: 1000 }]) {
+  for (const body of [{ action: 'partAdd', name: 'Oil filter', quantity: 2 }, { action: 'labourAdd', description: 'Oil service', hours: 1 }]) {
     const res = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body }, res); assert.equal(res.code, 200);
   }
   const incomplete = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'completeJob', reportNotes: '' } }, incomplete); assert.equal(incomplete.code, 400);
   const complete = response();
   await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'completeJob', reportNotes: 'Oil and filter replaced.' } }, complete);
-  assert.equal(complete.code, 200); assert.equal(job.status, 'Ready'); assert.equal(appointment.status, 'Completed'); assert.equal(invoice.paymentStatus, 'Draft'); assert.equal(invoice.totalAmount, 2000);
+  assert.equal(complete.code, 200); assert.equal(job.status, 'Ready'); assert.equal(appointment.status, 'Completed'); assert.equal(invoice.paymentStatus, 'Draft'); assert.equal(invoice.totalAmount, 0);
+  assert.ok(job.completedAt);
   assert.deepEqual(job.finalReport.workDone, ['Oil and filter replaced.']);
   const edit = response(); await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'partAdd', name: 'Extra', quantity: 1, unitCost: 50 } }, edit); assert.equal(edit.code, 409);
   const paymentBody = { invoiceId: invoice._id, method: 'Bank Transfer', transactionReference: 'BANK-001' };
   const beforeIssue = response(); await submitCustomerPayment({ user: customer, body: paymentBody }, beforeIssue); assert.equal(beforeIssue.code, 404);
-  const issue = response(); await updateDraftInvoice({ params: { invoiceId: invoice._id }, body: { finalize: true } }, issue); assert.equal(issue.code, 200); assert.equal(invoice.paymentStatus, 'Pending');
+  const issue = response(); await updateDraftInvoice({ params: { invoiceId: invoice._id }, body: { finalize: true, parts: [{ ...invoice.parts[0], unitPrice: 500 }], labourItems: [{ ...invoice.labourItems[0], rate: 1000 }] } }, issue); assert.equal(issue.code, 200); assert.equal(invoice.paymentStatus, 'Pending');
   const submit = response(); await submitCustomerPayment({ user: customer, body: paymentBody }, submit); assert.equal(submit.code, 201); assert.equal(payments[0].status, 'Pending Verification'); assert.equal(invoice.amountPaid, 0);
   const duplicate = response(); await submitCustomerPayment({ user: customer, body: paymentBody }, duplicate); assert.equal(duplicate.code, 409);
   const failed = response(); await reviewFinancePayment({ params: { paymentId: payments[0]._id }, user: { _id: id(7) }, body: { decision: 'Failed', failureReason: 'Reference not found' } }, failed); assert.equal(failed.code, 200); assert.equal(invoice.paymentStatus, 'Pending');
@@ -89,7 +92,7 @@ test('custom customer booking is confirmed by admin, started and completed by te
   const paid = response(); await reviewFinancePayment({ params: { paymentId: payments[1]._id }, user: { _id: id(7) }, body: { decision: 'Completed' } }, paid); assert.equal(paid.code, 200); assert.equal(invoice.paymentStatus, 'Paid'); assert.equal(invoice.amountPaid, 2000);
 });
 
-test('technician can add direct service charge without parts and complete job with accurate balance', async t => {
+test('technician cannot enter charges; admin prices the completed service', async t => {
   const technician = { _id: id(21), role: 'Technician', name: 'Technician 2' };
   const customer = { _id: id(22) };
   let job = {
@@ -118,7 +121,7 @@ test('technician can add direct service charge without parts and complete job wi
   t.mock.method(Appointment, 'updateOne', async () => ({ modifiedCount: 1 }));
   t.mock.method(User, 'find', () => ({ select() { return this; }, lean: async () => [] }));
 
-  // Add direct service charge amount (no parts)
+  // Technician price submissions must fail.
   const addServiceCharge = response();
   await updateTechnicianJobCard({
     params: { jobId: job._id },
@@ -126,12 +129,10 @@ test('technician can add direct service charge without parts and complete job wi
     body: { action: 'labourAdd', description: 'Periodic General Service', amount: 3500 }
   }, addServiceCharge);
 
-  assert.equal(addServiceCharge.code, 200);
-  assert.equal(job.labourEntries.length, 1);
-  assert.equal(job.labourEntries[0].ratePerHour, 3500);
-  assert.equal(job.labourEntries[0].minutes, 60);
+  assert.equal(addServiceCharge.code, 403);
+  assert.equal(job.labourEntries.length, 0);
 
-  // Complete job and verify invoice total matches 3500 without adding any parts
+  // Completion prepares an unpriced draft for admin.
   const complete = response();
   await updateTechnicianJobCard({
     params: { jobId: job._id },
@@ -143,7 +144,11 @@ test('technician can add direct service charge without parts and complete job wi
   assert.equal(job.status, 'Ready');
   assert.ok(invoice);
   assert.equal(invoice.partsCost, 0);
-  assert.equal(invoice.labourCost, 3500);
+  assert.equal(invoice.labourCost, 0);
+  assert.equal(invoice.totalAmount, 0);
+  const price = response();
+  await updateDraftInvoice({ params: { invoiceId: invoice._id }, body: { adminChargeDescription: 'Periodic General Service', adminChargeAmount: 3500, finalize: true } }, price);
+  assert.equal(price.code, 200);
   assert.equal(invoice.totalAmount, 3500);
 });
 

@@ -245,39 +245,22 @@ export default function AdminCustomers() {
         {listLoading ? (
           <p role="status">Loading customers…</p>
         ) : customers.length ? (
-          <div className="customer-directory-list">
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table">
+              <thead><tr><th>Customer</th><th>Email</th><th>Mobile number</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+              <tbody>
             {customers.map((customer) => (
-              <button
-                type="button"
-                className="customer-directory-row"
-                key={customer.id}
-                onClick={() => {
-                  setDetailsLoading(true);
-                  setSelectedId(customer.id);
-                }}
-              >
-                <span className="customer-avatar">
-                  {customer.name
-                    .split(/\s+/)
-                    .map((part) => part[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase()}
-                </span>
-                <span className="customer-directory-identity">
-                  <strong>{customer.name}</strong>
-                  <small>
-                    {customer.email} · {customer.mobile || 'No mobile recorded'}
-                  </small>
-                </span>
-                <span
-                  className={`customer-active-state ${customer.isActive ? 'active' : 'inactive'}`}
-                >
-                  {customer.isActive ? 'Active' : 'Inactive'}
-                </span>
-                <span aria-hidden="true">›</span>
-              </button>
+              <tr key={customer.id}>
+                <td><strong>{customer.name}</strong></td>
+                <td>{customer.email}</td>
+                <td>{customer.mobile || '—'}</td>
+                <td><span className={`customer-active-state ${customer.isActive ? 'active' : 'inactive'}`}>{customer.isActive ? 'Active' : 'Inactive'}</span></td>
+                <td>{dateText(customer.createdAt)}</td>
+                <td><button type="button" className="btn-outline" onClick={() => { setDetailsLoading(true); setSelectedId(customer.id); }}>View profile</button></td>
+              </tr>
             ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <p className="customer-empty">No customers match that search.</p>

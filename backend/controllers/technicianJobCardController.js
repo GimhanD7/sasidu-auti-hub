@@ -7,6 +7,7 @@ import Invoice from '../models/Invoice.js';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import { jobTiming } from '../utils/jobTiming.js';
 
 const MAX_PHOTO_BYTES = 1.4 * 1024 * 1024;
 const NEXT_STATUS = { Inspecting: ['In Progress'], 'In Progress': ['Final Test'], 'Final Test': ['Ready'] };
@@ -39,9 +40,11 @@ export async function updateTechnicianJobCard(req, res) {
     const job = await findAssignedJob(req.params.jobId, req.user._id);
     if (!job) return res.status(404).json({ message: 'Assigned service job not found.' });
     if (job.status === 'Ready') return res.status(409).json({ message: 'This service is completed and cannot be changed.' });
+    if (['unitCost', 'unitPrice', 'ratePerHour', 'rate', 'amount', 'charge', 'totalCost', 'estimatedCost'].some(field => req.body[field] !== undefined)) return res.status(403).json({ message: 'Only admin can enter prices after the job is completed.' });
     if (action === 'acceptJob') {
       if (job.technicianAcceptedAt) return res.status(409).json({ message: 'You have already accepted this job.' });
       job.technicianAcceptedAt = new Date();
+      job.startedAt ||= job.technicianAcceptedAt;
       job.technicianAcceptedBy = req.user._id;
       job.timeline.push({ status: 'Job Accepted', timestamp: job.technicianAcceptedAt, actor: req.user._id, notes: `Assignment accepted by ${req.user.name || 'technician'}.` });
       await job.save();
@@ -114,9 +117,8 @@ export async function updateTechnicianJobCard(req, res) {
       const name = text(req.body.name, 200, 'Part name', { required: true });
       const partNumber = text(req.body.partNumber || '', 100, 'Part number');
       const quantity = Number(req.body.quantity);
-      const unitCost = Number(req.body.unitCost);
-      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10000 || !Number.isFinite(unitCost) || unitCost < 0 || unitCost > 100000000) return res.status(400).json({ message: 'Enter a valid part quantity and unit price.' });
-      job.replacedParts.push({ name, partNumber, quantity, unitCost, replacedAt: now });
+      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10000) return res.status(400).json({ message: 'Enter a valid part quantity.' });
+      job.replacedParts.push({ name, partNumber, quantity, replacedAt: now });
       message = 'Part recorded on this job.';
     } else if (action === 'partRemove') {
       if (!mongoose.isValidObjectId(req.body.partId)) return res.status(400).json({ message: 'Choose a valid part entry.' });
@@ -129,24 +131,10 @@ export async function updateTechnicianJobCard(req, res) {
       const labourType = req.body.labourType || 'Repair';
       if (!LABOUR_TYPES.includes(labourType)) return res.status(400).json({ message: 'Choose a valid labour type.' });
 
-      let hours = req.body.hours !== undefined && req.body.hours !== '' ? Number(req.body.hours) : null;
-      let ratePerHour = req.body.ratePerHour !== undefined && req.body.ratePerHour !== '' ? Number(req.body.ratePerHour) : null;
-      const directAmount = req.body.amount !== undefined && req.body.amount !== '' ? Number(req.body.amount) : null;
-
-      if (directAmount !== null) {
-        if (!Number.isFinite(directAmount) || directAmount < 0 || directAmount > 100000000) {
-          return res.status(400).json({ message: 'Enter a valid service charge amount.' });
-        }
-        hours = 1;
-        ratePerHour = directAmount;
-      } else {
-        if (!Number.isFinite(hours) || hours <= 0 || hours > 24 || !Number.isFinite(ratePerHour) || ratePerHour < 0 || ratePerHour > 100000000) {
-          return res.status(400).json({ message: 'Enter valid labour time and hourly rate, or a direct service amount.' });
-        }
-      }
-
-      job.labourEntries.push({ description, labourType, minutes: Math.max(1, Math.round(hours * 60)), ratePerHour, technician: req.user._id, recordedAt: now });
-      message = 'Labour / service charge recorded.';
+      const hours = Number(req.body.hours);
+      if (!Number.isFinite(hours) || hours <= 0 || hours > 24) return res.status(400).json({ message: 'Enter valid labour time of up to 24 hours.' });
+      job.labourEntries.push({ description, labourType, minutes: Math.max(1, Math.round(hours * 60)), technician: req.user._id, recordedAt: now });
+      message = 'Work time recorded. Admin will add pricing after completion.';
     } else if (action === 'labourRemove') {
       if (!mongoose.isValidObjectId(req.body.labourId)) return res.status(400).json({ message: 'Choose a valid labour entry.' });
       const entry = job.labourEntries.id(req.body.labourId);
@@ -157,10 +145,8 @@ export async function updateTechnicianJobCard(req, res) {
       if (job.activeLabourTimer?.startedAt) return res.status(409).json({ message: 'A labour timer is already running for this job.' });
       const description = text(req.body.description || 'Repair labour', 200, 'Labour description');
       const labourType = req.body.labourType || 'Repair';
-      const ratePerHour = Number(req.body.ratePerHour ?? 0);
       if (!LABOUR_TYPES.includes(labourType)) return res.status(400).json({ message: 'Choose a valid labour type.' });
-      if (!Number.isFinite(ratePerHour) || ratePerHour < 0 || ratePerHour > 100000000) return res.status(400).json({ message: 'Enter a valid hourly rate.' });
-      job.activeLabourTimer = { description, labourType, ratePerHour, technician: req.user._id, startedAt: now };
+      job.activeLabourTimer = { description, labourType, technician: req.user._id, startedAt: now };
       message = 'Labour timer started.';
     } else if (action === 'labourTimerStop') {
       const timer = job.activeLabourTimer;
@@ -168,7 +154,7 @@ export async function updateTechnicianJobCard(req, res) {
       if (String(timer.technician) !== String(req.user._id)) return res.status(403).json({ message: 'Only the technician who started this timer can stop it.' });
       const minutes = Math.ceil((now - new Date(timer.startedAt)) / 60000);
       if (minutes > 1440) return res.status(409).json({ message: 'This timer exceeded 24 hours. Ask a manager to correct the labour entry.' });
-      job.labourEntries.push({ description: timer.description, labourType: timer.labourType, minutes: Math.max(1, minutes), ratePerHour: timer.ratePerHour, technician: timer.technician, startedAt: timer.startedAt, endedAt: now, recordedAt: now });
+      job.labourEntries.push({ description: timer.description, labourType: timer.labourType, minutes: Math.max(1, minutes), technician: timer.technician, startedAt: timer.startedAt, endedAt: now, recordedAt: now });
       job.activeLabourTimer = undefined;
       message = 'Labour timer stopped and time recorded.';
     } else if (action === 'finalTestStart') {
@@ -213,23 +199,25 @@ export async function updateTechnicianJobCard(req, res) {
         : textList(req.body.workDone, 'Work completed');
       if (!workDone.length) return res.status(400).json({ message: 'Add at least one work item before completing this job.' });
       const reportNotes = workDone.join('\n');
-      const parts = (job.replacedParts || []).map(part => ({ name: part.name || 'Part', partNumber: part.partNumber || '', quantity: Number(part.quantity) || 0, unitPrice: Number(part.unitCost) || 0, total: Math.round((Number(part.quantity) || 0) * (Number(part.unitCost) || 0) * 100) / 100 }));
-      const labourItems = (job.labourEntries || []).map(entry => ({ description: `${entry.labourType || 'Repair'} · ${entry.description || 'Labour'}`, hours: Math.round((Number(entry.minutes) || 0) / 60 * 100) / 100, rate: Number(entry.ratePerHour) || 0, total: Math.round(((Number(entry.minutes) || 0) / 60) * (Number(entry.ratePerHour) || 0) * 100) / 100 }));
-      const partsCost = Math.round(parts.reduce((sum, part) => sum + part.total, 0) * 100) / 100;
-      const labourCost = Math.round(labourItems.reduce((sum, item) => sum + item.total, 0) * 100) / 100;
-      // This completion flow bills recorded parts and labour; it does not add a separate additional-repair charge.
+      const timing = jobTiming(job, now);
+      const parts = (job.replacedParts || []).map(part => ({ name: part.name || 'Part', partNumber: part.partNumber || '', quantity: Number(part.quantity) || 0, unitPrice: 0, total: 0 }));
+      const labourItems = (job.labourEntries || []).map(entry => ({ description: entry.description || 'Labour', hours: Number(entry.minutes) / 60, rate: 0, total: 0 }));
+      if (!labourItems.length && timing.durationHours !== null) labourItems.push({ description: 'Labour for recorded job duration', hours: timing.durationHours, rate: 0, total: 0 });
+      const partsCost = 0;
+      const labourCost = 0;
       const additionalRepairsCost = 0;
-      const totalAmount = Math.round((partsCost + labourCost + additionalRepairsCost) * 100) / 100;
+      const totalAmount = 0;
       let invoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
+      if (invoice && invoice.paymentStatus !== 'Draft') return res.status(409).json({ message: 'This job already has an issued invoice. Contact admin before completing it.' });
       if (invoice) {
         invoice.parts = parts;
         invoice.labourItems = labourItems;
         invoice.partsCost = partsCost;
         invoice.labourCost = labourCost;
         invoice.additionalRepairsCost = additionalRepairsCost;
-        const discount = invoice.discount || 0;
-        const tax = invoice.tax || 0;
-        invoice.totalAmount = Math.max(0, Math.round((partsCost + labourCost + additionalRepairsCost - discount + tax) * 100) / 100);
+        invoice.discount = 0;
+        invoice.tax = 0;
+        invoice.totalAmount = 0;
         // Persist the changes made to invoice above; document validation and registered save hooks run here.
         await invoice.save();
       } else {
@@ -249,6 +237,8 @@ export async function updateTechnicianJobCard(req, res) {
         });
       }
       job.finalReport = { notes: reportNotes, workDone, tasksVerified: true, partsVerified: true, labourVerified: true, technician: req.user._id, completedAt: now };
+      job.startedAt ||= timing.startedAt;
+      job.completedAt = now;
       job.billingInvoice = invoice._id;
       job.$locals.statusTransitionFrom = job.status;
       job.status = 'Ready';
@@ -258,7 +248,7 @@ export async function updateTechnicianJobCard(req, res) {
       if (job.appointment) await Appointment.updateOne({ _id: job.appointment }, { $set: { status: 'Completed' }, $unset: { bookingSlotKey: '' }, $push: { history: { action: 'Service completed', details: 'Technician completed the service and prepared billing.', actor: req.user._id, timestamp: now } } });
       try {
         const admins = await User.find({ role: { $in: ['Admin', 'admin'] }, isActive: { $ne: false } }).select('_id').lean();
-        if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'ServiceJobCompleted', title: 'Service job completed', message: `${job.serviceNumber || 'A service job'} is ready. Draft invoice ${invoice.invoiceNumber} is available for billing review.`, link: '/admin/kanban', dedupeKey: `service-job-complete:${job._id}:${admin._id}` })), { ordered: false });
+        if (admins.length) await Notification.insertMany(admins.map(admin => ({ user: admin._id, type: 'ServiceJobCompleted', title: 'Service job completed', message: `${job.serviceNumber || 'A service job'} is ready. Draft invoice ${invoice.invoiceNumber} is available for billing review.`, link: '/admin/invoices', dedupeKey: `service-job-complete:${job._id}:${admin._id}` })), { ordered: false });
       } catch { /* Job completion and its draft billing record remain authoritative if admin notification delivery fails. */ }
       return res.json({ message: `Job completed, customer notified, and draft invoice ${invoice.invoiceNumber} sent to billing.`, status: job.status, invoice: { id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus, totalAmount: invoice.totalAmount } });
 

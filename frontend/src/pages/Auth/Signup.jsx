@@ -6,7 +6,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthLayout from './AuthLayout';
 
+const MOBILE_VALIDATION_MESSAGE = 'Enter a mobile number with 10 to 15 digits, optionally starting with +.';
+const normalizeMobile = (value) => value.trim().replace(/[\s()-]/g, '');
+
 const Signup = () => {
+  const [mobileTouched, setMobileTouched] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -22,6 +26,7 @@ const Signup = () => {
   };
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const mobileInvalid = !/^\+?\d{10,15}$/.test(normalizeMobile(formData.mobile));
 
   const features = [
     {
@@ -84,6 +89,9 @@ const Signup = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'mobile') {
+      e.target.setCustomValidity(/^\+?\d{10,15}$/.test(normalizeMobile(value)) ? '' : MOBILE_VALIDATION_MESSAGE);
+    }
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -93,13 +101,14 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
-    const mobile = formData.mobile.trim().replace(/[\s()-]/g, '');
+    const mobile = normalizeMobile(formData.mobile);
     if (formData.fullName.trim().length < 2) {
       setError('Enter your full name (at least 2 characters).');
       return;
     }
     if (!/^\+?\d{10,15}$/.test(mobile)) {
-      setError('Enter a mobile number with 10 to 15 digits, optionally starting with +.');
+      setMobileTouched(true);
+      setError(MOBILE_VALIDATION_MESSAGE);
       return;
     }
     if (formData.password.length < 8 || new TextEncoder().encode(formData.password).length > 72) {
@@ -230,7 +239,7 @@ const Signup = () => {
             </div>
           </div>
           <div className="form-group">
-            <label className="form-label">MOBILE NUMBER</label>
+            <label className="form-label" htmlFor="signup-mobile">MOBILE NUMBER</label>
             <div className="form-input-wrapper">
               <span className="input-icon">
                 <svg
@@ -248,15 +257,29 @@ const Signup = () => {
               </span>
               <input
                 type="tel"
+                id="signup-mobile"
                 name="mobile"
+                minLength={10}
+                maxLength={32}
                 autoComplete="tel"
                 className="form-input"
                 placeholder="+1 (555) 000-0000"
                 value={formData.mobile}
                 onChange={handleChange}
+                onBlur={() => setMobileTouched(true)}
+                onInvalid={(event) => {
+                  event.target.setCustomValidity(MOBILE_VALIDATION_MESSAGE);
+                  setMobileTouched(true);
+                  setError(MOBILE_VALIDATION_MESSAGE);
+                }}
+                aria-invalid={mobileTouched && mobileInvalid}
+                aria-describedby="signup-mobile-help"
                 required
               />
             </div>
+            <p id="signup-mobile-help" style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: mobileTouched && mobileInvalid ? '#ef4444' : 'var(--text-secondary)' }}>
+              {mobileTouched && mobileInvalid ? MOBILE_VALIDATION_MESSAGE : '10–15 digits. Country code (+), spaces, brackets and hyphens are allowed.'}
+            </p>
           </div>
         </div>
 

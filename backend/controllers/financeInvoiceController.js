@@ -5,6 +5,8 @@ import Invoice from '../models/Invoice.js';
 import ServiceJob from '../models/ServiceJob.js';
 import User from '../models/User.js';
 import { invoiceEmail } from '../services/invoiceEmail.js';
+import { invoicePricing } from '../utils/invoicePricing.js';
+import { jobTiming } from '../utils/jobTiming.js';
 
 
 const roundMoney = value => Math.round((Number(value) || 0) * 100) / 100;
@@ -30,14 +32,16 @@ const jobPopulate = [
 function buildInvoiceLines(job) {
   const parts = (job.replacedParts || []).map(part => {
     const quantity = Number(part.quantity) || 0;
-    const unitPrice = Number(part.unitCost) || 0;
+    const unitPrice = 0;
     return { name: part.name || 'Part', partNumber: part.partNumber || '', quantity, unitPrice, total: roundMoney(quantity * unitPrice) };
   });
   const labourItems = (job.labourEntries || []).map(item => {
     const hours = roundMoney((Number(item.minutes) || 0) / 60);
-    const rate = Number(item.ratePerHour) || 0;
+    const rate = 0;
     return { description: item.description || item.labourType || 'Labour', hours, rate, total: roundMoney(hours * rate) };
   });
+  const timing = jobTiming(job);
+  if (!labourItems.length && timing.durationHours !== null) labourItems.push({ description: 'Labour for recorded job duration', hours: timing.durationHours, rate: 0, total: 0 });
   const partsCost = roundMoney(parts.reduce((sum, part) => sum + part.total, 0));
   const labourCost = roundMoney(labourItems.reduce((sum, item) => sum + item.total, 0));
   const additionalRepairsCost = roundMoney((job.additionalRepairs || []).filter(repair => repair.status === 'Approved').reduce((sum, repair) => sum + (Number(repair.estimatedCost) || 0), 0));
@@ -52,8 +56,8 @@ function serializeJob(job) {
     id: String(job._id), serviceNumber: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`,
     customer: job.customer ? { name: job.customer.name, email: job.customer.email, mobile: job.customer.mobile || '' } : null,
     vehicle: job.vehicle ? { registrationNumber: job.vehicle.registrationNumber || '', make: job.vehicle.make || '', model: job.vehicle.model || '', year: job.vehicle.year || null } : null,
-    serviceType: job.appointment?.serviceType || 'Service repair', completedAt: job.finalReport?.completedAt || job.updatedAt,
-    parts: lines.parts, labourItems: lines.labourItems,
+    serviceType: job.appointment?.serviceType || 'Service repair', ...jobTiming(job),
+    parts: existing?.parts || lines.parts, labourItems: existing?.labourItems || lines.labourItems,
     approvedRepairs: (job.additionalRepairs || []).filter(repair => repair.status === 'Approved').map(repair => ({ description: repair.description || 'Approved additional repair', amount: roundMoney(repair.estimatedCost) })),
     partsCost: existing?.partsCost ?? lines.partsCost, labourCost: existing?.labourCost ?? lines.labourCost,
     additionalRepairsCost: existing?.additionalRepairsCost ?? lines.additionalRepairsCost,
@@ -76,7 +80,7 @@ export async function listFinanceInvoices(req, res) {
   try {
     const invoices = await Invoice.find().sort({ createdAt: -1 }).limit(500)
       .populate({ path: 'customer', select: 'name email mobile' })
-      .populate({ path: 'serviceJob', select: 'serviceNumber vehicle appointment', populate: [
+      .populate({ path: 'serviceJob', select: 'serviceNumber vehicle appointment startedAt completedAt technicianAcceptedAt finalReport timeline', populate: [
         { path: 'vehicle', select: 'registrationNumber make model year' },
         { path: 'appointment', select: 'serviceType' },
       ] }).lean();
@@ -91,7 +95,7 @@ export async function listFinanceInvoices(req, res) {
         partsCost: roundMoney(invoice.partsCost), labourCost: roundMoney(invoice.labourCost), additionalRepairsCost: roundMoney(invoice.additionalRepairsCost), adminChargeDescription: invoice.adminChargeDescription || '', adminChargeAmount: roundMoney(invoice.adminChargeAmount), tax: roundMoney(invoice.tax), discount: roundMoney(invoice.discount),
         issuedAt: invoice.createdAt, paymentDate: invoice.paymentDate || null, paymentMethod: invoice.paymentMethod || '',
         customer: invoice.customer ? { name: invoice.customer.name || 'Customer', email: invoice.customer.email || '', mobile: invoice.customer.mobile || '' } : null,
-        serviceJob: { id: job._id ? String(job._id) : '', serviceNumber: job.serviceNumber || '', serviceType: job.appointment?.serviceType || 'Service repair', vehicle: vehicle ? { make: vehicle.make || '', model: vehicle.model || '', year: vehicle.year || null, registrationNumber: vehicle.registrationNumber || '' } : null },
+        serviceJob: { id: job._id ? String(job._id) : '', serviceNumber: job.serviceNumber || '', ...jobTiming(job), workDone: job.finalReport?.workDone || [], serviceType: job.appointment?.serviceType || 'Service repair', vehicle: vehicle ? { make: vehicle.make || '', model: vehicle.model || '', year: vehicle.year || null, registrationNumber: vehicle.registrationNumber || '' } : null },
       };
     }) });
   } catch {
@@ -113,6 +117,14 @@ export async function updateDraftInvoice(req, res) {
   try {
     const invoice = await Invoice.findOne({ _id: invoiceId, paymentStatus: 'Draft' });
     if (!invoice) return res.status(404).json({ message: 'Draft invoice not found.' });
+    if (req.body?.parts !== undefined || req.body?.labourItems !== undefined || adminChargeAmount !== undefined) {
+      const job = await ServiceJob.findOne({ _id: invoice.serviceJob, status: 'Ready' });
+      if (!job) return res.status(409).json({ message: 'Prices can only be added after the technician completes the job.' });
+      let pricing;
+      try { pricing = invoicePricing(req.body || {}, invoice); }
+      catch (error) { return res.status(400).json({ message: error.message }); }
+      Object.assign(invoice, pricing);
+    }
     if (adminChargeDescription !== undefined) invoice.adminChargeDescription = adminChargeDescription;
     if (adminChargeAmount !== undefined) invoice.adminChargeAmount = roundMoney(adminChargeAmount);
     const subtotal = roundMoney((invoice.partsCost || 0) + (invoice.labourCost || 0) + (invoice.additionalRepairsCost || 0) + (invoice.adminChargeAmount || 0));
@@ -130,6 +142,7 @@ export async function updateDraftInvoice(req, res) {
     res.set('Cache-Control', 'private, no-store').json({ message, emailed, invoice: {
       id: String(invoice._id), invoiceNumber: invoice.invoiceNumber, paymentStatus: invoice.paymentStatus,
       partsCost: invoice.partsCost, labourCost: invoice.labourCost, additionalRepairsCost: invoice.additionalRepairsCost,
+      parts: invoice.parts, labourItems: invoice.labourItems,
       adminChargeDescription: invoice.adminChargeDescription || '', adminChargeAmount: roundMoney(invoice.adminChargeAmount),
       tax: invoice.tax, discount: invoice.discount, totalAmount: invoice.totalAmount,
     } });
@@ -169,7 +182,9 @@ export async function saveJobInvoice(req, res) {
     if (!job) return res.status(404).json({ message: 'Completed service job not found.' });
     let invoice = await Invoice.findOne({ serviceJob: job._id, paymentStatus: { $ne: 'Cancelled' } });
     if (invoice && invoice.paymentStatus !== 'Draft') return res.status(409).json({ message: 'This job already has a finalized invoice.' });
-    const lines = buildInvoiceLines(job);
+    let lines = invoice ? { parts: invoice.parts || [], labourItems: invoice.labourItems || [], partsCost: invoice.partsCost || 0, labourCost: invoice.labourCost || 0, additionalRepairsCost: invoice.additionalRepairsCost || 0 } : buildInvoiceLines(job);
+    try { lines = { ...lines, ...invoicePricing(req.body || {}, lines) }; }
+    catch (error) { return res.status(400).json({ message: error.message }); }
     const adminChargeDescription = requestedChargeDescription === undefined ? invoice?.adminChargeDescription || '' : requestedChargeDescription.trim();
     const adminChargeAmount = requestedChargeAmount === undefined ? roundMoney(invoice?.adminChargeAmount) : roundMoney(requestedChargeAmount);
     const subtotal = roundMoney(lines.partsCost + lines.labourCost + lines.additionalRepairsCost + adminChargeAmount);

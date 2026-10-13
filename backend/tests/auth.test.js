@@ -338,21 +338,21 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal(dashboardJobs[0].tasks[0].title, 'Replace front brake pads');
     assert.equal(dashboardJobs[0].tasks[0].notes, 'Used OEM replacement pads.');
     assert.ok(dashboardJobs[0].tasks[0].completedAt);
-    const partAdd = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'partAdd', name: 'Brake pad set', partNumber: 'BP-01', quantity: 1, unitCost: 125 } });
+    const partAdd = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'partAdd', name: 'Brake pad set', partNumber: 'BP-01', quantity: 1 } });
     assert.equal(partAdd.response.status, 200);
-    assert.equal(dashboardJobs[0].replacedParts[0].unitCost, 125);
+    assert.equal(dashboardJobs[0].replacedParts[0].unitCost, undefined);
     dashboardJobs[0].replacedParts[0]._id = '64f000000000000000000030';
     const partRemove = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'partRemove', partId: '64f000000000000000000030' } });
     assert.equal(partRemove.response.status, 200);
     assert.equal(dashboardJobs[0].replacedParts.length, 0);
-    const labourAdd = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'labourAdd', description: 'Brake service', labourType: 'Repair', hours: 1.5, ratePerHour: 80 } });
+    const labourAdd = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'labourAdd', description: 'Brake service', labourType: 'Repair', hours: 1.5 } });
     assert.equal(labourAdd.response.status, 200);
     assert.equal(dashboardJobs[0].labourEntries[0].minutes, 90);
-    assert.equal(dashboardJobs[0].labourEntries[0].ratePerHour, 80);
-    const timerStart = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'labourTimerStart', description: 'Brake test', labourType: 'Testing', ratePerHour: 60 } });
+    assert.equal(Number(dashboardJobs[0].labourEntries[0].ratePerHour || 0), 0);
+    const timerStart = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'labourTimerStart', description: 'Brake test', labourType: 'Testing' } });
     assert.equal(timerStart.response.status, 200);
     assert.ok(dashboardJobs[0].activeLabourTimer.startedAt);
-    const secondTimerStart = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'labourTimerStart', description: 'Duplicate', labourType: 'Repair', ratePerHour: 60 } });
+    const secondTimerStart = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'labourTimerStart', description: 'Duplicate', labourType: 'Repair' } });
     assert.equal(secondTimerStart.response.status, 409);
     dashboardJobs[0].activeLabourTimer.startedAt = new Date(Date.now() - 5 * 60000);
     const timerStop = await request('/api/auth/technician/jobs/64f000000000000000000001/card', { method: 'PATCH', cookie: technicianLogin.cookie, body: { action: 'labourTimerStop' } });
@@ -388,7 +388,9 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal(dashboardJobs[0].billingInvoice, '64f000000000000000000060');
     assert.deepEqual(dashboardJobs[0].finalReport.workDone, ['Replaced front brake pads.', 'Completed final safety test.']);
     assert.equal(readyUpdate.data.invoice.paymentStatus, 'Draft');
-    assert.ok(readyUpdate.data.invoice.totalAmount >= 125 && readyUpdate.data.invoice.totalAmount <= 126);
+    assert.equal(readyUpdate.data.invoice.totalAmount, 0);
+    assert.ok(dashboardJobs[0].startedAt);
+    assert.ok(dashboardJobs[0].completedAt);
     assert.ok(deliveredNotifications.some(notification => notification.type === 'ServiceJobCompleted'));
     assert.equal((await request('/api/auth/technician-dashboard', { cookie: customerCurrentLogin.cookie })).response.status, 403);
     assert.equal((await request('/api/auth/technician/change-password', {

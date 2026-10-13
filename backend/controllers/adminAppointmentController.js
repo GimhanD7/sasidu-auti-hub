@@ -2,6 +2,7 @@
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
+import { technicianAssignmentConflict } from '../utils/technicianAvailability.js';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
@@ -110,6 +111,8 @@ export async function createAdminAppointment(req, res) {
       assignedTechnician = await User.findOne({ _id: technicianId, role: 'Technician', isActive: { $ne: false } }).select('_id name availabilityStatus');
       if (!assignedTechnician) return res.status(404).json({ message: 'Active technician not found.' });
       if ((assignedTechnician.availabilityStatus || 'Available') !== 'Available') return res.status(409).json({ message: 'This technician is unavailable for new assignments.' });
+      const conflict = await technicianAssignmentConflict(assignedTechnician._id, { preferredDate: day, preferredTime });
+      if (conflict) return res.status(409).json({ message: conflict });
     }
 
     let customer;
@@ -308,6 +311,10 @@ export async function updateAdminAppointment(req, res) {
       }
     }
     if (appointment.status === 'Pending' && appointment.assignedTechnician && body.technicianId !== undefined) appointment.status = 'Confirmed';
+    if (appointment.assignedTechnician && !['Cancelled', 'Completed'].includes(appointment.status) && (body.technicianId !== undefined || oldDate !== appointment.preferredDate.toISOString().slice(0, 10) || oldTime !== appointment.preferredTime)) {
+      const conflict = await technicianAssignmentConflict(appointment.assignedTechnician, { appointmentId: appointment._id, preferredDate: appointment.preferredDate, preferredTime: appointment.preferredTime });
+      if (conflict) return res.status(409).json({ message: conflict });
+    }
     if (appointment.status === 'Confirmed' && !appointment.assignedTechnician) return res.status(400).json({ message: 'Assign a technician before confirming this appointment.' });
     appointment.bookingSlotKey = ['Pending', 'Confirmed', 'Checked In', 'In Service'].includes(appointment.status)
       ? `${appointment.preferredDate.toISOString().slice(0, 10)}|${appointment.preferredTime}` : undefined;
@@ -384,7 +391,7 @@ export async function convertAdminAppointmentToJob(req, res) {
     const customerComplaint = typeof req.body?.customerComplaint === 'string' ? req.body.customerComplaint.trim() : appointment.problemDescription?.trim() || (isAssignedTechnician ? appointment.serviceType?.trim() : '');
     if (!customerComplaint || customerComplaint.length > 1000) return res.status(400).json({ message: 'A customer complaint of 1 to 1,000 characters is required.' });
     const jobExpectedFinish = expectedCompletionTime || (appointment.expectedFinishDate ? new Date(`${appointment.expectedFinishDate.toISOString().slice(0, 10)}T12:00:00.000Z`) : undefined);
-    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, technicianAcceptedAt: new Date(), technicianAcceptedBy: req.user._id, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: 'Assigned' }] : [], customerComplaint, issueType: appointment.issueType || 'Other', estimatedCost: appointment.estimatedCost, priority, expectedCompletionTime: jobExpectedFinish, status: 'In Progress', timeline: [{ status: 'In Progress', actor: req.user._id, notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
+    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, startedAt: new Date(), technicianAcceptedAt: new Date(), technicianAcceptedBy: req.user._id, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: 'Assigned' }] : [], customerComplaint, issueType: appointment.issueType || 'Other', estimatedCost: appointment.estimatedCost, priority, expectedCompletionTime: jobExpectedFinish, status: 'In Progress', timeline: [{ status: 'In Progress', actor: req.user._id, notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
     appointment.status = 'In Service';
     appointment.history.push({ action: 'Service job created', details: `Moved to In Service · ${job.serviceNumber}`, actor: req.user._id });
     appointment.bookingSlotKey = undefined;

@@ -21,7 +21,7 @@ export async function getAdminDashboard(req, res) {
       Appointment.countDocuments({ ...appointmentBase, preferredDate: { $gte: startOfToday, $lt: startOfTomorrow } }),
       Appointment.countDocuments({ status: 'Pending', preferredDate: { $gte: startOfToday } }),
       Appointment.countDocuments({ ...appointmentBase, preferredDate: { $gte: startOfTomorrow } }),
-      Appointment.find({ ...appointmentBase, preferredDate: { $gte: startOfToday } }).sort({ preferredDate: 1, preferredTime: 1 }).limit(8)
+      Appointment.find({ ...appointmentBase, preferredDate: { $gte: startOfToday } }).sort({ createdAt: -1, _id: -1 }).limit(8)
         .populate({ path: 'customer', select: 'name' }).populate({ path: 'vehicle', select: 'make model registrationNumber' }).lean(),
       ServiceJob.find(activeJobsFilter).sort({ updatedAt: -1 }).limit(8)
         .populate({ path: 'customer', select: 'name' }).populate({ path: 'vehicle', select: 'make model registrationNumber' }).populate({ path: 'technician', select: 'name' }).lean(),
@@ -101,7 +101,7 @@ export async function listAdminAppointments(req, res) {
     const configuredDays = process.env.APPOINTMENT_BUSINESS_DAYS?.split(',').map(Number).filter(day => Number.isInteger(day) && day >= 1 && day <= 7);
     const businessDays = new Set(configuredDays?.length ? configuredDays : [1, 2, 3, 4, 5, 6, 7]);
     const [appointments, technicians, bookedSlots] = await Promise.all([
-      Appointment.find(filter).sort({ preferredDate: 1, preferredTime: 1 }).limit(1000)
+      Appointment.find(filter).sort({ createdAt: -1, _id: -1 }).limit(1000)
         .populate({ path: 'customer', select: 'name email mobile' }).populate({ path: 'vehicle', select: 'make model registrationNumber' })
         .populate({ path: 'assignedTechnician', select: 'name' }).lean(),
       User.find({ role: 'Technician', isActive: { $ne: false } }).select('name availabilityStatus').sort({ name: 1 }).lean(),

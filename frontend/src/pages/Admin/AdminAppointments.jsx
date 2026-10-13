@@ -213,7 +213,7 @@ export default function AdminAppointments() {
       <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '12px', overflow: 'hidden' }}>
         <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border-color, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.95rem' }}>
-            Appointments List ({filteredRecords.length})
+            Appointments List ({filteredRecords.length}) · Newest first
           </span>
         </div>
 
@@ -224,6 +224,7 @@ export default function AdminAppointments() {
                 <th style={{ padding: '0.75rem 1rem' }}>Date & Time</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Customer</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Vehicle</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Vehicle Number</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Service Type</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Technician</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Status</th>
@@ -233,13 +234,13 @@ export default function AdminAppointments() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                     Loading appointments…
                   </td>
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
                     No appointments found matching your filter criteria.
                   </td>
                 </tr>
@@ -257,8 +258,8 @@ export default function AdminAppointments() {
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div>{appt.vehicle}</div>
-                      <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Plate: {appt.registrationNumber || 'N/A'}</div>
                     </td>
+                    <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>{appt.registrationNumber || '—'}</td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div>{appt.serviceType}</div>
                       {appt.problemDescription && (
