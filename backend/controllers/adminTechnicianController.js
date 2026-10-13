@@ -9,7 +9,25 @@ import { passwordResetEmail } from '../services/passwordResetEmail.js';
 
 const CURRENT_JOB_STATUSES = ['Inspecting', 'In Progress', 'Waiting for Approval', 'Final Test'];
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+export async function deleteAdminTechnician(req, res) {
+  const id = req.params.technicianId;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid technician.' });
+  try {
+    const technician = await User.findOne({ _id: id, role: 'Technician', deletedAt: null });
+    if (!technician) return res.status(404).json({ message: 'Technician not found.' });
+    const [activeJob, openAppointment] = await Promise.all([
+      ServiceJob.exists({ technician: id, status: { $in: CURRENT_JOB_STATUSES } }),
+      Appointment.exists({ assignedTechnician: id, status: { $in: ['Pending', 'Confirmed', 'Checked In', 'In Service'] } }),
+    ]);
+    if (activeJob || openAppointment) return res.status(409).json({ message: 'Reassign this technician’s active jobs and open appointments before removing them.' });
+    await User.updateOne({ _id: id, role: 'Technician', deletedAt: null }, {
+      $set: { deletedAt: new Date(), isActive: false }, $inc: { sessionVersion: 1 },
+      $unset: { resetTokenHash: '', resetTokenExpiresAt: '' },
+    });
+    res.json({ message: 'Technician removed successfully. Past job records have been kept.' });
+  } catch { res.status(503).json({ message: 'Unable to remove technician.' }); }
+}
 
 export async function setAdminTechnicianStatus(req, res) {
   if (!mongoose.isValidObjectId(req.params.technicianId) || typeof req.body?.isActive !== 'boolean') {
@@ -17,7 +35,7 @@ export async function setAdminTechnicianStatus(req, res) {
   }
   try {
     const technician = await User.findOneAndUpdate(
-      { _id: req.params.technicianId, role: 'Technician' },
+      { _id: req.params.technicianId, role: 'Technician', deletedAt: null },
       { $set: { isActive: req.body.isActive }, $inc: { sessionVersion: 1 }, $unset: { resetTokenHash: '', resetTokenExpiresAt: '' } },
       { new: true, runValidators: true },
     );
@@ -32,22 +50,19 @@ function parseTechnician(body = {}) {
   const mobile = typeof body.mobile === 'string' ? body.mobile : '';
   const specialization = typeof body.technicianSpecialization === 'string' ? body.technicianSpecialization.trim() : '';
   const days = body.workSchedule?.days;
-  const startTime = body.workSchedule?.startTime;
-  const endTime = body.workSchedule?.endTime;
   if (name.length < 2 || name.length > 100) return { error: 'Name must contain 2 to 100 characters.' };
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
   if (mobile && !/^\d{10}$/.test(mobile)) return { error: 'Enter exactly 10 digits for the mobile number, without a country code.' };
   if (!specialization || specialization.length > 120) return { error: 'Enter a specialization of up to 120 characters.' };
   if (!Array.isArray(days) || days.some(day => !Number.isInteger(day) || day < 1 || day > 7)) return { error: 'Choose valid working days.' };
-  if (!TIME_PATTERN.test(startTime || '') || !TIME_PATTERN.test(endTime || '') || startTime >= endTime) return { error: 'Enter valid working hours with the end time after the start time.' };
-  return { data: { name, email, mobile: mobile || undefined, technicianSpecialization: specialization, workSchedule: { days: [...new Set(days)].sort(), startTime, endTime } } };
+  return { data: { name, email, mobile: mobile || undefined, technicianSpecialization: specialization, workSchedule: { days: [...new Set(days)].sort() } } };
 }
 
-const technicianView = user => ({ id: String(user._id), name: user.name, email: user.email, mobile: user.mobile || '', specialization: user.technicianSpecialization || 'Not set', availabilityStatus: user.availabilityStatus || 'Available', workSchedule: { days: user.workSchedule?.days || [1, 2, 3, 4, 5, 6], startTime: user.workSchedule?.startTime || '09:00', endTime: user.workSchedule?.endTime || '17:00' }, isActive: user.isActive !== false, createdAt: user.createdAt });
+const technicianView = user => ({ id: String(user._id), name: user.name, email: user.email, mobile: user.mobile || '', specialization: user.technicianSpecialization || 'Not set', availabilityStatus: user.availabilityStatus || 'Available', workSchedule: { days: user.workSchedule?.days || [1, 2, 3, 4, 5, 6] }, isActive: user.isActive !== false, createdAt: user.createdAt });
 
 export async function listAdminTechnicians(req, res) {
   const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
-  const filter = { role: 'Technician' };
+  const filter = { role: 'Technician', deletedAt: null };
   if (search) {
     const expression = escapeRegex(search);
     filter.$or = [{ name: { $regex: expression, $options: 'i' } }, { email: { $regex: expression, $options: 'i' } }, { mobile: { $regex: expression, $options: 'i' } }, { technicianSpecialization: { $regex: expression, $options: 'i' } }];
@@ -131,7 +146,7 @@ export async function updateAdminTechnicianAvailability(req, res) {
   if (!['Available', 'Busy', 'Break', 'Off Duty', 'Leave'].includes(status)) return res.status(400).json({ message: 'Choose Available, Busy, Break, Off Duty, or Leave.' });
   if (!mongoose.isValidObjectId(req.params.technicianId)) return res.status(400).json({ message: 'Invalid technician.' });
   try {
-    const technician = await User.findOneAndUpdate({ _id: req.params.technicianId, role: 'Technician' }, { availabilityStatus: status }, { new: true, runValidators: true }).select('name availabilityStatus');
+    const technician = await User.findOneAndUpdate({ _id: req.params.technicianId, role: 'Technician', deletedAt: null }, { availabilityStatus: status }, { new: true, runValidators: true }).select('name availabilityStatus');
     if (!technician) return res.status(404).json({ message: 'Technician not found.' });
     res.set('Cache-Control', 'private, no-store').json({ id: String(technician._id), name: technician.name, availabilityStatus: technician.availabilityStatus || 'Available' });
   } catch { res.status(503).json({ message: 'Unable to update technician availability.' }); }

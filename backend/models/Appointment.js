@@ -40,6 +40,7 @@ const appointmentSchema = new mongoose.Schema({
     default: 'Pending'
   },
   assignedTechnician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  technicianAssignedAt: Date,
   history: [{
     action: { type: String, required: true, maxlength: 200 },
     details: { type: String, maxlength: 1000 },

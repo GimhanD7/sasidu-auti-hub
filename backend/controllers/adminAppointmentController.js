@@ -2,6 +2,7 @@
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
+import { appointmentAssignmentTime } from '../utils/appointmentAssignment.js';
 import { technicianAssignmentConflict } from '../utils/technicianAvailability.js';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
@@ -146,6 +147,7 @@ export async function createAdminAppointment(req, res) {
       estimatedCost: normalizedEstimatedCost,
       expectedFinishDate: finishDate,
       assignedTechnician: assignedTechnician?._id,
+      technicianAssignedAt: assignedTechnician ? new Date() : undefined,
       customerNotes: customerNotes.trim(), internalNotes: internalNotes.trim(), status: initialStatus,
       history: [{ action: 'Appointment created', details: `Initial status: ${initialStatus} · ${serviceType}`, actor: req.user._id }],
     });
@@ -339,6 +341,9 @@ export async function updateAdminAppointment(req, res) {
     if (oldTechnician !== (appointment.assignedTechnician ? String(appointment.assignedTechnician) : '')) changes.push('Technician assignment changed');
     if (body.rescheduleDecision !== undefined) changes.push(`Customer reschedule request ${body.rescheduleDecision.toLowerCase()}`);
     if (changes.length) appointment.history.push({ action: 'Appointment updated', details: changes.join(' · ').slice(0, 1000), actor: req.user._id });
+    if (oldTechnician !== (appointment.assignedTechnician ? String(appointment.assignedTechnician) : '')) {
+      appointment.technicianAssignedAt = appointment.assignedTechnician ? new Date() : undefined;
+    }
     // Persist the changes made to appointment above; document validation and registered save hooks run here.
     await appointment.save();
 
@@ -399,7 +404,7 @@ export async function convertAdminAppointmentToJob(req, res) {
     const customerComplaint = typeof req.body?.customerComplaint === 'string' ? req.body.customerComplaint.trim() : appointment.problemDescription?.trim() || (isAssignedTechnician ? appointment.serviceType?.trim() : '');
     if (!customerComplaint || customerComplaint.length > 1000) return res.status(400).json({ message: 'A customer complaint of 1 to 1,000 characters is required.' });
     const jobExpectedFinish = expectedCompletionTime || (appointment.expectedFinishDate ? new Date(`${appointment.expectedFinishDate.toISOString().slice(0, 10)}T12:00:00.000Z`) : undefined);
-    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, startedAt: new Date(), technicianAcceptedAt: new Date(), technicianAcceptedBy: req.user._id, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: new Date(), action: 'Assigned' }] : [], customerComplaint, issueType: appointment.issueType || 'Other', estimatedCost: appointment.estimatedCost, priority, expectedCompletionTime: jobExpectedFinish, status: 'In Progress', timeline: [{ status: 'In Progress', actor: req.user._id, notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
+    job = await ServiceJob.create({ appointment: appointment._id, customer: appointment.customer, vehicle: appointment.vehicle, technician: appointment.assignedTechnician, startedAt: new Date(), technicianAcceptedAt: new Date(), technicianAcceptedBy: req.user._id, technicianAssignments: appointment.assignedTechnician ? [{ technician: appointment.assignedTechnician, assignedBy: req.user._id, assignedAt: appointmentAssignmentTime(appointment) || new Date(), action: 'Assigned' }] : [], customerComplaint, issueType: appointment.issueType || 'Other', estimatedCost: appointment.estimatedCost, priority, expectedCompletionTime: jobExpectedFinish, status: 'In Progress', timeline: [{ status: 'In Progress', actor: req.user._id, notes: `Created from ${appointment.appointmentNumber || 'appointment'}.` }] });
     appointment.status = 'In Service';
     appointment.history.push({ action: 'Service job created', details: `Moved to In Service · ${job.serviceNumber}`, actor: req.user._id });
     appointment.bookingSlotKey = undefined;

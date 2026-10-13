@@ -1,5 +1,6 @@
 // List technician workloads and change job assignments, keeping the linked appointment and assignment history in sync.
 import mongoose from 'mongoose';
+import { appointmentAssignmentTime } from '../utils/appointmentAssignment.js';
 import { technicianAssignmentConflict } from '../utils/technicianAvailability.js';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
@@ -35,12 +36,13 @@ export async function listAdminAllocations(req, res) {
         appointmentFilter.$or.push({ assignedTechnician: { $in: ids } });
       }
     }
-    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-    const [jobs, technicians, assignmentCounts, activeCounts, appointments, pendingCounts] = await Promise.all([
+    const today = new Date(Date.now() + 330 * 60000); today.setUTCHours(0, 0, 0, 0); today.setTime(today.getTime() - 330 * 60000);
+    const tomorrow = new Date(today.getTime() + 86400000);
+    const [jobs, technicians, assignmentCounts, activeCounts, appointments, pendingCounts, assignedBookings] = await Promise.all([
       ServiceJob.find(filter).sort({ createdAt: -1, _id: -1 }).limit(300)
         .populate({ path: 'customer', select: 'name' }).populate({ path: 'vehicle', select: 'make model registrationNumber' })
         .populate({ path: 'technician', select: 'name technicianSpecialization availabilityStatus' })
-        .populate({ path: 'appointment', select: 'serviceType preferredDate preferredTime' }).lean(),
+        .populate({ path: 'appointment', select: 'serviceType preferredDate preferredTime assignedTechnician technicianAssignedAt history' }).lean(),
       User.find({ role: 'Technician', isActive: { $ne: false } }).select('name email technicianSpecialization availabilityStatus').sort({ name: 1 }).lean(),
       ServiceJob.aggregate([{ $unwind: '$technicianAssignments' }, { $match: { 'technicianAssignments.assignedAt': { $gte: today }, 'technicianAssignments.action': { $in: ['Assigned', 'Reassigned'] } } }, { $group: { _id: '$technicianAssignments.technician', count: { $sum: 1 } } }]),
       ServiceJob.aggregate([{ $match: { status: { $in: ALLOCATABLE_STATUSES }, technician: { $ne: null } } }, { $group: { _id: '$technician', count: { $sum: 1 } } }]),
@@ -53,16 +55,28 @@ export async function listAdminAllocations(req, res) {
         { $match: { linkedJobs: { $size: 0 } } },
         { $group: { _id: '$assignedTechnician', count: { $sum: 1 } } },
       ]),
+      Appointment.find({ assignedTechnician: { $ne: null }, status: { $ne: 'Cancelled' } }).select('assignedTechnician technicianAssignedAt history').lean(),
     ]);
     const linkedJobs = appointments.length ? await ServiceJob.find({ appointment: { $in: appointments.map(item => item._id) } }).select('appointment').lean() : [];
     const linkedAppointmentIds = new Set(linkedJobs.map(item => String(item.appointment)));
     const assignments = new Map(assignmentCounts.filter(item => item._id).map(item => [String(item._id), item.count]));
+    const bookingIds = assignedBookings.map(item => item._id);
+    const startedBookings = bookingIds.length ? await ServiceJob.find({ appointment: { $in: bookingIds } }).select('appointment technician technicianAssignments').lean() : [];
+    const linkedAssignments = new Map(startedBookings.map(job => [String(job.appointment), job]));
+    for (const booking of assignedBookings) {
+      const assignedAt = appointmentAssignmentTime(booking);
+      if (!assignedAt || new Date(assignedAt) < today || new Date(assignedAt) >= tomorrow) continue;
+      const personId = String(booking.assignedTechnician);
+      const linked = linkedAssignments.get(String(booking._id));
+      const alreadyCounted = linked?.technicianAssignments?.some(entry => String(entry.technician) === personId && ['Assigned', 'Reassigned'].includes(entry.action) && new Date(entry.assignedAt) >= today && new Date(entry.assignedAt) < tomorrow);
+      if (!alreadyCounted) assignments.set(personId, (assignments.get(personId) || 0) + 1);
+    }
     const workload = new Map(activeCounts.filter(item => item._id).map(item => [String(item._id), item.count]));
     const pending = new Map(pendingCounts.map(item => [String(item._id), item.count]));
     res.set('Cache-Control', 'private, no-store').json({
       jobs: [
-        ...jobs.map(job => ({ id: String(job._id), recordType: 'job', canAssign: ALLOCATABLE_STATUSES.includes(job.status), reference: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`, status: job.status, priority: job.priority || 'Normal', customer: job.customer?.name || 'Customer unavailable', vehicle: job.vehicle ? `${job.vehicle.make} ${job.vehicle.model}` : 'Vehicle unavailable', registrationNumber: job.vehicle?.registrationNumber || '', serviceType: job.appointment?.serviceType || 'Service repair', technicianId: job.technician ? String(job.technician._id) : '', technician: job.technician?.name || '', availabilityStatus: job.technician?.availabilityStatus || '', preferredDate: job.appointment?.preferredDate || job.createdAt, preferredTime: job.appointment?.preferredTime || '', createdAt: job.createdAt, updatedAt: job.updatedAt, assignedAt: job.technicianAssignments?.slice().reverse().find(item => String(item.technician) === String(job.technician?._id))?.assignedAt || null })),
-        ...appointments.filter(item => !linkedAppointmentIds.has(String(item._id))).map(item => ({ id: String(item._id), recordType: 'appointment', canAssign: true, reference: item.appointmentNumber || `APT-${String(item._id).slice(-8).toUpperCase()}`, status: item.status, priority: 'Normal', customer: item.customer?.name || 'Customer unavailable', vehicle: item.vehicle ? `${item.vehicle.make} ${item.vehicle.model}` : 'Vehicle unavailable', registrationNumber: item.vehicle?.registrationNumber || '', serviceType: item.serviceType, technicianId: item.assignedTechnician ? String(item.assignedTechnician._id) : '', technician: item.assignedTechnician?.name || '', availabilityStatus: item.assignedTechnician?.availabilityStatus || '', preferredDate: item.preferredDate, preferredTime: item.preferredTime, createdAt: item.createdAt, assignedAt: null })),
+        ...jobs.map(job => ({ id: String(job._id), recordType: 'job', canAssign: ALLOCATABLE_STATUSES.includes(job.status), reference: job.serviceNumber || `JOB-${String(job._id).slice(-8).toUpperCase()}`, status: job.status, priority: job.priority || 'Normal', customer: job.customer?.name || 'Customer unavailable', vehicle: job.vehicle ? `${job.vehicle.make} ${job.vehicle.model}` : 'Vehicle unavailable', registrationNumber: job.vehicle?.registrationNumber || '', serviceType: job.appointment?.serviceType || 'Service repair', technicianId: job.technician ? String(job.technician._id) : '', technician: job.technician?.name || '', availabilityStatus: job.technician?.availabilityStatus || '', preferredDate: job.appointment?.preferredDate || job.createdAt, preferredTime: job.appointment?.preferredTime || '', createdAt: job.createdAt, updatedAt: job.updatedAt, assignedAt: job.technicianAssignments?.slice().reverse().find(item => String(item.technician) === String(job.technician?._id))?.assignedAt || (String(job.appointment?.assignedTechnician) === String(job.technician?._id) ? appointmentAssignmentTime(job.appointment) : null) })),
+        ...appointments.filter(item => !linkedAppointmentIds.has(String(item._id))).map(item => ({ id: String(item._id), recordType: 'appointment', canAssign: true, reference: item.appointmentNumber || `APT-${String(item._id).slice(-8).toUpperCase()}`, status: item.status, priority: 'Normal', customer: item.customer?.name || 'Customer unavailable', vehicle: item.vehicle ? `${item.vehicle.make} ${item.vehicle.model}` : 'Vehicle unavailable', registrationNumber: item.vehicle?.registrationNumber || '', serviceType: item.serviceType, technicianId: item.assignedTechnician ? String(item.assignedTechnician._id) : '', technician: item.assignedTechnician?.name || '', availabilityStatus: item.assignedTechnician?.availabilityStatus || '', preferredDate: item.preferredDate, preferredTime: item.preferredTime, createdAt: item.createdAt, assignedAt: appointmentAssignmentTime(item) })),
       ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
       technicians: technicians.map(person => ({ id: String(person._id), name: person.name, email: person.email, specialization: person.technicianSpecialization || 'Not set', availabilityStatus: person.availabilityStatus || 'Available', pendingAppointments: pending.get(String(person._id)) || 0, activeJobs: workload.get(String(person._id)) || 0, assignedToday: assignments.get(String(person._id)) || 0 })),
     });
@@ -99,8 +113,8 @@ export async function updateAdminJobTechnician(req, res) {
     await job.save();
     if (job.appointment) {
       const appointmentUpdate = nextTechnician?._id
-        ? { $set: { assignedTechnician: nextTechnician._id } }
-        : { $unset: { assignedTechnician: 1 } };
+        ? { $set: { assignedTechnician: nextTechnician._id, technicianAssignedAt: job.technicianAssignments.at(-1).assignedAt } }
+        : { $unset: { assignedTechnician: 1, technicianAssignedAt: 1 } };
       // Apply the specified appointment database changes only to records matching this filter.
       await Appointment.updateOne({ _id: job.appointment }, appointmentUpdate);
     }

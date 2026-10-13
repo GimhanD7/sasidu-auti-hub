@@ -8,7 +8,7 @@ const initialForm = {
   email: '',
   mobile: '',
   technicianSpecialization: '',
-  workSchedule: { days: [1, 2, 3, 4, 5, 6], startTime: '09:00', endTime: '17:00' },
+  workSchedule: { days: [1, 2, 3, 4, 5, 6] },
 };
 const dateText = (value) =>
   value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value)) : '—';
@@ -24,6 +24,9 @@ export default function AdminTechnicians() {
   const [saving, setSaving] = useState(false);
   const [availabilitySaving, setAvailabilitySaving] = useState('');
   const [statusSaving, setStatusSaving] = useState('');
+  const [statusTarget, setStatusTarget] = useState(null);
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -92,7 +95,7 @@ export default function AdminTechnicians() {
             mobile: technician.mobile || '',
             technicianSpecialization:
               technician.specialization === 'Not set' ? '' : technician.specialization,
-            workSchedule: { ...technician.workSchedule, days: technician.workSchedule.days || [] },
+            workSchedule: { days: technician.workSchedule.days || [] },
           }
         : structuredClone(initialForm),
     );
@@ -148,7 +151,6 @@ export default function AdminTechnicians() {
 
   async function updateAccountStatus(technician) {
     const isActive = !technician.isActive;
-    if (!isActive && !window.confirm(`Suspend ${technician.name}? They will lose access and cannot receive new assignments. Existing jobs remain assigned so you can reassign them.`)) return;
     setStatusSaving(technician.id);
     setError('');
     try {
@@ -156,10 +158,54 @@ export default function AdminTechnicians() {
       setTechnicians(current => current.map(item => item.id === technician.id ? { ...item, isActive: data.isActive } : item));
       setDetails(current => current?.technician.id === technician.id ? { ...current, technician: { ...current.technician, isActive: data.isActive } } : current);
       setNotice(data.message);
+      setStatusTarget(null);
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to update technician account status.');
     } finally { setStatusSaving(''); }
   }
+
+  async function removeTechnician() {
+    setRemoving(true);
+    setError('');
+    try {
+      const { data } = await api.delete(`/admin/technicians/${removeTarget.id}`);
+      setTechnicians(current => current.filter(item => item.id !== removeTarget.id));
+      setSelected(null);
+      setDetails(null);
+      setRemoveTarget(null);
+      setNotice(data.message);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Unable to remove technician.');
+    } finally { setRemoving(false); }
+  }
+
+  const statusDialog = statusTarget && (
+    <div className="technician-modal-backdrop">
+      <section className="technician-modal" role="dialog" aria-modal="true" aria-labelledby="technician-status-title">
+        <h2 id="technician-status-title">{statusTarget.isActive ? 'Suspend' : 'Reactivate'} {statusTarget.name}?</h2>
+        <p>{statusTarget.isActive ? 'They will lose access and cannot receive new assignments. Existing jobs remain assigned so you can reassign them.' : 'This technician will be able to sign in and receive assignments again.'}</p>
+        {error && <p role="alert" className="technician-error">{error}</p>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }}>
+          <button type="button" className="btn-outline" disabled={Boolean(statusSaving)} onClick={() => setStatusTarget(null)}>Keep current status</button>
+          <button type="button" className="technician-primary" disabled={Boolean(statusSaving)} onClick={() => updateAccountStatus(statusTarget)}>{statusSaving ? 'Saving…' : statusTarget.isActive ? 'Confirm suspension' : 'Confirm reactivation'}</button>
+        </div>
+      </section>
+    </div>
+  );
+
+  const removalDialog = removeTarget && (
+    <div className="technician-modal-backdrop">
+      <section className="technician-modal" role="dialog" aria-modal="true" aria-labelledby="remove-technician-title">
+        <h2 id="remove-technician-title">Remove {removeTarget.name}?</h2>
+        <p>The technician will lose access and be removed from this list. Past job records will be kept. Reassign any active jobs and open appointments first.</p>
+        {error && <p role="alert" className="technician-error">{error}</p>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }}>
+          <button type="button" className="btn-outline" disabled={removing} onClick={() => setRemoveTarget(null)}>Keep technician</button>
+          <button type="button" className="technician-primary" disabled={removing} onClick={removeTechnician}>{removing ? 'Removing…' : 'Confirm removal'}</button>
+        </div>
+      </section>
+    </div>
+  );
 
   function toggleDay(day) {
     const days = form.workSchedule.days.includes(day)
@@ -171,6 +217,8 @@ export default function AdminTechnicians() {
   if (selected)
     return (
       <div className="admin-technicians-page">
+        {removalDialog}
+        {statusDialog}
         <header className="admin-technicians-heading">
           <div>
             <button
@@ -213,7 +261,8 @@ export default function AdminTechnicians() {
                 </p>
                 <strong>{details.technician.specialization}</strong>
                 <p>Account: {details.technician.isActive ? 'Active' : 'Suspended'}</p>
-                <button type="button" className="btn-outline" disabled={statusSaving === details.technician.id} onClick={() => updateAccountStatus(details.technician)}>
+                <button type="button" className="btn-outline" onClick={() => { setError(''); setRemoveTarget(details.technician); }}>Remove technician</button>
+                <button type="button" className="btn-outline" disabled={statusSaving === details.technician.id} onClick={() => { setError(''); setStatusTarget(details.technician); }}>
                   {statusSaving === details.technician.id ? 'Saving…' : details.technician.isActive ? 'Suspend technician' : 'Reactivate technician'}
                 </button>
                 <label className="technician-availability-control">
@@ -236,10 +285,6 @@ export default function AdminTechnicians() {
                 <span>
                   {details.technician.workSchedule.days.map((day) => week[day - 1]).join(', ') ||
                     'No days set'}
-                </span>
-                <span>
-                  {details.technician.workSchedule.startTime}–
-                  {details.technician.workSchedule.endTime}
                 </span>
               </div>
             </section>
@@ -362,6 +407,8 @@ export default function AdminTechnicians() {
 
   return (
     <div className="admin-technicians-page">
+      {removalDialog}
+      {statusDialog}
       <header className="admin-technicians-heading">
         <div>
           <h1 className="page-title">Technician Management</h1>
@@ -410,7 +457,7 @@ export default function AdminTechnicians() {
                 <td><strong>{item.name}</strong></td>
                 <td>{item.email}<small>{item.mobile || '—'}</small></td>
                 <td>{item.specialization}</td>
-                <td>{item.workSchedule.days.map((day) => week[day - 1]).join(', ') || 'No days'}<small>{item.workSchedule.startTime}–{item.workSchedule.endTime}</small></td>
+                <td>{item.workSchedule.days.map((day) => week[day - 1]).join(', ') || 'No days'}</td>
                 <td>{item.activeJobs}</td>
                 <td>{item.readyJobs}</td>
                 <td>{item.upcomingAppointments}</td>
@@ -427,7 +474,7 @@ export default function AdminTechnicians() {
                   </select>
                 </td>
                 <td>{item.isActive ? 'Active' : 'Suspended'}</td>
-                <td><button type="button" className="btn-outline" onClick={() => openProfile(item.id)}>View profile</button><button type="button" className="btn-outline" disabled={statusSaving === item.id} onClick={() => updateAccountStatus(item)}>{statusSaving === item.id ? 'Saving…' : item.isActive ? 'Suspend' : 'Reactivate'}</button></td>
+                <td><div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}><button type="button" className="btn-outline" onClick={() => openProfile(item.id)}>View profile</button><button type="button" className="btn-outline" disabled={statusSaving === item.id} onClick={() => { setError(''); setStatusTarget(item); }}>{statusSaving === item.id ? 'Saving…' : item.isActive ? 'Suspend' : 'Reactivate'}</button><button type="button" className="btn-outline" onClick={() => { setError(''); setRemoveTarget(item); }}>Remove</button></div></td>
               </tr>
             ))}
               </tbody>
@@ -539,36 +586,6 @@ function TechnicianForm({ form, setForm, toggleDay, editing, saving, error, onSu
               </label>
             ))}
           </fieldset>
-          <div className="technician-time-fields">
-            <label>
-              Start time
-              <input
-                type="time"
-                required
-                value={form.workSchedule.startTime}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    workSchedule: { ...form.workSchedule, startTime: event.target.value },
-                  })
-                }
-              />
-            </label>
-            <label>
-              End time
-              <input
-                type="time"
-                required
-                value={form.workSchedule.endTime}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    workSchedule: { ...form.workSchedule, endTime: event.target.value },
-                  })
-                }
-              />
-            </label>
-          </div>
           <footer>
             <button
               type="button"

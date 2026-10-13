@@ -28,9 +28,10 @@ export default function AdminAllocations() {
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(
-      () =>
-        api
-          .get('/admin/allocations', { params: { ...(search ? { search } : {}), ...(technicianFilter ? { technician: technicianFilter } : {}) } })
+      () => {
+        setLoading(true);
+        return api
+          .get('/admin/allocations', { timeout: 60000, params: { ...(search ? { search } : {}), ...(technicianFilter ? { technician: technicianFilter } : {}) } })
           .then(({ data }) => {
             if (!cancelled) {
               setJobs(data.jobs);
@@ -40,11 +41,12 @@ export default function AdminAllocations() {
           })
           .catch((requestError) => {
             if (!cancelled)
-              setError(requestError.response?.data?.message || 'Unable to load allocation data.');
+              setError(requestError.code === 'ECONNABORTED' ? 'Loading took too long. Please use Refresh to try again.' : requestError.response?.data?.message || 'Unable to load allocation data. Please use Refresh to try again.');
           })
           .finally(() => {
             if (!cancelled) setLoading(false);
-          }),
+          });
+      },
       search ? 250 : 0,
     );
     return () => {
@@ -95,6 +97,7 @@ export default function AdminAllocations() {
 
     try {
       const { data: refreshed } = await api.get('/admin/allocations', {
+        timeout: 60000,
         params: { ...(search ? { search } : {}), ...(technicianFilter ? { technician: technicianFilter } : {}) },
       });
       setJobs(refreshed.jobs);
@@ -117,7 +120,7 @@ export default function AdminAllocations() {
     <div className="admin-allocations-page">
       <header className="admin-allocations-heading">
         <div>
-          <h1 className="page-title">Technician Allocation</h1>
+          <h1 className="page-title">Job Allocation</h1>
           <p className="page-subtitle">
             Review pending, in-progress and completed work and assign available technicians.
           </p>
@@ -148,7 +151,7 @@ export default function AdminAllocations() {
             {technicians.length - availableTechnicians.length} unavailable
           </span>
         </header>
-        {technicians.length ? (
+        {loading ? <p role="status">Loading technician workloads…</p> : error && !technicians.length ? <p>Technician data could not be loaded. Use Refresh to try again.</p> : technicians.length ? (
           <div className="allocation-tech-grid">
             {technicians.map((person) => (
               <article
@@ -169,7 +172,7 @@ export default function AdminAllocations() {
                     {person.pendingAppointments || 0} waiting to start · {person.activeJobs} in progress
                   </span>
                   <strong>
-                    {person.assignedToday} service assignment{person.assignedToday === 1 ? '' : 's'} today
+                    {person.assignedToday} assignment{person.assignedToday === 1 ? '' : 's'} today
                   </strong>
                 </footer>
               </article>
@@ -226,7 +229,7 @@ export default function AdminAllocations() {
         <p className="section-help-text">Pending includes confirmed bookings waiting for the technician to start service.</p>
         {loading ? (
           <p role="status">Loading allocation data…</p>
-        ) : visibleJobs.length ? (
+        ) : error && !jobs.length ? <p>Appointment data could not be loaded. Use Refresh to try again.</p> : visibleJobs.length ? (
           <div className="admin-data-table-wrap">
             <table className="admin-data-table">
               <thead>

@@ -5,7 +5,7 @@ import { getAdminAppointmentOptions, createAdminAppointment, getAdminAppointment
 import { listAdminCustomers, getAdminCustomer, createAdminCustomer, updateAdminCustomer, setAdminCustomerStatus } from '../controllers/adminCustomerController.js';
 import { listAdminVehicles, getAdminVehicle, createAdminVehicle, updateAdminVehicle } from '../controllers/adminVehicleController.js';
 import { listAdminServiceTypes, createAdminServiceType, updateAdminServiceType, activateAdminServiceType, deactivateAdminServiceType, deleteAdminServiceType } from '../controllers/adminServiceTypeController.js';
-import { listAdminTechnicians, createAdminTechnician, getAdminTechnician, updateAdminTechnician, updateAdminTechnicianAvailability, setAdminTechnicianStatus } from '../controllers/adminTechnicianController.js';
+import { listAdminTechnicians, createAdminTechnician, getAdminTechnician, updateAdminTechnician, updateAdminTechnicianAvailability, setAdminTechnicianStatus, deleteAdminTechnician } from '../controllers/adminTechnicianController.js';
 import { listAdminAllocations, updateAdminJobTechnician } from '../controllers/adminAllocationController.js';
 import { createAdminAccount, resetAdminAccountPassword } from '../controllers/adminAccountController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
@@ -40,6 +40,7 @@ router.get('/technicians/:technicianId', getAdminTechnician);
 router.patch('/technicians/:technicianId', updateAdminTechnician);
 router.patch('/technicians/:technicianId/availability', updateAdminTechnicianAvailability);
 router.patch('/technicians/:technicianId/status', setAdminTechnicianStatus);
+router.delete('/technicians/:technicianId', deleteAdminTechnician);
 router.get('/allocations', listAdminAllocations);
 router.patch('/jobs/:jobId/technician', updateAdminJobTechnician);
 router.post('/accounts', createAdminAccount);

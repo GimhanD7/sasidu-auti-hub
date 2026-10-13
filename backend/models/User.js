@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'Customer', 'Admin', 'Technician'], default: 'Customer' },
   isActive: { type: Boolean, default: true },
+  deletedAt: Date,
   resetTokenHash: { type: String, select: false },
   resetTokenExpiresAt: { type: Date, select: false },
   // Increasing this number invalidates older sessions when requireAuth compares their stored version.
@@ -20,8 +21,6 @@ const userSchema = new mongoose.Schema({
   availabilityStatus: { type: String, enum: ['Available', 'Busy', 'Break', 'Off Duty', 'Leave'], default: 'Available' },
   workSchedule: {
     days: { type: [Number], default: [1, 2, 3, 4, 5, 6] },
-    startTime: { type: String, default: '09:00' },
-    endTime: { type: String, default: '17:00' },
   },
 }, { timestamps: true });
 
