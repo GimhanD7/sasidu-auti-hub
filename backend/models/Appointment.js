@@ -19,10 +19,12 @@ const appointmentSchema = new mongoose.Schema({
   customerNotes: { type: String, trim: true, maxlength: 1000 },
   internalNotes: { type: String, trim: true, maxlength: 1000, select: false },
   cancellationRequest: {
+    reason: { type: String, trim: true, maxlength: 1000 },
     status: { type: String, enum: ['Pending', 'Approved'] },
     requestedAt: Date,
     respondedAt: Date,
   },
+  cancellationNote: { type: String, trim: true, maxlength: 1000 },
   rescheduleRequest: {
     preferredDate: Date,
     preferredTime: String,

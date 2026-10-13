@@ -13,12 +13,12 @@ export async function createAdminAccount(req, res) {
   const body = req.body || {};
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const mobile = typeof body.mobile === 'string' ? body.mobile.replace(/[\s()-]/g, '') : '';
+  const mobile = typeof body.mobile === 'string' ? body.mobile : '';
   const password = body.password;
   const confirmPassword = body.confirmPassword;
   if (name.length < 2 || name.length > 100) return res.status(400).json({ message: 'Name must contain 2 to 100 characters.' });
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'Enter a valid email address.' });
-  if (mobile && !/^\+?\d{10,15}$/.test(mobile)) return res.status(400).json({ message: 'Enter a valid mobile number with 10 to 15 digits.' });
+  if (mobile && !/^\d{10}$/.test(mobile)) return res.status(400).json({ message: 'Enter exactly 10 digits for the mobile number, without a country code.' });
   if (typeof password !== 'string' || Buffer.byteLength(password, 'utf8') < 8 || Buffer.byteLength(password, 'utf8') > 72) return res.status(400).json({ message: 'Password must be 8 to 72 bytes long.' });
   if (password !== confirmPassword) return res.status(400).json({ message: 'Passwords do not match.' });
   try {

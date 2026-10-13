@@ -19,7 +19,7 @@ test('admin creates an admin account with a hashed password and creator attribut
   t.mock.method(User, 'exists', async () => false);
   t.mock.method(User, 'create', async data => { created = { ...data, _id: 'new-admin', isActive: true, createdAt: new Date() }; return created; });
   const res = response();
-  await createAdminAccount({ user: { _id: 'admin-1' }, body: { name: 'New Admin', email: 'NEW@example.com', mobile: '+94771234567', password: 'secure-pass-1', confirmPassword: 'secure-pass-1' } }, res);
+  await createAdminAccount({ user: { _id: 'admin-1' }, body: { name: 'New Admin', email: 'NEW@example.com', mobile: '0771234567', password: 'secure-pass-1', confirmPassword: 'secure-pass-1' } }, res);
   assert.equal(res.statusCode, 201);
   assert.equal(created.role, 'Admin');
   assert.equal(created.email, 'new@example.com');

@@ -81,8 +81,8 @@ export async function createAdminAppointment(req, res) {
   if (!customerId) {
     const name = typeof newCustomer?.name === 'string' ? newCustomer.name.trim() : '';
     const email = typeof newCustomer?.email === 'string' ? newCustomer.email.trim().toLowerCase() : '';
-    const mobile = typeof newCustomer?.mobile === 'string' ? newCustomer.mobile.replace(/[\s()-]/g, '') : '';
-    if (name.length < 2 || name.length > 100 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\+?\d{10,15}$/.test(mobile)) return res.status(400).json({ message: 'Enter a valid customer name, email, and mobile number.' });
+    const mobile = typeof newCustomer?.mobile === 'string' ? newCustomer.mobile : '';
+    if (name.length < 2 || name.length > 100 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{10}$/.test(mobile)) return res.status(400).json({ message: 'Enter a valid customer name, email, and mobile number.' });
     newCustomerData = { name, email, mobile };
   }
   let newVehicleData;
@@ -204,6 +204,7 @@ export async function getAdminAppointment(req, res) {
       status: appointment.status, technicianId: appointment.assignedTechnician ? String(appointment.assignedTechnician._id) : '',
       technician: appointment.assignedTechnician?.name || '',
       cancellationRequest: appointment.cancellationRequest?.status ? appointment.cancellationRequest : null,
+      cancellationNote: appointment.cancellationNote || '',
       rescheduleRequest: appointment.rescheduleRequest?.status === 'Pending' ? { preferredDate: appointment.rescheduleRequest.preferredDate?.toISOString().slice(0, 10), preferredTime: appointment.rescheduleRequest.preferredTime, notes: appointment.rescheduleRequest.notes || '' } : null,
       history: (appointment.history || []).map(event => ({ action: event.action, details: event.details || '', timestamp: event.timestamp, actor: event.actor?.name || 'System' })),
       serviceJob: job ? { id: String(job._id), serviceNumber: job.serviceNumber, status: job.status } : null,
@@ -212,6 +213,9 @@ export async function getAdminAppointment(req, res) {
 }
 
 export async function updateAdminAppointment(req, res) {
+  if (req.body?.status === 'Cancelled' && (typeof req.body.cancellationNote !== 'string' || !req.body.cancellationNote.trim() || req.body.cancellationNote.trim().length > 1000)) {
+    return res.status(400).json({ message: 'Enter a cancellation note of up to 1,000 characters.' });
+  }
   if (!mongoose.isValidObjectId(req.params.appointmentId)) return res.status(400).json({ message: 'Invalid appointment.' });
   const body = req.body || {};
   try {
@@ -319,6 +323,10 @@ export async function updateAdminAppointment(req, res) {
     appointment.bookingSlotKey = ['Pending', 'Confirmed', 'Checked In', 'In Service'].includes(appointment.status)
       ? `${appointment.preferredDate.toISOString().slice(0, 10)}|${appointment.preferredTime}` : undefined;
     const changes = [];
+    if (appointment.status === 'Cancelled' && body.status === 'Cancelled') {
+      appointment.cancellationNote = body.cancellationNote.trim();
+      changes.push(`Cancellation note: ${appointment.cancellationNote}`);
+    }
     if (appointment.status === 'Cancelled' && appointment.cancellationRequest?.status === 'Pending') {
       appointment.cancellationRequest.status = 'Approved';
       appointment.cancellationRequest.respondedAt = new Date();

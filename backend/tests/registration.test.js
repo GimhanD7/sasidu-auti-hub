@@ -6,10 +6,17 @@ import User from '../models/User.js';
 import { registerUser } from '../controllers/authController.js';
 import { validateRegistration } from '../utils/registration.js';
 
-const valid = { fullName: ' Test Customer ', email: ' TEST@example.com ', mobile: '+94 (77) 123-4567', password: 'test-password', confirmPassword: 'test-password' };
+const valid = { fullName: ' Test Customer ', email: ' TEST@example.com ', mobile: '0771234567', password: 'test-password', confirmPassword: 'test-password' };
+
+test('mobile requires exactly ten digits without country codes or formatting', () => {
+  for (const mobile of ['077123456', '07712345678', '+94771234567', '94771234567', '077 1234567', '077-1234567', '077123456a', ' 0771234567 ', '']) {
+    assert.ok(validateRegistration({ ...valid, mobile }).error, mobile);
+  }
+  assert.equal(validateRegistration(valid).data.mobile, '0771234567');
+});
 
 test('normalizes customer details and rejects invalid registration data', () => {
-  assert.deepEqual(validateRegistration(valid).data, { name: 'Test Customer', email: 'test@example.com', mobile: '+94771234567', password: 'test-password' });
+  assert.deepEqual(validateRegistration(valid).data, { name: 'Test Customer', email: 'test@example.com', mobile: '0771234567', password: 'test-password' });
   for (const body of [undefined, null, {}, { ...valid, fullName: ' ' }, { ...valid, email: 'invalid' }, { ...valid, mobile: 'abc1234567890' }, { ...valid, password: 'short' }, { ...valid, confirmPassword: 'different' }, { ...valid, password: '😀'.repeat(20), confirmPassword: '😀'.repeat(20) }, { ...valid, email: {} }]) {
     assert.ok(validateRegistration(body).error);
   }

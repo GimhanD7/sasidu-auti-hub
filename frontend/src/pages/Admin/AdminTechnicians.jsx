@@ -23,6 +23,7 @@ export default function AdminTechnicians() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [availabilitySaving, setAvailabilitySaving] = useState('');
+  const [statusSaving, setStatusSaving] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -145,6 +146,21 @@ export default function AdminTechnicians() {
     }
   }
 
+  async function updateAccountStatus(technician) {
+    const isActive = !technician.isActive;
+    if (!isActive && !window.confirm(`Suspend ${technician.name}? They will lose access and cannot receive new assignments. Existing jobs remain assigned so you can reassign them.`)) return;
+    setStatusSaving(technician.id);
+    setError('');
+    try {
+      const { data } = await api.patch(`/admin/technicians/${technician.id}/status`, { isActive });
+      setTechnicians(current => current.map(item => item.id === technician.id ? { ...item, isActive: data.isActive } : item));
+      setDetails(current => current?.technician.id === technician.id ? { ...current, technician: { ...current.technician, isActive: data.isActive } } : current);
+      setNotice(data.message);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Unable to update technician account status.');
+    } finally { setStatusSaving(''); }
+  }
+
   function toggleDay(day) {
     const days = form.workSchedule.days.includes(day)
       ? form.workSchedule.days.filter((value) => value !== day)
@@ -196,6 +212,10 @@ export default function AdminTechnicians() {
                   {details.technician.mobile ? ` · ${details.technician.mobile}` : ''}
                 </p>
                 <strong>{details.technician.specialization}</strong>
+                <p>Account: {details.technician.isActive ? 'Active' : 'Suspended'}</p>
+                <button type="button" className="btn-outline" disabled={statusSaving === details.technician.id} onClick={() => updateAccountStatus(details.technician)}>
+                  {statusSaving === details.technician.id ? 'Saving…' : details.technician.isActive ? 'Suspend technician' : 'Reactivate technician'}
+                </button>
                 <label className="technician-availability-control">
                   Availability status
                   <select
@@ -406,8 +426,8 @@ export default function AdminTechnicians() {
                     ))}
                   </select>
                 </td>
-                <td>{item.isActive ? 'Active' : 'Inactive'}</td>
-                <td><button type="button" className="btn-outline" onClick={() => openProfile(item.id)}>View profile</button></td>
+                <td>{item.isActive ? 'Active' : 'Suspended'}</td>
+                <td><button type="button" className="btn-outline" onClick={() => openProfile(item.id)}>View profile</button><button type="button" className="btn-outline" disabled={statusSaving === item.id} onClick={() => updateAccountStatus(item)}>{statusSaving === item.id ? 'Saving…' : item.isActive ? 'Suspend' : 'Reactivate'}</button></td>
               </tr>
             ))}
               </tbody>
@@ -478,6 +498,11 @@ function TechnicianForm({ form, setForm, toggleDay, editing, saving, error, onSu
             Mobile number
             <input
               type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                minLength={10}
+                maxLength={10}
+                title="Enter exactly 10 digits without letters or a country code"
               value={form.mobile}
               onChange={(event) => setForm({ ...form, mobile: event.target.value })}
               placeholder="Optional"

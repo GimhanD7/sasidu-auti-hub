@@ -295,9 +295,11 @@ export default function AdminAppointments() {
                           fontWeight: 600,
                           fontSize: '0.85rem',
                           whiteSpace: 'nowrap',
+                          width: '180px',
+                          minHeight: '36px',
                         }}
                       >
-                        Manage Appointment
+                        {appt.status === 'Cancelled' ? 'View details' : 'Manage Appointment'}
                       </button>
                     </td>
                   </tr>
@@ -540,6 +542,11 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                 <div>
                   <input
                     type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                minLength={10}
+                maxLength={10}
+                title="Enter exactly 10 digits without letters or a country code"
                     placeholder="Mobile"
                     value={newCustomerMobile}
                     onChange={(e) => setNewCustomerMobile(e.target.value)}
@@ -782,6 +789,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
 
   // Editable fields
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancellationNote, setCancellationNote] = useState('');
   const [technicianId, setTechnicianId] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
@@ -839,10 +847,14 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
   }
 
   async function handleCancelAppointment() {
+    if (!cancellationNote.trim()) {
+      setError('Enter a cancellation note before cancelling the appointment.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
-      await api.patch(`/admin/appointments/${appointmentId}`, { status: 'Cancelled' });
+      await api.patch(`/admin/appointments/${appointmentId}`, { status: 'Cancelled', cancellationNote: cancellationNote.trim() });
       onSaved('Appointment cancelled.');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to cancel appointment.');
@@ -889,7 +901,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
             <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>
               {appt?.appointmentNumber || 'Appointment Details'}
             </h2>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #94a3b8)' }}>Manage scheduling and status</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #94a3b8)' }}>{appt?.status === 'Cancelled' ? 'Cancelled appointment details' : 'Manage scheduling and status'}</span>
           </div>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', color: 'var(--text-primary, #fff)', cursor: 'pointer' }}>
             ✕
@@ -928,15 +940,31 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
               <div><small>Estimated cost</small><div>{appt?.estimatedCost == null ? 'Not set' : `LKR ${Number(appt.estimatedCost).toLocaleString()}`}</div></div>
             </div>
 
+            {appt?.status === 'Cancelled' && (
+              <dl className="cancelled-appointment-details">
+                <div><dt>Status</dt><dd><span className="cancelled-appointment-badge">{serviceStatus(appt.status)}</span></dd></div>
+                <div><dt>Assigned technician</dt><dd>{appt.technician || 'Unassigned'}</dd></div>
+                <div><dt>Date</dt><dd>{new Date(`${preferredDate}T00:00:00`).toLocaleDateString(undefined, { dateStyle: 'medium' })}</dd></div>
+                <div><dt>Time</dt><dd>{preferredTime}</dd></div>
+                <div className="cancelled-appointment-note"><dt>Service type</dt><dd>{serviceType}</dd></div>
+                <div className="cancelled-appointment-note"><dt>Customer complaint</dt><dd>{appt.problemDescription || 'None recorded'}</dd></div>
+                <div className="cancelled-appointment-note"><dt>Internal notes</dt><dd>{internalNotes || 'None recorded'}</dd></div>
+                {appt.cancellationRequest?.reason && <div className="cancelled-appointment-note"><dt>Customer cancellation reason</dt><dd>{appt.cancellationRequest.reason}</dd></div>}
+                <div className="cancelled-appointment-note cancellation-explanation"><dt>Cancellation note</dt><dd>{appt.cancellationNote || 'No cancellation note recorded'}</dd></div>
+              </dl>
+            )}
             {/* Editable Fields */}
+            {canSave && appt?.cancellationNote && <p>Cancellation note: {appt.cancellationNote}</p>}
             {appt?.cancellationRequest?.status === 'Pending' && (
               <div role="alert" className="appointment-message">
                 <strong>Customer requested cancellation</strong>
+                <p>Reason: {appt.cancellationRequest.reason || 'No reason recorded'}</p>
                 <p>Requested on {new Date(appt.cancellationRequest.requestedAt).toLocaleString()}. The appointment remains active. Use Cancel Appointment to cancel it manually and notify the customer.</p>
                 {canCancel && <button type="button" disabled={saving} onClick={() => setConfirmCancel(true)}>Cancel Appointment</button>}
                 {!canCancel && <p>Service has already started. Review this request with the customer.</p>}
               </div>
             )}
+            <fieldset disabled={!canSave} style={{ display: canSave ? 'contents' : 'none', border: 0, padding: 0, margin: 0 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Status</label>
@@ -946,6 +974,7 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Assigned Technician</label>
                 <select
+                  disabled={!canSave}
                   value={technicianId}
                   onChange={(e) => setTechnicianId(e.target.value)}
                   style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}
@@ -1022,20 +1051,26 @@ function SimpleAppointmentManager({ appointmentId, technicians, onClose, onSaved
               />
             </div>
 
-            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)' }}>
+            </fieldset>
+            {canSave && <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary, #b3b3bc)' }}>
               {appt?.status === 'Pending'
                 ? 'Enter the service details and assign a technician to confirm this appointment. The technician starts and completes the service.'
                 : 'Service progress is updated automatically when the technician starts or completes the job.'}
-            </p>
+            </p>}
             {confirmCancel && (
-              <div role="alert">
+              <div role="alert" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1rem', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '8px' }}>
                 <p>Cancel this appointment? The customer will be notified and the time slot released.</p>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 600 }}>Cancellation note (required)
+                  <textarea rows={3} style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px', resize: 'vertical', font: 'inherit' }} value={cancellationNote} onChange={event => setCancellationNote(event.target.value)} maxLength={1000} required placeholder="Explain why the appointment is being cancelled" />
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <button type="button" disabled={saving} onClick={handleCancelAppointment}>Yes, Cancel Appointment</button>
                 <button type="button" disabled={saving} onClick={() => setConfirmCancel(false)}>Keep Appointment</button>
+                </div>
               </div>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color, #2c2c32)' }}>
-              {canCancel && <button type="button" disabled={saving} onClick={() => setConfirmCancel(true)}>Cancel Appointment</button>}
+              {canCancel && !confirmCancel && <button type="button" disabled={saving} onClick={() => setConfirmCancel(true)}>Cancel Appointment</button>}
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   type="button"

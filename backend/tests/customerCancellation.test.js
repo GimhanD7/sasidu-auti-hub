@@ -7,7 +7,7 @@ import { cancelCustomerAppointment, requestCustomerAppointmentCancellation } fro
 
 const id = '507f1f77bcf86cd799439011';
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, set() { return this; }, json(data) { this.data = data; return this; } });
-const request = { params: { appointmentId: id }, user: { _id: id } };
+const request = { params: { appointmentId: id }, user: { _id: id }, body: { reason: 'Plans changed' } };
 
 test('customers cancel only pending bookings and request cancellation after confirmation', async t => {
   let appointment;

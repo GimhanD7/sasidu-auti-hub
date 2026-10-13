@@ -18,7 +18,7 @@ import { hashToken } from '../utils/session.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 test('auth HTTP flow: credentials, cookies, access, logout and one-time password reset', async t => {
-  const customer = { _id: 'customer', name: 'Test Customer', email: 'customer@example.com', mobile: '+94771234567', password: await bcrypt.hash('old-password', 10), role: 'user', isActive: true, sessionVersion: 0, async save() { return this; } };
+  const customer = { _id: 'customer', name: 'Test Customer', email: 'customer@example.com', mobile: '0771234567', password: await bcrypt.hash('old-password', 10), role: 'user', isActive: true, sessionVersion: 0, async save() { return this; } };
   const billingAdmin = { _id: 'finance-user', name: 'Finance User', email: 'finance@example.com', password: await bcrypt.hash('finance-password', 10), role: 'Admin', isActive: true, sessionVersion: 0 };
   const users = [customer, billingAdmin];
   let reportTechnician = null;
@@ -103,7 +103,7 @@ test('auth HTTP flow: credentials, cookies, access, logout and one-time password
     assert.equal((await request('/api/auth/me', { cookie: login.cookie })).response.status, 401);
     assert.equal((await request('/api/auth/logout', { body: {} })).response.status, 200);
 
-    const mobileLogin = await request('/api/auth/login', { body: { email: '+94 (77) 123-4567', password: 'old-password' } });
+    const mobileLogin = await request('/api/auth/login', { body: { email: '077 123-4567', password: 'old-password' } });
     assert.equal(mobileLogin.response.status, 200);
     assert.doesNotMatch(mobileLogin.response.headers.get('set-cookie'), /Max-Age/);
     const known = await request('/api/auth/forgot-password', { body: { email: ' CUSTOMER@example.com ' } });

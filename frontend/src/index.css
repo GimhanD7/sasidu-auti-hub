@@ -12617,3 +12617,44 @@
   .session-spinner,
   .session-state-card { animation: none; }
 }
+
+.cancelled-appointment-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem 1.5rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #2c2c32);
+  border-radius: 8px;
+}
+.cancelled-appointment-details dt {
+  margin: 0 0 0.45rem;
+  color: var(--text-secondary, #b3b3bc);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.cancelled-appointment-details dd {
+  margin: 0;
+  color: var(--text-primary, #f4f4f5);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cancelled-appointment-note {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border-color, #2c2c32);
+  padding-top: 0.9rem;
+}
+.cancelled-appointment-badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid #ef444440;
+  border-radius: 20px;
+  background: #ef444410;
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+@media (max-width: 480px) {
+  .cancelled-appointment-details { grid-template-columns: 1fr; gap: 1rem; }
+}

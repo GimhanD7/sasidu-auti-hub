@@ -71,13 +71,13 @@ test('cancellation releases the booking and progress cannot be manually selected
   }
   reset();
   appointment.cancellationRequest = { status: 'Pending', requestedAt: new Date() };
-  assert.equal((await update({ status: 'Cancelled' })).code, 200);
+  assert.equal((await update({ status: 'Cancelled', cancellationNote: 'Customer requested cancellation' })).code, 200);
   assert.equal(appointment.cancellationRequest.status, 'Approved');
   assert.ok(appointment.cancellationRequest.respondedAt instanceof Date);
   assert.equal(appointment.bookingSlotKey, undefined);
   assert.equal((await update({ status: 'Pending' })).code, 409);
   reset('In Service');
-  assert.equal((await update({ status: 'Cancelled' })).code, 409);
+  assert.equal((await update({ status: 'Cancelled', cancellationNote: 'Customer requested cancellation' })).code, 409);
   reset('Pending');
   appointment.assignedTechnician = id;
   const start = response();

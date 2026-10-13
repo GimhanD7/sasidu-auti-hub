@@ -122,8 +122,12 @@ export default function Profile() {
               Mobile number
               <input
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                minLength={10}
+                maxLength={10}
+                title="Enter exactly 10 digits without letters or a country code"
                 autoComplete="tel"
-                maxLength={20}
                 value={form.mobile}
                 className="min-h-11 rounded-lg border border-neutral-700 bg-zinc-900 px-3 text-sm text-white outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
                 onChange={(event) =>

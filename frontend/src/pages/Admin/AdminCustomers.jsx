@@ -360,6 +360,11 @@ function CustomerForm({ mode, customer, onClose, onSaved }) {
             <input
               required
               type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                minLength={10}
+                maxLength={10}
+                title="Enter exactly 10 digits without letters or a country code"
               value={form.mobile}
               onChange={(event) => setForm({ ...form, mobile: event.target.value })}
             />

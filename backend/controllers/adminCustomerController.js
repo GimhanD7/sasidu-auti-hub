@@ -26,11 +26,11 @@ const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function customerInput(body = {}) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const mobile = typeof body.mobile === 'string' ? body.mobile.replace(/[\s()-]/g, '') : '';
+  const mobile = typeof body.mobile === 'string' ? body.mobile : '';
 
   if (name.length < 2 || name.length > 100) return { error: 'Name must contain 2 to 100 characters.' };
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
-  if (!/^\+?\d{10,15}$/.test(mobile)) return { error: 'Enter a valid mobile number with 10 to 15 digits.' };
+  if (!/^\d{10}$/.test(mobile)) return { error: 'Enter exactly 10 digits for the mobile number, without a country code.' };
 
   return { data: { name, email, mobile } };
 }

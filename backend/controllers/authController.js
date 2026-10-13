@@ -98,10 +98,10 @@ export async function updateCurrentUser(req, res) {
   if (typeof fullName !== 'string' || typeof email !== 'string' || typeof mobile !== 'string') return res.status(400).json({ message: 'Name, email, and mobile number are required.' });
   const name = fullName.trim();
   const normalizedEmail = email.trim().toLowerCase();
-  const normalizedMobile = mobile.trim().replace(/[\s()-]/g, '');
+  const normalizedMobile = mobile;
   if (name.length < 2 || name.length > 100) return res.status(400).json({ message: 'Name must contain 2 to 100 characters.' });
   if (normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return res.status(400).json({ message: 'Enter a valid email address.' });
-  if (normalizedMobile && !/^\+?\d{10,15}$/.test(normalizedMobile)) return res.status(400).json({ message: 'Enter a mobile number with 10 to 15 digits, or leave it blank.' });
+  if (normalizedMobile && !/^\d{10}$/.test(normalizedMobile)) return res.status(400).json({ message: 'Enter exactly 10 digits without a country code, or leave it blank.' });
   try {
     const user = await User.findById(req.user._id).select('-password -resetTokenHash -resetTokenExpiresAt');
     if (!user || user.isActive === false) return res.status(404).json({ message: 'Account not found.' });

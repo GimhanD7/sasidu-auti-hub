@@ -59,6 +59,7 @@ function appointmentView(appointment) {
     technician: appointment.assignedTechnician?.name || null,
     createdAt: appointment.createdAt,
     cancellationRequest: appointment.cancellationRequest?.status ? appointment.cancellationRequest : null,
+    cancellationNote: appointment.cancellationNote || '',
     rescheduleRequest: appointment.rescheduleRequest?.status ? {
       preferredDate: appointment.rescheduleRequest.preferredDate ? dateKey(appointment.rescheduleRequest.preferredDate) : null,
       preferredTime: appointment.rescheduleRequest.preferredTime,
@@ -142,6 +143,8 @@ async function notifyAppointmentChange(appointment, { type, title, message, dedu
 }
 
 export async function cancelCustomerAppointment(req, res) {
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+  if (!reason || reason.length > 1000) return res.status(400).json({ message: 'Enter a cancellation reason of up to 1,000 characters.' });
   if (!mongoose.isValidObjectId(req.params.appointmentId)) return res.status(400).json({ message: 'Invalid appointment ID.' });
   try {
     const appointment = await Appointment.findOne({ _id: req.params.appointmentId, customer: req.user._id });
@@ -150,7 +153,8 @@ export async function cancelCustomerAppointment(req, res) {
       return res.status(409).json({ message: 'Only unconfirmed appointments can be cancelled directly. Request cancellation for a confirmed appointment so the workshop can review it.' });
     }
     appointment.status = 'Cancelled';
-    appointment.history.push({ action: 'Appointment cancelled', details: 'Cancelled by customer', actor: req.user._id });
+    appointment.cancellationNote = reason;
+    appointment.history.push({ action: 'Appointment cancelled', details: reason, actor: req.user._id });
     // Persist the changes made to appointment above; document validation and registered save hooks run here.
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
@@ -165,14 +169,16 @@ export async function cancelCustomerAppointment(req, res) {
 }
 
 export async function requestCustomerAppointmentCancellation(req, res) {
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+  if (!reason || reason.length > 1000) return res.status(400).json({ message: 'Enter a cancellation reason of up to 1,000 characters.' });
   if (!mongoose.isValidObjectId(req.params.appointmentId)) return res.status(400).json({ message: 'Invalid appointment ID.' });
   try {
     const appointment = await Appointment.findOne({ _id: req.params.appointmentId, customer: req.user._id });
     if (!appointment) return res.status(404).json({ message: 'Appointment not found.' });
     if (!['Confirmed', 'Checked In'].includes(appointment.status)) return res.status(409).json({ message: 'Cancellation can only be requested for a confirmed appointment before service starts.' });
     if (appointment.cancellationRequest?.status === 'Pending') return res.status(409).json({ message: 'A cancellation request is already awaiting workshop review.' });
-    appointment.cancellationRequest = { status: 'Pending', requestedAt: new Date() };
-    appointment.history.push({ action: 'Cancellation requested', details: 'Customer requested cancellation; appointment remains active until the workshop cancels it.', actor: req.user._id });
+    appointment.cancellationRequest = { status: 'Pending', requestedAt: new Date(), reason };
+    appointment.history.push({ action: 'Cancellation requested', details: reason, actor: req.user._id });
     await appointment.save();
     const number = appointment.appointmentNumber || `APT-${String(appointment._id).slice(-8).toUpperCase()}`;
     const notified = await notifyAppointmentChange(appointment, {

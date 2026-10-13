@@ -11,17 +11,32 @@ const CURRENT_JOB_STATUSES = ['Inspecting', 'In Progress', 'Waiting for Approval
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
+export async function setAdminTechnicianStatus(req, res) {
+  if (!mongoose.isValidObjectId(req.params.technicianId) || typeof req.body?.isActive !== 'boolean') {
+    return res.status(400).json({ message: 'Select a technician and a valid account status.' });
+  }
+  try {
+    const technician = await User.findOneAndUpdate(
+      { _id: req.params.technicianId, role: 'Technician' },
+      { $set: { isActive: req.body.isActive }, $inc: { sessionVersion: 1 }, $unset: { resetTokenHash: '', resetTokenExpiresAt: '' } },
+      { new: true, runValidators: true },
+    );
+    if (!technician) return res.status(404).json({ message: 'Technician not found.' });
+    res.set('Cache-Control', 'private, no-store').json({ isActive: technician.isActive, message: technician.isActive ? 'Technician account reactivated.' : 'Technician account suspended.' });
+  } catch { res.status(503).json({ message: 'Unable to update technician account status.' }); }
+}
+
 function parseTechnician(body = {}) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const mobile = typeof body.mobile === 'string' ? body.mobile.replace(/[\s()-]/g, '') : '';
+  const mobile = typeof body.mobile === 'string' ? body.mobile : '';
   const specialization = typeof body.technicianSpecialization === 'string' ? body.technicianSpecialization.trim() : '';
   const days = body.workSchedule?.days;
   const startTime = body.workSchedule?.startTime;
   const endTime = body.workSchedule?.endTime;
   if (name.length < 2 || name.length > 100) return { error: 'Name must contain 2 to 100 characters.' };
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
-  if (mobile && !/^\+?\d{10,15}$/.test(mobile)) return { error: 'Enter a valid mobile number with 10 to 15 digits.' };
+  if (mobile && !/^\d{10}$/.test(mobile)) return { error: 'Enter exactly 10 digits for the mobile number, without a country code.' };
   if (!specialization || specialization.length > 120) return { error: 'Enter a specialization of up to 120 characters.' };
   if (!Array.isArray(days) || days.some(day => !Number.isInteger(day) || day < 1 || day > 7)) return { error: 'Choose valid working days.' };
   if (!TIME_PATTERN.test(startTime || '') || !TIME_PATTERN.test(endTime || '') || startTime >= endTime) return { error: 'Enter valid working hours with the end time after the start time.' };

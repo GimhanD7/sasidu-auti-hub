@@ -6,8 +6,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthLayout from './AuthLayout';
 
-const MOBILE_VALIDATION_MESSAGE = 'Enter a mobile number with 10 to 15 digits, optionally starting with +.';
-const normalizeMobile = (value) => value.trim().replace(/[\s()-]/g, '');
+const MOBILE_VALIDATION_MESSAGE = 'Enter exactly 10 digits for the mobile number, without a country code.';
+const normalizeMobile = (value) => value;
 
 const Signup = () => {
   const [mobileTouched, setMobileTouched] = useState(false);
@@ -26,7 +26,7 @@ const Signup = () => {
   };
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const mobileInvalid = !/^\+?\d{10,15}$/.test(normalizeMobile(formData.mobile));
+  const mobileInvalid = !/^\d{10}$/.test(normalizeMobile(formData.mobile));
 
   const features = [
     {
@@ -90,7 +90,8 @@ const Signup = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name === 'mobile') {
-      e.target.setCustomValidity(/^\+?\d{10,15}$/.test(normalizeMobile(value)) ? '' : MOBILE_VALIDATION_MESSAGE);
+      if (!/^[0-9]{0,10}$/.test(value)) return;
+      e.target.setCustomValidity(/^\d{10}$/.test(normalizeMobile(value)) ? '' : MOBILE_VALIDATION_MESSAGE);
     }
     setFormData((prev) => ({
       ...prev,
@@ -106,7 +107,7 @@ const Signup = () => {
       setError('Enter your full name (at least 2 characters).');
       return;
     }
-    if (!/^\+?\d{10,15}$/.test(mobile)) {
+    if (!/^\d{10}$/.test(mobile)) {
       setMobileTouched(true);
       setError(MOBILE_VALIDATION_MESSAGE);
       return;
@@ -257,13 +258,15 @@ const Signup = () => {
               </span>
               <input
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
                 id="signup-mobile"
                 name="mobile"
                 minLength={10}
-                maxLength={32}
+                maxLength={10}
                 autoComplete="tel"
                 className="form-input"
-                placeholder="+1 (555) 000-0000"
+                placeholder="0771234567"
                 value={formData.mobile}
                 onChange={handleChange}
                 onBlur={() => setMobileTouched(true)}
@@ -278,7 +281,7 @@ const Signup = () => {
               />
             </div>
             <p id="signup-mobile-help" style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: mobileTouched && mobileInvalid ? '#ef4444' : 'var(--text-secondary)' }}>
-              {mobileTouched && mobileInvalid ? MOBILE_VALIDATION_MESSAGE : '10–15 digits. Country code (+), spaces, brackets and hyphens are allowed.'}
+              {mobileTouched && mobileInvalid ? MOBILE_VALIDATION_MESSAGE : 'Exactly 10 digits. No letters, spaces or country code.'}
             </p>
           </div>
         </div>

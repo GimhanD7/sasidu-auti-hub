@@ -40,6 +40,7 @@ export default function CustomerAppointments() {
   const [managementError, setManagementError] = useState('');
   const [actionId, setActionId] = useState('');
   const [cancelConfirmId, setCancelConfirmId] = useState('');
+  const [cancellationReason, setCancellationReason] = useState('');
   const [rescheduleForm, setRescheduleForm] = useState(null);
   const [rescheduleDay, setRescheduleDay] = useState(null);
   const [rescheduleError, setRescheduleError] = useState('');
@@ -213,16 +214,20 @@ export default function CustomerAppointments() {
   }
 
   async function cancelAppointment(appointment) {
+    if (!cancellationReason.trim()) {
+      setManagementError('Enter a reason before cancelling or requesting cancellation.');
+      return;
+    }
     setActionId(appointment.id);
     setManagementError('');
     setManagementMessage('');
     try {
       // Request a server-side change; update the displayed state from the successful response below.
       if (appointment.status === 'Pending') {
-        await api.patch(`/appointments/${appointment.id}/cancel`);
+        await api.patch(`/appointments/${appointment.id}/cancel`, { reason: cancellationReason.trim() });
         setManagementMessage(`Appointment ${appointment.appointmentNumber} was cancelled.`);
       } else {
-        await api.post(`/appointments/${appointment.id}/cancellation-request`);
+        await api.post(`/appointments/${appointment.id}/cancellation-request`, { reason: cancellationReason.trim() });
         setManagementMessage(`Cancellation requested for ${appointment.appointmentNumber}. Your appointment remains active until the admin cancels it.`);
       }
       setCancelConfirmId('');
@@ -481,6 +486,7 @@ export default function CustomerAppointments() {
                           disabled={Boolean(actionId) || appointment.cancellationRequest?.status === 'Pending'}
                           onClick={() => {
                             setCancelConfirmId(appointment.id);
+                            setCancellationReason('');
                             setManagementError('');
                           }}
                         >
@@ -490,6 +496,9 @@ export default function CustomerAppointments() {
                     )}
                     {cancelConfirmId === appointment.id && (
                       <div className="appointment-cancel-confirm">
+                        <label>Cancellation reason (required)
+                          <textarea value={cancellationReason} onChange={event => setCancellationReason(event.target.value)} maxLength={1000} required placeholder="Tell us why you need to cancel" />
+                        </label>
                         <p>
                           {appointment.status === 'Pending'
                             ? `Cancel appointment ${appointment.appointmentNumber}? The time slot will become available to other customers.`
@@ -644,6 +653,7 @@ export default function CustomerAppointments() {
                       <summary>Appointment details</summary>
                       <p>{appointment.problemDescription || 'No problem description recorded.'}</p>
                       {appointment.customerNotes && <p>Notes: {appointment.customerNotes}</p>}
+                      {appointment.cancellationNote && <p>Cancellation note: {appointment.cancellationNote}</p>}
                     </details>
                   </article>
                 ))}
