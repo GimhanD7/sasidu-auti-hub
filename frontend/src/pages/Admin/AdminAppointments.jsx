@@ -594,7 +594,7 @@ function SimpleBookingModal({ technicians, onClose, onCreated }) {
                   <input
                     required
                     type="text"
-                    placeholder="Make (e.g. Toyota) *"
+                    placeholder="Company name (e.g. Toyota) *"
                     value={vehicleMake}
                     onChange={(e) => setVehicleMake(e.target.value)}
                     style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input, #1d1d22)', color: 'var(--text-primary, #f4f4f5)', border: '1px solid var(--border-color, #2c2c32)', borderRadius: '6px' }}

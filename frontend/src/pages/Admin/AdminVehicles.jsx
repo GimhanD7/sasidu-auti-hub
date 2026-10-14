@@ -159,7 +159,7 @@ export default function AdminVehicles() {
         <div>
           <h1 className="page-title">Vehicle Management</h1>
           <p className="page-subtitle">
-            Search by registration, make, model, or customer and review each vehicle’s workshop
+            Search by registration, company name, model, or customer and review each vehicle’s workshop
             records.
           </p>
         </div>
@@ -183,7 +183,7 @@ export default function AdminVehicles() {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Registration, make, model, customer…"
+              placeholder="Registration, company name, model, customer…"
             />
           </label>
           <span>
@@ -200,7 +200,7 @@ export default function AdminVehicles() {
         ) : vehicles.length ? (
           <div className="admin-data-table-wrap">
             <table className="admin-data-table">
-              <thead><tr><th>Vehicle name</th><th>Vehicle number</th><th>Make</th><th>Fuel type</th><th>Year</th><th>Customer</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Vehicle name</th><th>Vehicle number</th><th>Company name</th><th>Fuel type</th><th>Year</th><th>Customer</th><th>Actions</th></tr></thead>
               <tbody>
             {vehicles.map((vehicle) => (
               <tr key={vehicle.id}>
@@ -365,7 +365,7 @@ function VehicleForm({ mode, vehicle, customer, onClose, onSaved }) {
               />
             </label>
             <label>
-              Make
+              Company name
               <input
                 required
                 maxLength="80"

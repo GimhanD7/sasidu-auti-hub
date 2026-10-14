@@ -82,7 +82,7 @@ function VehicleForm({ vehicle, saving, error, onClose, onSave }) {
               />
             </div>
             <div className="vehicle-form-field">
-              <label htmlFor="vehicle-make">Make *</label>
+              <label htmlFor="vehicle-make">Company name *</label>
               <input
                 id="vehicle-make"
                 name="make"
@@ -231,7 +231,7 @@ function VehicleCard({
               <dd>{vehicle.registrationNumber}</dd>
             </div>
             <div>
-              <dt>Make</dt>
+              <dt>Company name</dt>
               <dd>{vehicle.make}</dd>
             </div>
             <div>
@@ -471,7 +471,7 @@ export default function CustomerVehicles() {
           <input
             type="search"
             aria-label="Search vehicles"
-            placeholder="Search registration, make, model or VIN…"
+            placeholder="Search registration, company name, model or VIN…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -484,7 +484,7 @@ export default function CustomerVehicles() {
             onChange={(event) => setSort(event.target.value)}
           >
             <option value="recent">Recently added</option>
-            <option value="name">Make and model</option>
+            <option value="name">Company name and model</option>
             <option value="year">Newest model year</option>
           </select>
         </label>
@@ -531,7 +531,7 @@ export default function CustomerVehicles() {
               <h2>{vehicles.length ? 'No matching vehicles' : 'No vehicles registered yet'}</h2>
               <p>
                 {vehicles.length
-                  ? 'Try another registration number, make, model or VIN.'
+                  ? 'Try another registration number, company name, model or VIN.'
                   : 'Add your first vehicle to keep its service information in one place.'}
               </p>
               {vehicles.length ? (
