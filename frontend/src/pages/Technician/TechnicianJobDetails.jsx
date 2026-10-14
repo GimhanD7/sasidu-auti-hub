@@ -14,6 +14,7 @@ export default function TechnicianJobDetails() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [editingPartId, setEditingPartId] = useState('');
 
   // Load server data when these effect dependencies change; cleanup below prevents stale work from updating this view.
   useEffect(() => {
@@ -45,7 +46,10 @@ export default function TechnicianJobDetails() {
     const form = event.currentTarget;
     const values = Object.fromEntries(new FormData(form));
     if (action === 'completeJob') values.workDone = String(values.workDone || '').split('\n').map(item => item.trim()).filter(Boolean);
-    if (await update(action, values)) form.reset();
+    if (await update(action, values)) {
+      form.reset();
+      if (action === 'partUpdate') setEditingPartId('');
+    }
   }
 
   const completed = job?.status === 'Ready';
@@ -90,8 +94,24 @@ export default function TechnicianJobDetails() {
           <ul className="charges-list">
             {job.replacedParts.map(part => (
               <li key={part.id} className="charge-item">
-                <span><strong>{part.name}</strong> {part.partNumber ? `(${part.partNumber})` : ''} · Quantity: {part.quantity}</span>
-                {!completed && <button type="button" className="btn-remove" disabled={busy} onClick={() => update('partRemove', { partId: part.id })}>Remove</button>}
+                {editingPartId === part.id ? (
+                  <form onSubmit={event => submit(event, 'partUpdate')} className="charge-form">
+                    <input type="hidden" name="partId" value={part.id} />
+                    <fieldset disabled={busy}>
+                      <label>Part name<input name="name" defaultValue={part.name} required maxLength={200} /></label>
+                      <label>Part # / Code<input name="partNumber" defaultValue={part.partNumber} maxLength={100} /></label>
+                      <label>Quantity<input name="quantity" type="number" min="1" max="10000" defaultValue={part.quantity} required /></label>
+                      <button type="submit" className="btn-add">Save part</button>
+                      <button type="button" className="btn-secondary" disabled={busy} onClick={() => setEditingPartId('')}>Cancel</button>
+                    </fieldset>
+                  </form>
+                ) : <>
+                  <span><strong>{part.name}</strong> {part.partNumber ? `(${part.partNumber})` : ''} · Quantity: {part.quantity}</span>
+                  {!completed && <div className="part-actions">
+                    <button type="button" className="btn-secondary" disabled={busy} onClick={() => setEditingPartId(part.id)}>Edit</button>
+                    <button type="button" className="btn-remove" disabled={busy} onClick={() => window.confirm(`Delete ${part.name} from this job?`) && update('partRemove', { partId: part.id })}>Delete</button>
+                  </div>}
+                </>}
               </li>
             ))}
           </ul>

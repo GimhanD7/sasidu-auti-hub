@@ -152,3 +152,24 @@ test('technician cannot enter charges; admin prices the completed service', asyn
   assert.equal(invoice.totalAmount, 3500);
 });
 
+test('technician can edit a recorded part while preserving admin-only pricing', async t => {
+  const technician = { _id: id(31), role: 'Technician', name: 'Technician' };
+  const part = { _id: id(32), name: 'Old filter', partNumber: 'OLD-1', quantity: 1, unitCost: 1200 };
+  const parts = [part];
+  parts.id = value => parts.find(entry => entry._id === value);
+  const job = { _id: id(33), technician: technician._id, status: 'In Progress', technicianAcceptedAt: new Date(), replacedParts: parts, timeline: [], async save() {} };
+  t.mock.method(ServiceJob, 'findOne', async () => job);
+
+  const result = response();
+  await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'partUpdate', partId: part._id, name: 'Air filter', partNumber: 'AIR-2', quantity: 2 } }, result);
+  assert.equal(result.code, 200);
+  assert.equal(part.name, 'Air filter');
+  assert.equal(part.partNumber, 'AIR-2');
+  assert.equal(part.quantity, 2);
+  assert.equal(part.unitCost, 1200, 'technician edits do not alter the admin-entered price');
+
+  const invalid = response();
+  await updateTechnicianJobCard({ params: { jobId: job._id }, user: technician, body: { action: 'partUpdate', partId: part._id, name: 'Air filter', quantity: 0 } }, invalid);
+  assert.equal(invalid.code, 400);
+});
+

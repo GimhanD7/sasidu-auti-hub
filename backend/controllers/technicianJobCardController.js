@@ -120,6 +120,18 @@ export async function updateTechnicianJobCard(req, res) {
       if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10000) return res.status(400).json({ message: 'Enter a valid part quantity.' });
       job.replacedParts.push({ name, partNumber, quantity, replacedAt: now });
       message = 'Part recorded on this job.';
+    } else if (action === 'partUpdate') {
+      if (!mongoose.isValidObjectId(req.body.partId)) return res.status(400).json({ message: 'Choose a valid part entry.' });
+      const part = job.replacedParts.id(req.body.partId);
+      if (!part) return res.status(404).json({ message: 'Part entry not found.' });
+      const name = text(req.body.name, 200, 'Part name', { required: true });
+      const partNumber = text(req.body.partNumber || '', 100, 'Part number');
+      const quantity = Number(req.body.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10000) return res.status(400).json({ message: 'Enter a valid part quantity.' });
+      part.name = name;
+      part.partNumber = partNumber;
+      part.quantity = quantity;
+      message = 'Part details updated.';
     } else if (action === 'partRemove') {
       if (!mongoose.isValidObjectId(req.body.partId)) return res.status(400).json({ message: 'Choose a valid part entry.' });
       const part = job.replacedParts.id(req.body.partId);
